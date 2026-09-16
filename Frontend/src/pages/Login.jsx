@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Container, Card, Form, Button, Alert } from 'react-bootstrap'
+import { Button, Form } from 'react-bootstrap'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import logo from '../assets/logo.png'
+import './Login.css'
 
 export default function Login() {
   const [documentId, setDocumentId] = useState('')
@@ -23,8 +25,10 @@ export default function Login() {
         document_id: documentId,
         password: password,
       })
+
       login(response.data.access_token)
       navigate('/orders')
+
     } catch (err) {
       if (err.response && err.response.status === 401) {
         setError('Documento o contraseña incorrectos')
@@ -37,40 +41,64 @@ export default function Login() {
   }
 
   return (
-    <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
-      <Card style={{ width: '360px' }} className="p-4 shadow-sm">
-        <Card.Body>
-          <h4 className="mb-4 text-center">AridosCo</h4>
+    <>
 
-          {error && <Alert variant="danger">{error}</Alert>}
+    <div className='login-page'>
+      <div className='logo-container'>
+        <div className='login-header'>
+        </div>
+
+        <div className='login-card'>
+          {error && (
+            <div className='login-error'> {error} </div>
+          )}
 
           <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Documento</Form.Label>
-              <Form.Control
-                type="text"
+            <div className='login-field '>
+              <div className='login-logo'>
+                <img src={logo} alt='AridosCo' className='login-logo-img'></img>
+              </div>
+              <label className='login-label'>
+                Documento
+              </label>
+              <input
+                type='text'
                 value={documentId}
-                onChange={(e) => setDocumentId(e.target.value)}
+                onChange={(e)=> setDocumentId(e.target.value)}
                 required
+                placeholder='Número de documento'
+                className='login-input'
               />
-            </Form.Group>
-
-            <Form.Group className="mb-4">
-              <Form.Label>Contraseña</Form.Label>
-              <Form.Control
-                type="password"
+            </div>
+            <div className='login-field-last'>
+              <label className='login-label'>
+                Contraseña
+              </label>
+              <input
+                type='password'
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e)=> setPassword(e.target.value)}
                 required
+                placeholder='**********'
+                className='login-input'
               />
-            </Form.Group>
-
-            <Button type="submit" variant="dark" className="w-100" disabled={loading}>
-              {loading ? 'Ingresando...' : 'Ingresar'}
+            </div>
+          
+            <Button
+              type='submit'
+              disabled={loading}
+              className='login-button'
+            >
+            {loading? 'Ingresando...' : 'Ingresar'}
             </Button>
           </Form>
-        </Card.Body>
-      </Card>
-    </Container>
+        </div>
+
+        <p className='login-footer'>
+          Sistema interno · AridosCo
+        </p>
+      </div>
+    </div>
+    </>
   )
 }
