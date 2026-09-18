@@ -32,9 +32,11 @@ class OrderResponse(BaseModel):
     subtotal: Decimal
     tax: Decimal
     total: Decimal
-    created_at: datetime
-    updated_at: datetime
     items: List[OrderItemResponse]
-
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    created_by_user_id: Optional[UUID] = None
+    updated_by_user_id: Optional[UUID] = None
+    deleted_by_user_id: Optional[UUID] = None
     class Config:
         from_attributes = True

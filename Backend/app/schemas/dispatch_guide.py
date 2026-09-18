@@ -16,9 +16,12 @@ class DispatchGuideResponse(BaseModel):
     destination: str
     cargo_detail: str
     qr_image_url: Optional[str] = None
-    created_at: datetime
     used_at: Optional[datetime] = None
-
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    created_by_user_id: Optional[UUID] = None
+    updated_by_user_id: Optional[UUID] = None
+    deleted_by_user_id: Optional[UUID] = None
     class Config:
         from_attributes = True
 

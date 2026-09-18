@@ -13,9 +13,12 @@ class PaymentResponse(BaseModel):
     bank_reference: str
     status: str
     amount: Decimal
-    created_at: datetime
     confirmed_at: Optional[datetime] = None
-
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    created_by_user_id: Optional[UUID] = None
+    updated_by_user_id: Optional[UUID] = None
+    deleted_by_user_id: Optional[UUID] = None
     class Config:
         from_attributes = True
 
