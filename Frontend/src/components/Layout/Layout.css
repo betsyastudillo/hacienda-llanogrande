@@ -1,0 +1,16 @@
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-body {
+  flex: 1;
+  display: flex;
+}
+
+.layout-content {
+  flex: 1;
+  background-color: #f4f3ee;
+  overflow-y: auto;
+}

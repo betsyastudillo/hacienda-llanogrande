@@ -97,7 +97,7 @@
 }
 
 .login-button:disabled {
-    background-color: #FAC775;
+    background-color: var(--accent-bg);
     cursor: default
 }
 

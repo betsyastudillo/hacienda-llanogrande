@@ -1,12 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { AuthProvider } from "./context/AuthContext"
 import ProtectedRoute from "./components/ProtectedRoute"
-import Login from "./pages/Login"
+import Layout from "./components/Layout/Layout"
+import Login from "./pages/Login/Login"
+import Orders from "./pages/Orders/Orders"
 
-
-function OrdersPlaceholder() {
-  return <h2 className="p-4">Aquí va el listado de pedidos (siguiente paso)</h2>
-}
 
 function App() {
   return (
@@ -18,10 +16,12 @@ function App() {
             path="/orders"
             element={
               <ProtectedRoute>
-                <OrdersPlaceholder />
+                <Layout />
               </ProtectedRoute>
             }
-            />
+            >
+            <Route path="/orders" element={<Orders />} />
+          </Route>
           <Route path="*" element={<Navigate to="/orders" replace />} />
         </Routes>
       </BrowserRouter>
