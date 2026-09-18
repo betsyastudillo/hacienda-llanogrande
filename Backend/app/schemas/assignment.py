@@ -9,7 +9,7 @@ class AssignmentCreate(BaseModel):
     vehicle_id: UUID
     carrier_id: UUID
 
-class AssignmentResponse(BaseModel, AuditResponseMixin):
+class AssignmentResponse(AuditResponseMixin):
     id: UUID
     order_id: UUID
     vehicle_id: UUID

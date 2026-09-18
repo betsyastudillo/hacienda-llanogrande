@@ -17,7 +17,7 @@ class UserCreate(UserBase):
     password: str
 
 
-class UserUpdate(BaseModel, AuditResponseMixin):
+class UserUpdate(AuditResponseMixin):
     full_name: Optional[str] = None
     email: Optional[str] = None
     role: Optional[str] = None

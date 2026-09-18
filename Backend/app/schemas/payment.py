@@ -8,7 +8,7 @@ from app.schemas.mixins import AuditResponseMixin
 class PaymentInitiateRequest(BaseModel):
     order_id: UUID
 
-class PaymentResponse(BaseModel, AuditResponseMixin):
+class PaymentResponse(AuditResponseMixin):
     id: UUID
     order_id: UUID
     bank_reference: str

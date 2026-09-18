@@ -26,7 +26,7 @@ class OrderCreate(BaseModel):
     items: List[OrderItemCreate]
 
 
-class OrderResponse(BaseModel, AuditResponseMixin):
+class OrderResponse(AuditResponseMixin):
     id: UUID
     company_id: UUID
     status: str

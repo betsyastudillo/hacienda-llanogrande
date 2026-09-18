@@ -8,7 +8,7 @@ class DispatchGuideCreate(BaseModel):
     order_id: UUID
 
 
-class DispatchGuideResponse(BaseModel, AuditResponseMixin):
+class DispatchGuideResponse(AuditResponseMixin):
     id: UUID
     order_id: UUID
     status: str
