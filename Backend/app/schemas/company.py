@@ -15,6 +15,7 @@ class CompanyCreate(CompanyBase):
 
 class CompanyResponse(CompanyBase):
     id: UUID
+    client_code: str
     verification_status: str
 
     class Config:

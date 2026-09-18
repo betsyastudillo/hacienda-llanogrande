@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import company, document, auth, user, material, order, vehicle, carrier, assignment, payment, dispatch_guide
 
-app = FastAPI(title="AridosCo API")
+app = FastAPI(title="Hacienda Llanogrande API")
 
 # CORS
 app.add_middleware(
