@@ -7,7 +7,6 @@ from app.models.order import Order
 from app.models.vehicle import Vehicle
 from app.models.carrier import Carrier
 from app.schemas.assignment import AssignmentCreate
-from app.services.transport_service import get_transport_cost
 
 
 ASSIGNABLE_ORDER_STATUSES = ["created"]  
@@ -61,9 +60,6 @@ def create_assignment(db: Session, data: AssignmentCreate) -> Assignment:
             f"Vehicle capacity ({vehicle.capacity_m3} m3) is insufficient for order quantity ({total_quantity} m3)"
         )
 
-    transport_cost = get_transport_cost(vehicle.type)
-    order.transport_cost = transport_cost
-    order.total = order.subtotal + order.tax + transport_cost
     order.status = "transport_assigned"
 
     new_assignment = Assignment(

@@ -81,6 +81,7 @@ def edit_user(
     return user
 
 
+# Desactiva al usuario, no lo elimina
 @router.delete("/{user_id}")
 def remove_user(
     user_id: UUID,

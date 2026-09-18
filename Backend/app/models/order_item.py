@@ -3,9 +3,10 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
 from app.database import Base
+from app.models.mixins import AuditMixin
 
 
-class OrderItem(Base):
+class OrderItem(Base, AuditMixin):
     __tablename__ = "order_items"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

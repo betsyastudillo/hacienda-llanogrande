@@ -1,11 +1,10 @@
 from sqlalchemy import Column, String, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.sql import func
 import uuid
 from app.database import Base
+from app.models.mixins import AuditMixin
 
-
-class DispatchGuide(Base):
+class DispatchGuide(Base, AuditMixin):
     __tablename__ = "dispatch_guides"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -16,5 +15,4 @@ class DispatchGuide(Base):
     destination = Column(String, nullable=False)
     cargo_detail = Column(String, nullable=False)
     qr_image_url = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
     used_at = Column(DateTime(timezone=True), nullable=True)

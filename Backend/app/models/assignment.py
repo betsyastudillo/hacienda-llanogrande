@@ -3,9 +3,10 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 from app.database import Base
+from app.models.mixins import AuditMixin
 
 
-class Assignment(Base):
+class Assignment(Base, AuditMixin):
     __tablename__ = "assignments"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

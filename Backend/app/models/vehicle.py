@@ -2,8 +2,10 @@ from sqlalchemy import Column, String, Numeric, Date, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from app.database import Base
+from app.models.mixins import AuditMixin
 
-class Vehicle(Base):
+
+class Vehicle(Base, AuditMixin):
     __tablename__ = "vehicles"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
