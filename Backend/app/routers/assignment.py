@@ -5,15 +5,12 @@ from app.database import get_db
 from app.dependencies import require_role
 from app.models.user import User
 from app.schemas.assignment import AssignmentCreate, AssignmentResponse
+from app.constants.roles import INTERNAL_ROLES, CAN_MANAGE_FLEET, ALL_ROLES
 from app.services.assignment_service import create_assignment, get_assignment_by_order, get_assignments
 from app.services.order_service import can_access_order, get_order_by_id
 
 
 router = APIRouter(prefix="/assignments", tags=["Assignments"])
-
-
-INTERNAL_ROLES = ("admin", "logistica", "soporte")
-ALL_VIEW_ROLES = INTERNAL_ROLES + ("cliente_admin", "cliente_operativo")
 
 
 @router.get("/", response_model=list[AssignmentResponse])
@@ -28,7 +25,7 @@ def get_list_assignments(
 def get_assignment_by_order_id(
     order_id: UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*ALL_VIEW_ROLES)),
+    current_user: User = Depends(require_role(*ALL_ROLES)),
 ):
     order = get_order_by_id(db, order_id)
     if not order:
@@ -48,7 +45,7 @@ def get_assignment_by_order_id(
 def register_assignment(
     data: AssignmentCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("logistica", "admin")),
+    current_user: User = Depends(require_role(*CAN_MANAGE_FLEET)),
 ):
     try:
         return create_assignment(db, data)

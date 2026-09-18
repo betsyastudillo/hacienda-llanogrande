@@ -6,20 +6,17 @@ from app.dependencies import require_role, verify_webhook_secret
 from app.models.user import User
 from app.schemas.payment import PaymentInitiateRequest, PaymentResponse, WebhookRequest
 from app.services.order_service import can_access_order, get_order_by_id
+from app.constants.roles import CAN_VIEW_PAYMENTS_ALL, CAN_CREATE_ORDER
 from app.services.payment_service import get_payments, initiate_payment, confirm_payment_webhook, get_payment_by_order
 
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
-INTERNAL_ROLES = ("admin", "cartera", "soporte")
-INITIATE_ROLES = ("admin", "cliente_admin", "cliente_operativo")
-
-
 @router.get("/", response_model=PaymentResponse)
 def get_all_payments(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*INTERNAL_ROLES)),
+    current_user: User = Depends(require_role(*CAN_VIEW_PAYMENTS_ALL)),
 ):
     return get_payments(db)
 
@@ -28,14 +25,14 @@ def get_all_payments(
 def get_payment_by_order_id(
     order_id: UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*INTERNAL_ROLES, "cliente_admin", "cliente_operativo")),
+    current_user: User = Depends(require_role(*CAN_VIEW_PAYMENTS_ALL, "cliente_admin", "cliente_operativo")),
 ):
     order = get_order_by_id(db, order_id)
     
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    if current_user.role not in INTERNAL_ROLES and not can_access_order(order, current_user):
+    if current_user.role not in CAN_VIEW_PAYMENTS_ALL and not can_access_order(order, current_user):
         raise HTTPException(status_code=404, detail="Order not found")
 
     payment = get_payment_by_order(db, order_id)
@@ -50,7 +47,7 @@ def get_payment_by_order_id(
 def start_payment(
     data: PaymentInitiateRequest, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*INITIATE_ROLES)),
+    current_user: User = Depends(require_role(*CAN_CREATE_ORDER)),
 ):
     order = get_order_by_id(db, data.order_id)
     

@@ -5,22 +5,17 @@ from app.dependencies import get_current_user, require_role
 from app.database import get_db
 from app.models.user import User
 from app.schemas.order import OrderCreate, OrderResponse
+from app.constants.roles import ALL_ROLES, CAN_CREATE_ORDER
 from app.services.order_service import create_order, edit_order, get_orders, get_order_by_id, can_access_order
 
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
 
-ORDER_ROLES = (
-    "admin", "soporte", "logistica", "cartera", "operaciones",
-    "cliente_admin", "cliente_operativo",
-)
-
-
 @router.get("/", response_model=list[OrderResponse])
 def list_orders(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*ORDER_ROLES)),
+    current_user: User = Depends(require_role(*ALL_ROLES)),
 ):
     return get_orders(db, current_user)
 
@@ -29,7 +24,7 @@ def list_orders(
 def get_order(
     order_id: UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*ORDER_ROLES)),
+    current_user: User = Depends(require_role(*ALL_ROLES)),
 ):
     order = get_order_by_id(db, order_id)
     if not order:
@@ -46,7 +41,7 @@ def get_order(
 def create_new_order(
     order: OrderCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "cliente_admin", "cliente_operativo")),
+    current_user: User = Depends(require_role(*CAN_CREATE_ORDER)),
 ):
     try:
         return create_order(db, order, current_user)
@@ -60,7 +55,7 @@ def update_order(
     order_id: UUID, 
     order: OrderCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "cliente_admin", "cliente_operativo")),
+    current_user: User = Depends(require_role(*CAN_CREATE_ORDER)),
 ):
     try:
         return edit_order(db, order_id, order, current_user)

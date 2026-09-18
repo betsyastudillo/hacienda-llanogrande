@@ -5,6 +5,7 @@ from app.database import get_db
 from app.dependencies import get_current_user, require_role
 from app.models.user import User as UserModel
 from app.schemas.user import UserResponse, UserUpdate, UserSelfUpdate, PasswordChangeRequest
+from app.constants.roles import CAN_MANAGE_USERS
 from app.services.user_service import (
     get_users, get_user_by_id, update_user, update_own_profile,
     deactivate_user, change_password,
@@ -46,7 +47,7 @@ def change_my_password(
 @router.get("/", response_model=list[UserResponse])
 def list_users(
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(require_role("admin")),
+    current_user: UserModel = Depends(require_role(CAN_MANAGE_USERS)),
 ):
     return get_users(db)
 
@@ -55,7 +56,7 @@ def list_users(
 def get_user(
     user_id: UUID,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(require_role("admin")),
+    current_user: UserModel = Depends(require_role(CAN_MANAGE_USERS)),
 ):
     user = get_user_by_id(db, user_id)
     
@@ -70,7 +71,7 @@ def edit_user(
     user_id: UUID,
     data: UserUpdate,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(require_role("admin")),
+    current_user: UserModel = Depends(require_role(CAN_MANAGE_USERS)),
 ):
     user = update_user(db, user_id, data)
     
@@ -84,7 +85,7 @@ def edit_user(
 def remove_user(
     user_id: UUID,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(require_role("admin")),
+    current_user: UserModel = Depends(require_role(CAN_MANAGE_USERS)),
 ):
     user = deactivate_user(db, user_id)
     

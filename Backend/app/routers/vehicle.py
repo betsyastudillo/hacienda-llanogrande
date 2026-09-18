@@ -7,6 +7,7 @@ from app.models.user import User
 from app.schemas.document import DocumentBase
 from app.schemas.vehicle import VehicleCreate, VehicleResponse
 from app.services.document_service import create_document, get_documents_by_vehicle
+from app.constants.roles import CAN_MANAGE_FLEET, CAN_VIEW_FLEET
 from app.services.vehicle_service import (
     create_vehicle, get_vehicles, get_vehicle_by_id,
     edit_vehicle, deactivate_vehicle,
@@ -16,14 +17,10 @@ from app.services.vehicle_service import (
 router = APIRouter(prefix="/vehicles", tags=["Vehicles"])
 
 
-FLEET_ROLES = ("logistica", "admin")
-FLEET_READ_ROLES = ("logistica", "admin", "operaciones")
-
-
 @router.get("/", response_model=list[VehicleResponse])
 def list_vehicles(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*FLEET_READ_ROLES)),
+    current_user: User = Depends(require_role(*CAN_VIEW_FLEET)),
 ):
     return get_vehicles(db)
 
@@ -32,7 +29,7 @@ def list_vehicles(
 def get_a_vehicle(
     vehicle_id: UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*FLEET_READ_ROLES)),
+    current_user: User = Depends(require_role(*CAN_VIEW_FLEET)),
 ):
     vehicle = get_vehicle_by_id(db, vehicle_id)
     if not vehicle:
@@ -44,7 +41,7 @@ def get_a_vehicle(
 def create_new_vehicle(
     vehicle: VehicleCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*FLEET_ROLES)),
+    current_user: User = Depends(require_role(*CAN_MANAGE_FLEET)),
 ):
     try:
         return create_vehicle(db, vehicle)
@@ -58,7 +55,7 @@ def upload_vehicle_document(
     document_type: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*FLEET_ROLES)),
+    current_user: User = Depends(require_role(*CAN_MANAGE_FLEET)),
 ):
     return create_document(db, document_type, file, vehicle_id=vehicle_id)
 
@@ -67,7 +64,7 @@ def upload_vehicle_document(
 def list_vehicle_documents(
     vehicle_id: UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*FLEET_READ_ROLES)),
+    current_user: User = Depends(require_role(*CAN_VIEW_FLEET)),
 ):
     return get_documents_by_vehicle(db, vehicle_id)
 
@@ -77,7 +74,7 @@ def update_vehicle(
     vehicle_id: UUID, 
     data: VehicleCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*FLEET_ROLES)),
+    current_user: User = Depends(require_role(*CAN_MANAGE_FLEET)),
 ):
     try:
         vehicle = edit_vehicle(db, vehicle_id, data)
@@ -95,7 +92,7 @@ def update_vehicle(
 def remove_vehicle(
     vehicle_id: UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*FLEET_ROLES)),
+    current_user: User = Depends(require_role(*CAN_MANAGE_FLEET)),
 ):
     vehicle = deactivate_vehicle(db, vehicle_id)
     

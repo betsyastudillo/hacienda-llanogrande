@@ -8,20 +8,17 @@ from app.dependencies import require_role
 from app.models.document import Document
 from app.models.user import User
 from app.schemas.document import DocumentBase, DocumentStatusUpdate
+from app.constants.roles import CAN_REVIEW_DOCUMENTS, CAN_VIEW_DOCUMENTS
 from app.services.document_service import create_document, get_documents_by_company, replace_document_file, save_document_file, update_document_status
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
-
-
-DOCUMENT_REVIEW_ROLES = ("operaciones", "admin")
-DOCUMENT_READ_ROLES = ("admin", "operaciones", "cartera", "soporte")
 
 
 @router.get("/", response_model=list[DocumentBase])
 def list_documents(
     company_id: UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*DOCUMENT_READ_ROLES)),
+    current_user: User = Depends(require_role(*CAN_VIEW_DOCUMENTS)),
 ):
     return get_documents_by_company(db, company_id)
 
@@ -32,7 +29,7 @@ def upload_document(
     document_type: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*DOCUMENT_REVIEW_ROLES)),
+    current_user: User = Depends(require_role(*CAN_REVIEW_DOCUMENTS)),
 ):
     return create_document(db, document_type, file, company_id=company_id)
 
@@ -42,7 +39,7 @@ def change_document_status(
     document_id: UUID,
     status_update: DocumentStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*DOCUMENT_REVIEW_ROLES)),
+    current_user: User = Depends(require_role(*CAN_REVIEW_DOCUMENTS)),
 ):
     document = update_document_status(db, document_id, status_update.status)
     
@@ -56,7 +53,7 @@ def update_document_file(
     document_id: UUID,
     new_file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*DOCUMENT_REVIEW_ROLES)),
+    current_user: User = Depends(require_role(*CAN_REVIEW_DOCUMENTS)),
 ):
     document = replace_document_file(db, document_id, new_file)
     

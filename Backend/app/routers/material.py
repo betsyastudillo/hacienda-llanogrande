@@ -4,6 +4,7 @@ from uuid import UUID
 from app.database import get_db
 from app.dependencies import get_current_user, require_role
 from app.schemas.material import MaterialCreate, MaterialResponse
+from app.constants.roles import CAN_MANAGE_CATALOG
 from app.services.material_service import (
     create_material, edit_material, get_materials, get_material_by_id,
     deactivate_material,
@@ -37,7 +38,7 @@ def get_material(
 def create_new_material(
     material: MaterialCreate, 
     db: Session = Depends(get_db), 
-    current_user=Depends(require_role("operaciones", "admin")),
+    current_user=Depends(require_role(*CAN_MANAGE_CATALOG)),
 ):
     return create_material(db, material)
 
@@ -47,7 +48,7 @@ def update_material(
     material_id: UUID, 
     material: MaterialCreate, 
     db: Session = Depends(get_db),
-    current_user=Depends(require_role("operaciones", "admin")),
+    current_user=Depends(require_role(*CAN_MANAGE_CATALOG)),
 ):
     updated_material = edit_material(db, material_id, material)
     if not updated_material:
@@ -59,7 +60,7 @@ def update_material(
 def delete_material(
     material_id: UUID, 
     db: Session = Depends(get_db),
-    current_user=Depends(require_role("operaciones", "admin")),
+    current_user=Depends(require_role(*CAN_MANAGE_CATALOG)),
 ):
     deleted_material = deactivate_material(db, material_id)
     if not deleted_material:

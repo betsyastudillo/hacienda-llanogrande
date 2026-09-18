@@ -4,6 +4,7 @@ from app.database import get_db
 from app.dependencies import require_role
 from app.models.user import User as UserModel
 from app.schemas.user import UserCreate, UserResponse, LoginRequest, TokenResponse
+from app.constants.roles import CAN_MANAGE_USERS
 from app.services.user_service import create_user, authenticate_user
 from app.services.auth_service import create_access_token
 
@@ -15,7 +16,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 def register_user(
     user_create: UserCreate, 
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(require_role("admin")),
+    current_user: UserModel = Depends(require_role(CAN_MANAGE_USERS)),
 ):
     return create_user(db, user_create)
 

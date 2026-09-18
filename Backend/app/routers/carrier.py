@@ -7,6 +7,7 @@ from app.models.user import User
 from app.schemas.document import DocumentBase
 from app.schemas.carrier import CarrierCreate, CarrierResponse
 from app.services.document_service import create_document, get_documents_by_carrier
+from app.constants.roles import CAN_MANAGE_FLEET, CAN_VIEW_FLEET
 from app.services.carrier_service import (
     create_carrier, get_carriers, get_carrier_by_id,
     edit_carrier, deactivate_carrier,
@@ -15,14 +16,10 @@ from app.services.carrier_service import (
 router = APIRouter(prefix="/carriers", tags=["Carriers"])
 
 
-FLEET_ROLES = ("logistica", "admin")
-FLEET_READ_ROLES = ("logistica", "admin", "operaciones")
-
-
 @router.get("/", response_model=list[CarrierResponse])
 def list_carriers(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*FLEET_READ_ROLES)),
+    current_user: User = Depends(require_role(*CAN_VIEW_FLEET)),
 ):
     return get_carriers(db)
 
@@ -31,7 +28,7 @@ def list_carriers(
 def get_a_carrier(
     carrier_id: UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*FLEET_READ_ROLES)),
+    current_user: User = Depends(require_role(*CAN_VIEW_FLEET)),
 ):
     carrier = get_carrier_by_id(db, carrier_id)
     
@@ -45,7 +42,7 @@ def get_a_carrier(
 def create_new_carrier(
     carrier: CarrierCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*FLEET_ROLES)),
+    current_user: User = Depends(require_role(*CAN_MANAGE_FLEET)),
 ):
     return create_carrier(db, carrier)
 
@@ -56,7 +53,7 @@ def upload_carrier_document(
     document_type: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*FLEET_ROLES)),
+    current_user: User = Depends(require_role(*CAN_MANAGE_FLEET)),
 ):
     return create_document(db, document_type, file, carrier_id=carrier_id)
 
@@ -65,7 +62,7 @@ def upload_carrier_document(
 def list_carrier_documents(
     carrier_id: UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*FLEET_READ_ROLES)),
+    current_user: User = Depends(require_role(*CAN_VIEW_FLEET)),
 ):
     return get_documents_by_carrier(db, carrier_id)
 
@@ -75,7 +72,7 @@ def update_carrier(
     carrier_id: UUID, 
     data: CarrierCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*FLEET_ROLES)),
+    current_user: User = Depends(require_role(*CAN_MANAGE_FLEET)),
 ):
     carrier = edit_carrier(db, carrier_id, data)
     
@@ -89,7 +86,7 @@ def update_carrier(
 def remove_carrier(
     carrier_id: UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*FLEET_ROLES)),
+    current_user: User = Depends(require_role(*CAN_MANAGE_FLEET)),
 ):
     carrier = deactivate_carrier(db, carrier_id)
     

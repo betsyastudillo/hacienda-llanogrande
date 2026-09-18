@@ -6,6 +6,7 @@ from app.database import get_db
 from app.dependencies import require_role, get_current_user
 from app.models.company import Company
 from app.schemas.company import CompanyBase, CompanyCreate, CompanyResponse
+from app.constants.roles import CAN_VIEW_COMPANIES, CAN_MANAGE_COMPANIES
 from app.services.company_service import create_a_company, get_companies, edit_company, deactivate_company, get_company_by_client_code, get_company_by_id
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
@@ -13,7 +14,7 @@ router = APIRouter(prefix="/companies", tags=["Companies"])
 @router.get("/", response_model=List[CompanyResponse],         summary="Lista todas las empresas registradas activas")
 def list_companies(
     db: Session = Depends(get_db),
-    current_user=Depends(require_role("admin", "cartera", "soporte")),
+    current_user=Depends(require_role(*CAN_VIEW_COMPANIES)),
 ):
     return get_companies(db)
 
@@ -22,7 +23,7 @@ def list_companies(
 def get_a_company_by_id(
     company_id: UUID, 
     db: Session = Depends(get_db),
-    current_user=Depends(require_role("admin", "cartera", "soporte")),
+    current_user=Depends(require_role(*CAN_VIEW_COMPANIES)),
 ):
     company = get_company_by_id(db, company_id)
     if not company:
@@ -34,7 +35,7 @@ def get_a_company_by_id(
 def get_a_company_by_client_code(
     client_code: str, 
     db: Session = Depends(get_db),
-    current_user=Depends(require_role("admin", "cartera", "soporte")),
+    current_user=Depends(require_role(*CAN_VIEW_COMPANIES)),
 ):
     company = get_company_by_client_code(db, client_code)
 
@@ -47,7 +48,7 @@ def get_a_company_by_client_code(
 def create_company(
     company: CompanyCreate, 
     db: Session = Depends(get_db),
-    current_user=Depends(require_role("admin")),
+    current_user=Depends(require_role(*CAN_MANAGE_COMPANIES)),
 ):
     return create_a_company(db=db, company=company)
 
@@ -57,7 +58,7 @@ def update_company(
     company_id: UUID, 
     company_update: CompanyCreate, 
     db: Session = Depends(get_db),
-    current_user=Depends(require_role("admin")),
+    current_user=Depends(require_role(*CAN_MANAGE_COMPANIES)),
 ):
     company = edit_company(db, company_id, company_update)
     if not company:
@@ -69,7 +70,7 @@ def update_company(
 def remove_company(
     company_id: UUID, 
     db: Session = Depends(get_db),
-    current_user=Depends(require_role("admin")),
+    current_user=Depends(require_role(*CAN_MANAGE_COMPANIES)),
 ):
     company = deactivate_company(db, company_id)
     if not company:

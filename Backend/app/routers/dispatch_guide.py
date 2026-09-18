@@ -6,6 +6,7 @@ from app.dependencies import require_role
 from app.models.user import User
 from app.schemas.dispatch_guide import DispatchGuideCreate, DispatchGuideResponse, VerificationResponse
 from app.services.order_service import get_order_by_id, can_access_order
+from app.constants.roles import CAN_MANAGE_FLEET, CAN_VIEW_DISPATCH_GUIDES
 from app.services.dispatch_guide_service import (
     create_dispatch_guide, get_dispatch_guides, verify_dispatch_guide, get_dispatch_guide_by_order,
 )
@@ -13,15 +14,10 @@ from app.services.dispatch_guide_service import (
 router = APIRouter(prefix="/dispatch-guides", tags=["Dispatch Guides"])
 
 
-INTERNAL_ROLES = ("admin", "operaciones", "logistica", "soporte")
-DISPATCH_ROLES = ("logistica", "admin")
-DISPATCH_READ_ROLES = ("logistica", "admin", "soporte", "cliente_admin", "cliente_operativo")
-
-
 @router.get("/", response_model=list[DispatchGuideResponse])
 def list_dispatch_guides(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*INTERNAL_ROLES)),
+    current_user: User = Depends(require_role(*CAN_VIEW_DISPATCH_GUIDES)),
 ):
     return get_dispatch_guides(db)
 
@@ -30,14 +26,14 @@ def list_dispatch_guides(
 def get_guide_by_order_id(
     order_id: UUID, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*DISPATCH_READ_ROLES)),
+    current_user: User = Depends(require_role(*CAN_VIEW_DISPATCH_GUIDES)),
 ):
     order = get_order_by_id(db, order_id)
     
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    if current_user.role not in DISPATCH_ROLES and current_user.role != "soporte" and not can_access_order(order, current_user):
+    if current_user.role not in CAN_VIEW_DISPATCH_GUIDES and current_user.role != "soporte" and not can_access_order(order, current_user):
         raise HTTPException(status_code=404, detail="Order not found")
 
     guide = get_dispatch_guide_by_order(db, order_id)
@@ -52,7 +48,7 @@ def get_guide_by_order_id(
 def register_dispatch_guide(
     data: DispatchGuideCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*DISPATCH_ROLES)),
+    current_user: User = Depends(require_role(*CAN_MANAGE_FLEET)),
 ):
     try:
         return create_dispatch_guide(db, data.order_id)
