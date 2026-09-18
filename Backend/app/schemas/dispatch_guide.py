@@ -2,13 +2,13 @@ from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime
 from typing import Optional
-
+from app.schemas.mixins import AuditResponseMixin
 
 class DispatchGuideCreate(BaseModel):
     order_id: UUID
 
 
-class DispatchGuideResponse(BaseModel):
+class DispatchGuideResponse(BaseModel, AuditResponseMixin):
     id: UUID
     order_id: UUID
     status: str
@@ -17,11 +17,7 @@ class DispatchGuideResponse(BaseModel):
     cargo_detail: str
     qr_image_url: Optional[str] = None
     used_at: Optional[datetime] = None
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-    created_by_user_id: Optional[UUID] = None
-    updated_by_user_id: Optional[UUID] = None
-    deleted_by_user_id: Optional[UUID] = None
+
     class Config:
         from_attributes = True
 

@@ -3,6 +3,7 @@ from uuid import UUID
 from decimal import Decimal
 from datetime import datetime
 from typing import List, Optional
+from app.schemas.mixins import AuditResponseMixin
 
 class OrderItemCreate(BaseModel):
     material_id: UUID
@@ -25,7 +26,7 @@ class OrderCreate(BaseModel):
     items: List[OrderItemCreate]
 
 
-class OrderResponse(BaseModel):
+class OrderResponse(BaseModel, AuditResponseMixin):
     id: UUID
     company_id: UUID
     status: str
@@ -33,10 +34,6 @@ class OrderResponse(BaseModel):
     tax: Decimal
     total: Decimal
     items: List[OrderItemResponse]
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-    created_by_user_id: Optional[UUID] = None
-    updated_by_user_id: Optional[UUID] = None
-    deleted_by_user_id: Optional[UUID] = None
+
     class Config:
         from_attributes = True

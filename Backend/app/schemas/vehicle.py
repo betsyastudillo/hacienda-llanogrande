@@ -1,8 +1,9 @@
 from pydantic import BaseModel
 from uuid import UUID
 from decimal import Decimal
-from datetime import date, datetime
-from typing import Literal, Optional
+from datetime import date
+from typing import Literal
+from app.schemas.mixins import AuditResponseMixin
 
 VehicleType = Literal["volqueta", "patineta", "mula"]
 
@@ -18,13 +19,8 @@ class VehicleCreate(VehicleBase):
     pass
 
 
-class VehicleResponse(VehicleBase):
+class VehicleResponse(VehicleBase, AuditResponseMixin):
     id: UUID
     is_active: bool
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-    created_by_user_id: Optional[UUID] = None
-    updated_by_user_id: Optional[UUID] = None
-    deleted_by_user_id: Optional[UUID] = None
     class Config:
         from_attributes = True

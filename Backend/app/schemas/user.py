@@ -2,6 +2,7 @@ from datetime import datetime
 from pydantic import BaseModel
 from uuid import UUID
 from typing import Optional
+from app.schemas.mixins import AuditResponseMixin
 
 class UserBase(BaseModel):
     document_id: str
@@ -16,7 +17,7 @@ class UserCreate(UserBase):
     password: str
 
 
-class UserUpdate(BaseModel):
+class UserUpdate(BaseModel, AuditResponseMixin):
     full_name: Optional[str] = None
     email: Optional[str] = None
     role: Optional[str] = None
@@ -36,10 +37,7 @@ class PasswordChangeRequest(BaseModel):
 class UserResponse(UserBase):
     id: UUID
     is_active: bool
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-    created_by_user_id: Optional[UUID] = None
-    updated_by_user_id: Optional[UUID] = None
+
     deleted_by_user_id: Optional[UUID] = None
     class Config:
         from_attributes = True
