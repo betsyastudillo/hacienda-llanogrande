@@ -72,7 +72,7 @@ def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
 
     new_order = Order(
         company_id=order.company_id, 
-        create_by_user_id=current_user.id,
+        created_by_user_id=current_user.id,
         status="created"
     )
 

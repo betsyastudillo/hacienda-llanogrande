@@ -47,7 +47,7 @@ def change_my_password(
 @router.get("/", response_model=list[UserResponse])
 def list_users(
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(require_role(CAN_MANAGE_USERS)),
+    current_user: UserModel = Depends(require_role(*CAN_MANAGE_USERS)),
 ):
     return get_users(db)
 
@@ -56,7 +56,7 @@ def list_users(
 def get_user(
     user_id: UUID,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(require_role(CAN_MANAGE_USERS)),
+    current_user: UserModel = Depends(require_role(*CAN_MANAGE_USERS)),
 ):
     user = get_user_by_id(db, user_id)
     
@@ -71,7 +71,7 @@ def edit_user(
     user_id: UUID,
     data: UserUpdate,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(require_role(CAN_MANAGE_USERS)),
+    current_user: UserModel = Depends(require_role(*CAN_MANAGE_USERS)),
 ):
     user = update_user(db, user_id, data)
     
@@ -86,7 +86,7 @@ def edit_user(
 def remove_user(
     user_id: UUID,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(require_role(CAN_MANAGE_USERS)),
+    current_user: UserModel = Depends(require_role(*CAN_MANAGE_USERS)),
 ):
     user = deactivate_user(db, user_id)
     

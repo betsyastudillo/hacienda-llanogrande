@@ -61,6 +61,7 @@ def update_company(
     current_user=Depends(require_role(*CAN_MANAGE_COMPANIES)),
 ):
     company = edit_company(db, company_id, company_update)
+
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
     return company

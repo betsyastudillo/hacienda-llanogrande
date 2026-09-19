@@ -60,7 +60,7 @@ def create_a_company(db: Session, company: CompanyCreate) -> Company:
 # Editar 
 def edit_company(db: Session, company_id: UUID, company_update: CompanyCreate) -> Optional[Company]:
     company = get_company_by_id(db, company_id)
-    
+
     if not company:
         return None
 
@@ -69,7 +69,7 @@ def edit_company(db: Session, company_id: UUID, company_update: CompanyCreate) -
     company.nit = company_update.nit
     company.type = company_update.type
     company.address = company_update.address
-    company.phone = company.phone
+    company.phone = company_update.phone
     company.email = company_update.email
 
     db.commit()

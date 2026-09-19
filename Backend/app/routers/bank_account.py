@@ -24,7 +24,7 @@ def list_bank_accounts(
     return get_bank_accounts(db, only_active=only_active)
 
 
-@router.get("/{bank_account_id}", response_model=list[BankAccountResponse], summary="Trae la información de 1 cuentas bancaria.")
+@router.get("/{bank_account_id}", response_model=BankAccountResponse, summary="Trae la información de 1 cuentas bancaria.")
 def get_bank_account(
     bank_account_id: UUID,
     db: Session = Depends(get_db),

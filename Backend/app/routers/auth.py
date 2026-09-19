@@ -16,7 +16,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 def register_user(
     user_create: UserCreate, 
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(require_role(CAN_MANAGE_USERS)),
+    current_user: UserModel = Depends(require_role(*CAN_MANAGE_USERS)),
 ):
     return create_user(db, user_create)
 
