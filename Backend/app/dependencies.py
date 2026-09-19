@@ -52,11 +52,3 @@ def require_role(*allowed_roles: str):
 
     return role_checker
 
-
-async def verify_webhook_secret(x_webhook_secret: str = Header(...)):
-    expected = os.getenv("PAYMENT_WEBHOOK_SECRET")
-    if not expected or x_webhook_secret != expected:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid webhook signature",
-        )

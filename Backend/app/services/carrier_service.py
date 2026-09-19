@@ -15,14 +15,17 @@ def get_carrier_by_id(db: Session, carrier_id: UUID) -> Optional[Carrier]:
 
 def create_carrier(db:Session, carrier: CarrierCreate) -> Carrier:
     new_carrier = Carrier(**carrier.model_dump())
+    
     db.add(new_carrier)
     db.commit()
     db.refresh(new_carrier)
+    
     return new_carrier
 
 
 def edit_carrier(db: Session, carrier_id: UUID, carrier: CarrierCreate) -> Optional[Carrier]:
     carrier_exists = get_carrier_by_id(db, carrier_id)
+    
     if not carrier_exists:
         return None
     

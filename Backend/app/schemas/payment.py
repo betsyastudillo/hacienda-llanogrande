@@ -8,17 +8,26 @@ from app.schemas.mixins import AuditResponseMixin
 class PaymentInitiateRequest(BaseModel):
     order_id: UUID
 
+
+class PaymentCreate(BaseModel):
+    order_id: UUID
+    bank_account_id: UUID
+
+
+class PaymentConfirmRequest(BaseModel):
+    status: Literal["confirmed", "failed"]
+
+
 class PaymentResponse(AuditResponseMixin):
     id: UUID
     order_id: UUID
-    bank_reference: str
+    bank_account_id: UUID
+    proforma_number: str
     status: str
     amount: Decimal
+    pdf_url: Optional[str] = None
     confirmed_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
-class WebhookRequest(BaseModel):
-    bank_reference: str
-    status: Literal["confirmed", "failed"]
