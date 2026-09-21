@@ -2,6 +2,7 @@ import os
 from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from app.constants.permissions import ROLES_PERMISSIONS
 from app.database import get_db
 from app.services.auth_service import decode_access_token
 from app.services.user_service import get_user_by_document_id
@@ -52,3 +53,45 @@ def require_role(*allowed_roles: str):
 
     return role_checker
 
+
+# Permisos de roles. Exige que el usuario tenga exactamente este permiso. Se usa cuando el endpoint tiene una sola regla de acceso clara.
+def require_permission(permission: str):
+    def permission_checker(current_user=Depends(get_current_user)):
+        role_permissions = ROLES_PERMISSIONS.get(current_user.role, set())
+
+        if "*" in role_permissions:
+            return current_user
+
+        if permission not in role_permissions:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to perform this action",
+            )
+        return current_user
+
+    return permission_checker
+
+
+# Verifica si un usuario tiene un permiso específico, sin lanzar excepciones. Es útil dentro de un endpoint para lógica condicional, ya que no corta la petición si no lo tiene, a diferencia de require_permission.
+def user_has_permission(user, permission: str) -> bool:
+
+    role_permissions = ROLES_PERMISSIONS.get(user.role, set())
+    return "*" in role_permissions or permission in role_permissions
+
+
+# Permisos para roles. Exige que el usuario tenga al menos 1 de estos permisos o el comodín '*'. Se usa cuando varios roles distintos deben poder entrar al mismo endpoint pero c/u con u alcance distinto que se filtra dentro de la función.
+def require_any_permission(*permissions: str):
+    def checker(current_user=Depends(get_current_user)):
+        role_permissions = ROLES_PERMISSIONS.get(current_user.role, set())
+
+        if "*" in role_permissions:
+            return current_user
+
+        if not any(p in role_permissions for p in permissions):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to perform this action",
+            )
+        return current_user
+
+    return checker

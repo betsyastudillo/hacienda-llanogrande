@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
 from app.database import get_db
+from app.auth_dependencies import DispatchGuideCreator, DispatchGuideViewer, DispatchGuideViewerAny
 from app.dependencies import require_role
 from app.models.user import User
 from app.schemas.dispatch_guide import DispatchGuideCreate, DispatchGuideResponse, VerificationResponse
@@ -14,19 +15,19 @@ from app.services.dispatch_guide_service import (
 router = APIRouter(prefix="/dispatch-guides", tags=["Dispatch Guides"])
 
 
-@router.get("/", response_model=list[DispatchGuideResponse])
+@router.get("/", response_model=list[DispatchGuideResponse], summary="Lista todas las guías de despacho")
 def list_dispatch_guides(
+    current_user: DispatchGuideViewer,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*CAN_VIEW_DISPATCH_GUIDES)),
 ):
     return get_dispatch_guides(db)
 
 
-@router.get("/order/{order_id}", response_model=DispatchGuideResponse)
+@router.get("/order/{order_id}", response_model=DispatchGuideResponse, summary="Trae una guía por id de una orden")
 def get_guide_by_order_id(
     order_id: UUID, 
+    current_user: DispatchGuideViewerAny,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*CAN_VIEW_DISPATCH_GUIDES)),
 ):
     order = get_order_by_id(db, order_id)
     
@@ -44,11 +45,11 @@ def get_guide_by_order_id(
     return guide
 
 
-@router.post("/", response_model=DispatchGuideResponse)
+@router.post("/", response_model=DispatchGuideResponse, summary="Registra una guía de despacho.")
 def register_dispatch_guide(
     data: DispatchGuideCreate, 
+    current_user: DispatchGuideCreator,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*CAN_MANAGE_FLEET)),
 ):
     try:
         return create_dispatch_guide(db, data.order_id)
@@ -57,7 +58,7 @@ def register_dispatch_guide(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/verify/{token}", response_model=VerificationResponse)
+@router.get("/verify/{token}", response_model=VerificationResponse, summary="Verifica una guía de despacho.")
 def verify_guide(token: str, db: Session = Depends(get_db)):
     try:
         return verify_dispatch_guide(db, token)
