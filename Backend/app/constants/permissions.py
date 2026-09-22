@@ -13,6 +13,7 @@ ROLES_PERMISSIONS = {
         "assignment:validar", "assignment:ver",
         "dispatch_guide:crear", "dispatch_guide:ver",
         "order:ver_todos",
+        "blacklist:gestionar", 
     },
     "operaciones": {
         "material:gestionar",
@@ -33,11 +34,13 @@ ROLES_PERMISSIONS = {
         "payment:ver_propio",
         "bank_account:ver",
         "dispatch_guide:ver_propio",
+        "assignment:crear_propio", "assignment:ver_propio", 
     },
     "cliente_operativo": {
         "order:crear", "order:ver_propios", "order:editar_propio",
         "payment:ver_propio",
         "bank_account:ver",
         "dispatch_guide:ver_propio",
+        "assignment:crear_propio", "assignment:ver_propio",   
     },
 }

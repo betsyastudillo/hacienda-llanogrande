@@ -8,10 +8,10 @@ from app.schemas.mixins import AuditResponseMixin
 
 class CarrierBase(BaseModel):
     full_name: str
+    document_type: str
     document_id: str
     phone: str
     address: str
-    license_expiration_date: date
 
 
 class CarrierCreate(CarrierBase):

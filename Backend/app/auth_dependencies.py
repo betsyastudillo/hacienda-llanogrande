@@ -33,6 +33,10 @@ CarrierViewer = Annotated[User, Depends(require_permission("carrier:ver"))]
 # Assignment 
 AssignmentValidator = Annotated[User, Depends(require_permission("assignment:validar"))]
 AssignmentViewer = Annotated[User, Depends(require_permission("assignment:ver"))]
+AssignmentCreatorOwn = Annotated[User, Depends(require_permission("assignment:crear_propio"))]
+AssignmentViewerAny = Annotated[User, Depends(require_any_permission(
+    "assignment:ver", "assignment:ver_propio"
+))]
 
 # DispatchGuide
 DispatchGuideCreator = Annotated[User, Depends(require_permission("dispatch_guide:crear"))]
@@ -59,3 +63,6 @@ OrderViewerCompany = Annotated[User, Depends(require_permission("order:ver_empre
 OrderViewerOwn = Annotated[User, Depends(require_permission("order:ver_propios"))]
 OrderEditorOwn = Annotated[User, Depends(require_permission("order:editar_propio"))]
 OrderEditorLimited = Annotated[User, Depends(require_permission("order:editar_limitado"))]
+
+# BlackList
+BlacklistManager = Annotated[User, Depends(require_permission("blacklist:gestionar"))]

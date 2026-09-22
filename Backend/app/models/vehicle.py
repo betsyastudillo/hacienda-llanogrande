@@ -12,6 +12,4 @@ class Vehicle(Base, AuditMixin):
     type = Column(String(20), nullable=False)
     capacity_m3 = Column(Numeric(6, 2), nullable=False)
     plate = Column(String(10), unique=True, nullable=False)
-    soat_expiration_date = Column(Date, nullable=False)
-    technical_inspection_expiration_date = Column(Date, nullable=False)
     is_active = Column(Boolean, default=True)

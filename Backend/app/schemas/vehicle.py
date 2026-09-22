@@ -5,14 +5,10 @@ from datetime import date
 from typing import Literal
 from app.schemas.mixins import AuditResponseMixin
 
-VehicleType = Literal["volqueta", "patineta", "mula"]
-
 class VehicleBase(BaseModel):
     type: str
     capacity_m3: Decimal
     plate: str
-    soat_expiration_date: date
-    technical_inspection_expiration_date: date
 
 
 class VehicleCreate(VehicleBase):

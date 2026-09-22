@@ -10,8 +10,8 @@ class Carrier(Base, AuditMixin):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     full_name = Column(String(100), nullable=False)
+    document_type = Column(String(10), nullable=False)  # CC, CE, NIT, etc.
     document_id = Column(String(100), nullable=False)
     phone = Column(String(15), nullable=False)
     address = Column(String(200), nullable=False)
-    license_expiration_date = Column(Date, nullable=False)
     is_active = Column(Boolean, default=True)

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, DateTime
+from sqlalchemy import Boolean, Column, ForeignKey, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
@@ -14,3 +14,8 @@ class Assignment(Base, AuditMixin):
     vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"), nullable=False)
     carrier_id = Column(UUID(as_uuid=True), ForeignKey("carriers.id"), nullable=False)
     assigned_at = Column(DateTime(timezone=True), server_default=func.now())
+    validation_status = Column(String, nullable=False, default="pending")  # Pendiente | Aprobado | Rechazado
+    rejection_reason = Column(String, nullable=True) # Razón del rechazo
+    background_check_verified = Column(Boolean, nullable=False, default=False)  # Logistica confirma que consultó antecedentes
+    validated_at = Column(DateTime(timezone=True), nullable=True) # Momento en que logistica valida la entrada de vehículo y transportador.
+    validated_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True) # Qué usuario validó esa aprobación

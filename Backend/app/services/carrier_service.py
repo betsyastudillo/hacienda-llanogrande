@@ -14,7 +14,13 @@ def get_carrier_by_id(db: Session, carrier_id: UUID) -> Optional[Carrier]:
 
 
 def create_carrier(db:Session, carrier: CarrierCreate) -> Carrier:
-    new_carrier = Carrier(**carrier.model_dump())
+    new_carrier = Carrier(
+        full_name=carrier.full_name,
+        document_type=carrier.document_type,
+        document_id=carrier.document_id,
+        phone=carrier.phone,
+        address=carrier.address,
+    )
     
     db.add(new_carrier)
     db.commit()
@@ -29,11 +35,15 @@ def edit_carrier(db: Session, carrier_id: UUID, carrier: CarrierCreate) -> Optio
     if not carrier_exists:
         return None
     
-    for key, value in carrier.model_dump().items():
-        setattr(carrier, key, value)
+    carrier_exists.full_name = carrier.full_name
+    carrier_exists.document_type = carrier.document_type
+    carrier_exists.document_id = carrier.document_id
+    carrier_exists.phone = carrier.phone
+    carrier_exists.address = carrier.address
     
     db.commit()
     db.refresh(carrier_exists)
+    
     return carrier_exists
 
 
