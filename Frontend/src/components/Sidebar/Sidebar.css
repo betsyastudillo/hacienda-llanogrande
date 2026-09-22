@@ -1,5 +1,5 @@
 .sidebar {
-  background-color: var(--bg);
+  background-color: var(--code-bg);
   flex-shrink: 0;
   overflow: hidden;
   transition: width 0.2s ease;
@@ -33,12 +33,12 @@
 }
 
 .sidebar-link:hover {
-  background-color:var( --accent-bg);
+  background-color:var( --red-wine);
   color: #ffffff;
 }
 
 .sidebar-link-active {
-  background-color: var(--accent-border);
+  background-color: var(--red-soft);
   color: var(--white-bg);
   font-weight: 500;
 }

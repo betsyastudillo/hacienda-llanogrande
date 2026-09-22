@@ -11,6 +11,6 @@
 
 .layout-content {
   flex: 1;
-  background-color: #f4f3ee;
+  background-color: var(--white-bg);
   overflow-y: auto;
 }

@@ -30,6 +30,7 @@ export default function Orders() {
   const [error, setError] = useState('')
 
   const { user, logout } = useAuth()
+  console.log("user", user)
   const navigate = useNavigate()
 
 
@@ -37,6 +38,7 @@ export default function Orders() {
     async function fetchOrders() {
       try {
         const response = await api.get('/orders/')
+        console.log("respuesta ws", response.data)
         setOrders(response.data)
       } catch (err) {
         setError('No se pudieron cargar los pedidos')
