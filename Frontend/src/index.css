@@ -6,11 +6,10 @@
   --border: #d3d1c7;
   --code-bg: #f4f3ec;
   --white-bg: #ffff;
-  --error: #791F1F;
   --error-bg: #FCEBEB;
-  --accent: #E1cc00;
-  --accent-bg: #838921;
-  --accent-border: #D8D365;
+  --orange: #ED6A1E;
+  --red-soft: #E85C4A;
+  --red-wine: #A80014;
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;

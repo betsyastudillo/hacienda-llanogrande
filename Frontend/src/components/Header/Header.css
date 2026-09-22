@@ -1,6 +1,6 @@
 .app-header {
   height: 70px;
-  background-color: var(--accent);
+  background-color: var(--red-soft);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -38,8 +38,7 @@
 }
 
 .app-header-logo-img {
-  width: 50px;
-  border-radius: 50%;
+  width: 40px;
 }
 
 .app-header-brand-name {
@@ -63,10 +62,10 @@
 }
 
 .app-header-logout-btn {
-  background: var(--accent-bg);
+  background: var(--social-bg);
   border: 1px solid var(--text-secondary);
   color: var(--white-bg);
-  border: 1px solid var(--accent-bg);
+  border: 1px solid var(--social-bg);
   border-radius: 6px;
   padding: 6px 14px;
   font-size: 14px;
@@ -75,7 +74,8 @@
 }
 
 .app-header-logout-btn:hover {
-  border-color: var(--accent);
+  border-color: var(--border);
+  background: var(--border);
 }
 
 /* .orders-header {

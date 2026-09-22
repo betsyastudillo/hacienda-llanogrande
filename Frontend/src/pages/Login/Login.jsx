@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button, Form } from 'react-bootstrap'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
-import logo from '../../assets/logo.png'
+import logo from '../../assets/llano_grande_logo_color.png'
 import './Login.css'
 
 export default function Login() {

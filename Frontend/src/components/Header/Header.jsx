@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import logo from '../../assets/logo.png'
+import logo from '../../assets/logo-blaco.png'
 import './Header.css'
 
 export default function Header({ onToggleSidebar }) {
@@ -23,7 +23,7 @@ export default function Header({ onToggleSidebar }) {
 
         <div className="app-header-brand">
           <img src={logo} alt="AridosCo" className="app-header-logo-img" />
-          <span className="app-header-brand-name">Bienvenido a AridosCo, <span className="app-header-user-role">{user?.role}</span></span>
+          <span className="app-header-brand-name">Bienvenido a Hacienda Llanogrande, <span className="app-header-user-role">{user?.role}</span></span>
         </div>
       </div>
 

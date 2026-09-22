@@ -3,7 +3,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--bg);
+    background-color: var(--white-bg);
     padding: 1rem;
 }
 
@@ -27,11 +27,11 @@
 }
 
 .login-logo-img {
-    width: 120px;
+    width: 70px;
 }
 
 .login-card {
-    background-color: var(--white-bg);
+    background-color: var(--bg);
     border-radius: 12px;
     padding: 2rem 1.75rem;
 
@@ -75,7 +75,7 @@
 }
 
 .login-input:focus {
-    border-color: var(--accent-bg);
+    border-color: var(--red-wine);
 }
 
 
@@ -84,7 +84,7 @@
     height: 44px;
     border-radius: 8px;
     border: none;
-    background-color: var(--accent);
+    background-color: var(--red-soft);
     color: var(--text-h);
     font-size: 14px;
     font-weight: 600;
@@ -93,11 +93,11 @@
 }
 
 .login-button:hover:not(:disabled) {
-    background-color: var(--accent-bg);
+    background-color: var(--red-wine);
 }
 
 .login-button:disabled {
-    background-color: var(--accent-bg);
+    background-color: var(--red-wine);
     cursor: default
 }
 
