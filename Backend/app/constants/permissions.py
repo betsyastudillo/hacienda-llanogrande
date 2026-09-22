@@ -44,3 +44,8 @@ ROLES_PERMISSIONS = {
         "assignment:crear_propio", "assignment:ver_propio",   
     },
 }
+
+
+# Obtiene los permisos de acuerdo al rol asignado
+def get_permissions_for_role(role: str) -> list[str]:
+    return sorted(ROLES_PERMISSIONS.get(role, set()))

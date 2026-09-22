@@ -8,6 +8,8 @@ from app.services.user_service import (
     get_users, get_user_by_id, update_user, update_own_profile,
     deactivate_user, change_password,
 )
+from app.constants.permissions import get_permissions_for_role
+
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -15,7 +17,16 @@ router = APIRouter(prefix="/users", tags=["Users"])
 # Se colocan con /me para que FastAPI no vaya a interpretarlas como UUID
 @router.get("/me", response_model=UserResponse, summary="Trae información del perfil desde donde se inicia sesión")
 def get_my_profile(current_user: CurrentUser):
-    return current_user
+    return UserResponse(
+        id=current_user.id,
+        document_id=current_user.document_id,
+        full_name=current_user.full_name,
+        email=current_user.email,
+        role=current_user.role,
+        company_id=current_user.company_id,
+        is_active=current_user.is_active,
+        permissions=get_permissions_for_role(current_user.role)
+    )
 
 
 @router.put("/me", response_model=UserResponse, summary="Actualiza el usuario desde donde se inicia sesión")

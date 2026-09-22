@@ -37,6 +37,7 @@ class PasswordChangeRequest(BaseModel):
 class UserResponse(UserBase):
     id: UUID
     is_active: bool
+    permissions: list[str] = []
 
     deleted_by_user_id: Optional[UUID] = None
     class Config:
