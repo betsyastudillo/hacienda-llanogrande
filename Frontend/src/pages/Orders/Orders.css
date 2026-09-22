@@ -19,8 +19,8 @@
 }
 
 .orders-create-btn {
-  background-color: var(--accent);
-  color: var(--text-h);
+  background-color: var(--red-soft);
+  color: var(--white-bg);
   border: none;
   border-radius: 8px;
   padding: 9px 16px;
@@ -31,7 +31,7 @@
 }
 
 .orders-create-btn:hover {
-  background-color: var(--accent-bg);
+  background-color: var(--red-wine);
 }
 
 .orders-empty {
@@ -46,7 +46,7 @@
 }
 
 .orders-table-wrapper {
-  background-color: var(--white-bg);
+  background-color: var(--code-bg);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -58,8 +58,8 @@
 }
 
 .orders-table thead th {
-  text-align: left;
-  font-size: 12px;
+  text-align: center;
+  font-size: 16px;
   font-weight: 500;
   color: var(--text-footer);
   padding: 14px 16px;
@@ -79,6 +79,7 @@
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
   color: var(--text);
+  font-size: 14px;
 }
 
 .orders-row:last-child td {

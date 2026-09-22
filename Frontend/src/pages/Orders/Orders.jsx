@@ -13,8 +13,6 @@ const STATUS_LABELS = {
   facturado: 'Facturado',
 }
 
-const CAN_CREATE_ORDER_ROLES = ['admin', 'cliente_admin', 'cliente_operativo']
-
 function StatusBadge({ status }) {
   const isFinal = status === 'dispatched' || status === 'facturado'
   return (
@@ -29,8 +27,11 @@ export default function Orders() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  const { hasPermission } = useAuth()
+  const canCreate = hasPermission('order:crear')
+
   const { user, logout } = useAuth()
-  console.log("user", user)
+
   const navigate = useNavigate()
 
 
@@ -38,7 +39,7 @@ export default function Orders() {
     async function fetchOrders() {
       try {
         const response = await api.get('/orders/')
-        console.log("respuesta ws", response.data)
+
         setOrders(response.data)
       } catch (err) {
         setError('No se pudieron cargar los pedidos')
@@ -56,16 +57,13 @@ export default function Orders() {
   const formatDate = (value) =>
     new Date(value).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
 
-  
-  const canCreate = CAN_CREATE_ORDER_ROLES.includes(user?.role)
-
 
   return (
       <main className="orders-main">
         <div className="orders-main-header">
           <h1 className="orders-title">Pedidos</h1>
           {canCreate && (
-            <button className='orders-create-btn' onClick={() => navigate('orders/new')}>
+            <button className='orders-create-btn' onClick={() => navigate('/orders/new')}>
               Crear pedido
             </button>
           )}

@@ -4,7 +4,7 @@ import ProtectedRoute from "./components/ProtectedRoute"
 import Layout from "./components/Layout/Layout"
 import Login from "./pages/Login/Login"
 import Orders from "./pages/Orders/Orders"
-
+import OrderNew from "./pages/Orders/OrderNew/OrderNew"
 
 function App() {
   return (
@@ -21,6 +21,7 @@ function App() {
             }
             >
             <Route path="/orders" element={<Orders />} />
+            <Route path="/orders/new" element={<OrderNew />} />
           </Route>
           <Route path="*" element={<Navigate to="/orders" replace />} />
         </Routes>
