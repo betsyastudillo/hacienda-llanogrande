@@ -95,7 +95,7 @@ export default function Login() {
         </div>
 
         <p className='login-footer'>
-          Sistema interno · AridosCo
+          Sistema interno · Hacienda Llanogrande
         </p>
       </div>
     </div>

@@ -5,14 +5,14 @@
 }
 
 .order-new-title {
-  font-size: 22px;
+  font-size: 25px;
   font-weight: 600;
-  color: #1a1a18;
-  margin: 0 0 1.5rem;
+  color: var(--text-h);
+  margin: 0 0 2.5rem;
 }
 
 .order-new-error {
-  background-color: var(--error-bg);
+  background-color: var(--error);
   color: var(--error);
   font-size: 13px;
   padding: 10px 12px;
@@ -26,10 +26,10 @@
 
 .order-new-label {
   display: block;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  color: var(--text);
-  margin-bottom: 6px;
+  color: var(--text-h);
+  margin-bottom: 10px;
 }
 
 .order-new-select {
@@ -39,8 +39,8 @@
   border-radius: 8px;
   border: 1px solid var(--border);
   font-size: 14px;
-  background-color: #ffffff;
-  color: #1a1a18;
+  background-color: var(--withe-bg);
+  color: var(--text-h);
 }
 
 .order-new-card {
@@ -74,8 +74,8 @@
   height: 42px;
   padding: 0 18px;
   border-radius: 8px;
-  border: none;
-  background-color: var(--accent);
+  border: 1px solid var(--border);
+  background-color: var(--social-bg);
   color: var(--text-h);
   font-weight: 600;
   font-size: 14px;
@@ -83,7 +83,7 @@
 }
 
 .order-new-add-btn:hover {
-  background-color: var(--accent-bg);
+  background-color: var(--border);
 }
 
 .order-new-items-table {
@@ -94,8 +94,8 @@
 }
 
 .order-new-items-table th {
-  text-align: left;
-  font-size: 12px;
+  text-align: center;
+  font-size: 13px;
   color: var(--text-footer);
   font-weight: 500;
   padding: 8px 0;
@@ -113,6 +113,35 @@
   color: var(--error);
   font-size: 13px;
   cursor: pointer;
+}
+
+.order-new-weight-cell {
+  color: var(--text-footer);
+  font-size: 13px;
+}
+
+.order-new-total-weight {
+  text-align: right;
+  font-size: 13px;
+  color: var(--text-footer);
+  margin-top: 10px;
+}
+
+.order-new-line-total {
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.order-new-summary {
+  text-align: right;
+  margin-top: 10px;
+}
+
+.order-new-total-price {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 4px 0 0;
 }
 
 .order-new-actions {
@@ -137,18 +166,18 @@
   padding: 0 22px;
   border-radius: 8px;
   border: none;
-  background-color: var(--accent);
-  color: var(--text-h);
+  background-color: var(--red-soft);
+  color: var(--white-bg);
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
 }
 
 .order-new-submit-btn:hover:not(:disabled) {
-  background-color: var(--accent-bg);
+  background-color: var(--red-wine);
 }
 
 .order-new-submit-btn:disabled {
-  background-color: var(--accent-light, #FAC775);
+  background-color: var(--red-disabled);
   cursor: default;
 }

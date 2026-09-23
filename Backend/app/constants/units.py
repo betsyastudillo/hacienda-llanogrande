@@ -1,0 +1,1 @@
+VALID_UNITS = ["kg", "tonelada", "unidad", "canasta", "bulto"]
