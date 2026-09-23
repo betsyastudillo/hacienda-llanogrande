@@ -5,14 +5,17 @@ import Sidebar from '../Sidebar/Sidebar'
 import './Layout.css'
 
 export default function Layout() {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  // Responsividad, no abre el sidebar si está en vista mobile
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => window.matchMedia('(min-width: 768px)').matches
+  )
 
   return (
     <div className="layout">
       <Header onToggleSidebar={() => setSidebarOpen((prev) => !prev)} />
 
       <div className="layout-body">
-        <Sidebar isOpen={sidebarOpen} />
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="layout-content">
           <Outlet />
         </div>

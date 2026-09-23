@@ -161,44 +161,46 @@ export default function OrderNew() {
         </div>
 
         {items.length > 0 && (
-          <table className="order-new-items-table">
-            <thead>
-              <tr>
-                <th>Producto</th>
-                <th>Cantidad</th>
-                <th>Peso aprox.</th>
-                <th>Precio unitario</th>
-                <th>Total</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, index) => {
-                const estimatedKg = estimateWeightKg(item.approx_weight_kg, item.material_unit, item.quantity_m3)
-                const lineTotal = item.unit_price * item.quantity_m3
-                return(
-                  <tr key={index}>
-                  <td>{item.material_name}</td>
-                  <td>{item.quantity_m3} {item.material_unit}</td>
-                  <td className="order-new-weight-cell">
-                    {estimatedKg !== null ? `≈ ${estimatedKg.toFixed(2)} kg` : '—'}
-                  </td>
-                  <td>{formatCurrency(item.unit_price)}</td>
-                  <td className="order-new-line-total">{formatCurrency(lineTotal)}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className="order-new-remove-btn"
-                      onClick={() => handleRemoveItem(index)}
-                      >
-                      Quitar
-                    </button>
-                  </td>
+          <div className='order-new-items-table-wrapper'>
+            <table className="order-new-items-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Cantidad</th>
+                  <th>Peso aprox.</th>
+                  <th>Precio unitario</th>
+                  <th>Total</th>
+                  <th></th>
                 </tr>
-                )
-              })}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((item, index) => {
+                  const estimatedKg = estimateWeightKg(item.approx_weight_kg, item.material_unit, item.quantity_m3)
+                  const lineTotal = item.unit_price * item.quantity_m3
+                  return(
+                    <tr key={index}>
+                    <td>{item.material_name}</td>
+                    <td>{item.quantity_m3} {item.material_unit}</td>
+                    <td className="order-new-weight-cell">
+                      {estimatedKg !== null ? `≈ ${estimatedKg.toFixed(2)} kg` : '—'}
+                    </td>
+                    <td>{formatCurrency(item.unit_price)}</td>
+                    <td className="order-new-line-total">{formatCurrency(lineTotal)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="order-new-remove-btn"
+                        onClick={() => handleRemoveItem(index)}
+                        >
+                        Quitar
+                      </button>
+                    </td>
+                  </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
           )}
           {items.length > 0 && (
             <div className="order-new-summary">

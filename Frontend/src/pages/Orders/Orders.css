@@ -115,3 +115,23 @@
   color: var(--text-h);
   font-weight: 500;
 }
+
+.orders-table-wrapper {
+  overflow-x: auto;
+}
+
+@media (max-width: 600px) {
+  .orders-main {
+    padding: 1.25rem 1rem;
+  }
+
+  .orders-main-header {
+    /* flex-direction: column; */
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  /* .orders-create-btn {
+    width: 100%;
+  } */
+}

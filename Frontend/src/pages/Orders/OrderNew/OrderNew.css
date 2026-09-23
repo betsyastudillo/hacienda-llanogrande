@@ -182,3 +182,26 @@
   background-color: var(--red-disabled);
   cursor: default;
 }
+
+.order-new-items-table-wrapper {
+  overflow-x: auto;
+}
+
+@media (max-width: 600px) {
+  .order-new-main {
+    padding: 1.25rem 1rem;
+  }
+
+  .order-new-item-row {
+    grid-template-columns: 1fr;
+  }
+
+  .order-new-actions {
+    flex-direction: column-reverse;
+  }
+
+  .order-new-cancel-btn,
+  .order-new-submit-btn {
+    width: 100%;
+  }
+}
