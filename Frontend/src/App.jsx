@@ -5,6 +5,8 @@ import Layout from "./components/Layout/Layout"
 import Login from "./pages/Login/Login"
 import Orders from "./pages/Orders/Orders"
 import OrderNew from "./pages/Orders/OrderNew/OrderNew"
+import OrderDetail from "./pages/Orders/OrderDetail/OrderDetail"
+
 
 function App() {
   return (
@@ -20,8 +22,9 @@ function App() {
               </ProtectedRoute>
             }
             >
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/orders/new" element={<OrderNew />} />
+            <Route index element={<Orders />} />
+            <Route path="new" element={<OrderNew />} />
+            <Route path=":orderId" element={<OrderDetail />} />
           </Route>
           <Route path="*" element={<Navigate to="/orders" replace />} />
         </Routes>

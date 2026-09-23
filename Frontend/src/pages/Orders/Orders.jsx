@@ -2,16 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
+import { STATUS_LABELS } from '../../constants/orderStatus'
 import './Orders.css'
-
-const STATUS_LABELS = {
-  created: 'Creado',
-  transport_assigned: 'Transporte asignado',
-  payment_confirmed: 'Pago confirmado',
-  dispatch_guide_generated: 'Guía generada',
-  dispatched: 'Despachado',
-  facturado: 'Facturado',
-}
 
 function StatusBadge({ status }) {
   const isFinal = status === 'dispatched' || status === 'facturado'
@@ -83,7 +75,7 @@ export default function Orders() {
                 <tr>
                   <th>Pedido</th>
                   <th>Fecha</th>
-                  <th>Materiales</th>
+                  <th>Cantidad de Productos</th>
                   <th>Estado</th>
                   <th className="orders-align-right">Total</th>
                 </tr>
@@ -95,9 +87,9 @@ export default function Orders() {
                     className="orders-row"
                     onClick={() => navigate(`/orders/${order.id}`)}
                   >
-                    <td className="orders-id-cell">#{order.id.slice(0, 8).toUpperCase()}</td>
+                    <td className="orders-id-cell">Ver detalle</td>
                     <td>{formatDate(order.created_at)}</td>
-                    <td>{order.items.length} {order.items.length === 1 ? 'material' : 'materiales'}</td>
+                    <td>{order.items.length} {order.items.length === 1 ? 'producto' : 'productos'}</td>
                     <td><StatusBadge status={order.status} /></td>
                     <td className="orders-align-right orders-total-cell">{formatCurrency(order.total)}</td>
                   </tr>

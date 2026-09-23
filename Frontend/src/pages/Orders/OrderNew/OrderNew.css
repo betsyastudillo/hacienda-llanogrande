@@ -12,9 +12,10 @@
 }
 
 .order-new-error {
-  background-color: var(--error);
-  color: var(--error);
-  font-size: 13px;
+  background-color: var(--warning-soft);
+  border: 1px solid var(--warning);
+  color: var(--text-footer);
+  font-size: 15px;
   padding: 10px 12px;
   border-radius: 8px;
   margin-bottom: 1.25rem;
@@ -39,7 +40,7 @@
   border-radius: 8px;
   border: 1px solid var(--border);
   font-size: 14px;
-  background-color: var(--withe-bg);
+  background-color: var(--white-bg);
   color: var(--text-h);
 }
 

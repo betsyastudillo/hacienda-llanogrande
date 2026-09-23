@@ -14,7 +14,7 @@
 .orders-title {
   font-size: 22px;
   font-weight: 600;
-  color: #1a1a18;
+  color: var(--text-h);
   margin: 0;
 }
 
@@ -72,7 +72,7 @@
 }
 
 .orders-row:hover {
-  background-color: #f4f3ee;
+  background-color: var(--code-bg);
 }
 
 .orders-row td {
@@ -88,7 +88,8 @@
 
 .orders-id-cell {
   font-weight: 500;
-  color: #1a1a18;
+  color: var(--text-h);
+  text-decoration: underline;
 }
 
 .orders-align-right {
@@ -97,7 +98,7 @@
 
 .orders-total-cell {
   font-weight: 500;
-  color: #1a1a18;
+  color: var(--text-h);
 }
 
 .status-badge {
