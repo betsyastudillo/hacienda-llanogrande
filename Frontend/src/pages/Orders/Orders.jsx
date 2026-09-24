@@ -35,7 +35,7 @@ export default function Orders() {
     async function fetchOrders() {
       try {
         const response = await api.get('/orders/')
-
+        console.log(response)
         setOrders(response.data)
       } catch (err) {
         setError('No se pudieron cargar los pedidos')
@@ -90,8 +90,9 @@ export default function Orders() {
             <table className="orders-table">
               <thead>
                 <tr>
+                  <th>Empresa</th>
                   <th>Fecha</th>
-                  <th>Cantidad de Productos</th>
+                  <th>Q.</th>
                   <th>Estado</th>
                   <th className="orders-align-right">Total</th>
                   <th>Detalle</th>
@@ -104,8 +105,9 @@ export default function Orders() {
                     className="orders-row"
                     onClick={() => navigate(`/orders/${order.id}`)}
                   >
+                    <td>{order.company_display_name}</td>
                     <td>{formatDate(order.created_at)}</td>
-                    <td>{order.items.length} {order.items.length === 1 ? 'producto' : 'productos'}</td>
+                    <td>{order.items.length}</td>
                     <td><StatusBadge status={order.status} /></td>
                     <td className="orders-align-right orders-total-cell">{formatCurrency(order.total)}</td>
                     <td className="orders-id-cell">
