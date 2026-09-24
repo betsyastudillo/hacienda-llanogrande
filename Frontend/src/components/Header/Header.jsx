@@ -23,7 +23,7 @@ export default function Header({ onToggleSidebar }) {
 
         <div className="app-header-brand">
           <img src={logo} alt="AridosCo" className="app-header-logo-img" />
-          <span className="app-header-brand-name">Bienvenido a Hacienda Llanogrande, <span className="app-header-user-role">{user?.role}</span></span>
+          <span className="app-header-brand-name">Bienvenido a Hacienda Llanogrande, <span className="app-header-user-role">{user?.full_name}</span></span>
         </div>
       </div>
 
