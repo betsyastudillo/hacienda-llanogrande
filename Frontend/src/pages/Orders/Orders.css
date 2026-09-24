@@ -18,16 +18,25 @@
   margin: 0;
 }
 
+.orders-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .orders-create-btn {
   background-color: var(--red-soft);
   color: var(--white-bg);
   border: none;
   border-radius: 8px;
-  padding: 9px 16px;
-  font-size: 14px;
+  padding: 10px 16px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .orders-create-btn:hover {
