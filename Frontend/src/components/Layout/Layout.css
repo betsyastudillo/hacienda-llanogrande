@@ -13,4 +13,6 @@
   flex: 1;
   background-color: var(--white-bg);
   overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
 }

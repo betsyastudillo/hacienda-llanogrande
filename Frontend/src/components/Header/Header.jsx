@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import logo from '../../assets/logo-blaco.png'
+import { LogOut } from 'lucide-react'
 import './Header.css'
 
 export default function Header({ onToggleSidebar }) {
@@ -29,7 +30,7 @@ export default function Header({ onToggleSidebar }) {
 
       <div className="app-header-right">
         <button className="app-header-logout-btn" onClick={handleLogout}>
-          Cerrar sesión
+          <LogOut size={22} />
         </button>
       </div>
     </header>

@@ -62,7 +62,7 @@ def _resolve_company_id(order: OrderCreate, current_user: User) -> UUID:
 
 
 def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
-    print("llega al service", order, current_user)
+
     company_id = _resolve_company_id(order, current_user)
 
     company = db.query(Company).filter(Company.id == company_id).first()
@@ -109,7 +109,7 @@ def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
 
         db.add(order_item)
 
-        register_order_deduction(db, material.id, new_order.id, item_data.quantity_m3, current_user)
+        # register_order_deduction(db, material.id, new_order.id, item_data.quantity_m3, current_user)
 
     new_order.subtotal = subtotal
     new_order.tax = tax

@@ -1,8 +1,7 @@
 import axios from 'axios'
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+export const API_BASE_URL = `http://${window.location.hostname}:8000`
 
-// Ajusta esta IP/puerto según cómo estés probando (localhost, IP local, etc.)
 const api = axios.create({
   baseURL: API_BASE_URL,
 })
