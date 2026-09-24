@@ -22,7 +22,7 @@ class OrderItemResponse(BaseModel):
 
 
 class OrderCreate(BaseModel):
-    company_id: Optional[UUID]
+    company_id: Optional[UUID] = None
     items: List[OrderItemCreate]
 
 

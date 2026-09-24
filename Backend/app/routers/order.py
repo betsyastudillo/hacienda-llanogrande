@@ -41,10 +41,12 @@ def create_new_order(
     current_user: OrderCreator,
     db: Session = Depends(get_db),
 ):
+    print(order, current_user)
     try:
         return create_order(db, order, current_user)
     
     except ValueError as e:
+        print("error router", e)
         raise HTTPException(status_code=400, detail=str(e))
     
 

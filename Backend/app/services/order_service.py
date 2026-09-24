@@ -2,12 +2,14 @@ from typing import List, Optional
 from uuid import UUID
 from decimal import Decimal
 from sqlalchemy.orm import Session
+from app.models.inventory_movement import InventoryMovement
 from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.material import Material
 from app.models.company import Company
 from app.models.user import User
 from app.schemas.order import OrderCreate
+from app.services.inventory_service import get_current_stock, register_order_deduction
 
 
 CLIENT_ROLES = ("cliente_operativo", "cliente_admin")
@@ -60,9 +62,10 @@ def _resolve_company_id(order: OrderCreate, current_user: User) -> UUID:
 
 
 def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
+    print("llega al service", order, current_user)
     company_id = _resolve_company_id(order, current_user)
 
-    company = db.query(Company).filter(Company.id == order.company_id).first()
+    company = db.query(Company).filter(Company.id == company_id).first()
 
     if not company:
         raise ValueError("Company not found")
@@ -71,7 +74,7 @@ def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
         raise ValueError("Company is not approved")
 
     new_order = Order(
-        company_id=order.company_id, 
+        company_id=company_id, 
         created_by_user_id=current_user.id,
         status="created"
     )
@@ -106,6 +109,8 @@ def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
 
         db.add(order_item)
 
+        register_order_deduction(db, material.id, new_order.id, item_data.quantity_m3, current_user)
+
     new_order.subtotal = subtotal
     new_order.tax = tax
     new_order.total = subtotal + tax
@@ -129,6 +134,12 @@ def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_use
     
     # Se borran los items existentes antes de agregar los nuevos
     db.query(OrderItem).filter(OrderItem.order_id == order.id).delete()
+
+    # Revierte las salidas del inventario que este pedido haya generado para poder recalcular el stock disponible correctamente con los nuevos items
+    db.query(InventoryMovement).filter(
+        InventoryMovement.order_id == order.id, InventoryMovement.movement_type == "salida"
+    ).delete()
+
     db.flush()  # Asegura que los cambios se reflejen antes de agregar nuevos items
 
     subtotal = Decimal("0")
@@ -143,6 +154,13 @@ def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_use
         if not material.is_active:
             raise ValueError(f"Material with id {item_data.material_id} is not active")
 
+        available_stock = get_current_stock(db, material.id)
+
+        if item_data.quantity_m3 > available_stock:
+            raise ValueError(
+                f"Insufficient stock for {material.name}: requested {item_data.quantity_m3}, available {available_stock}"
+            )
+        
         item_subtotal = material.price * item_data.quantity_m3
         item_tax = item_subtotal * material.tax_rate
         subtotal += item_subtotal
@@ -157,6 +175,8 @@ def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_use
         )
         
         db.add(order_item)
+
+        register_order_deduction(db, material.id, order.id, item_data.quantity_m3, current_user)
 
     order.subtotal = subtotal
     order.tax = tax

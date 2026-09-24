@@ -81,13 +81,16 @@ export default function OrderNew() {
       const payload = {
         items: items.map(({ material_id, quantity_m3 }) => ({ material_id, quantity_m3 })),
       }
+      console.log(payload)
       if (isAdmin) {
         payload.company_id = selectedCompanyId
       }
 
       const response = await api.post('/orders/', payload)
+      console.log(response)
       navigate(`/orders/${response.data.id}`)
     } catch (err) {
+      console.log("error", err)
       setError(err.response?.data?.detail || 'No se pudo crear el pedido')
     } finally {
       setSubmitting(false)
