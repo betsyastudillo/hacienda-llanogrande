@@ -5,17 +5,11 @@ import { useAuth } from '../../context/AuthContext'
 import { STATUS_LABELS } from '../../constants/orderStatus'
 import SearchInput from '../../components/SearchInput/SearchInput'
 import { formatDate } from '../../utils/formatDate'
+import StatusBadge from '../../components/StatusBadge/StatusBadge'
+import StatusHelpPopover from '../../components/StatusHelpPopover/StatusHelpPopover'
 import { CirclePlus, Eye } from 'lucide-react'
 import './Orders.css'
 
-function StatusBadge({ status }) {
-  const isFinal = status === 'dispatched' || status === 'facturado'
-  return (
-    <span className={`status-badge ${isFinal ? 'status-badge-accent' : ''}`}>
-      {STATUS_LABELS[status] || status}
-    </span>
-  )
-}
 
 export default function Orders() {
   const [orders, setOrders] = useState([])
@@ -93,7 +87,7 @@ export default function Orders() {
                   <th>Empresa</th>
                   <th>Fecha</th>
                   <th>Q.</th>
-                  <th>Estado</th>
+                  <th><StatusHelpPopover /></th>
                   <th className="orders-align-right">Total</th>
                   <th>Detalle</th>
                 </tr>

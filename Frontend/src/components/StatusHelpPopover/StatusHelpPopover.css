@@ -1,0 +1,74 @@
+.status-help-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.status-help-toggle {
+  background: none;
+  border: none;
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--text-footer);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline dotted;
+}
+
+.status-help-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.status-help-panel {
+  position: absolute;
+  top: 22px;
+  left: 0;
+  z-index: 21;
+  width: 220px;
+  max-width: 85vw;
+  background-color: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+.status-help-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: #1a1a18;
+}
+
+.status-help-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.status-help-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.status-help {
+    display: flex;
+}
+.status-help-abrev {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0;
+  color: #1a1a18;
+}
+
+.status-help-label {
+  font-size: 11px;
+  color: var(--text-footer);
+  margin: 2px 0 0 3px;
+  line-height: 1.4;
+}

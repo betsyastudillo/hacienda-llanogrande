@@ -110,21 +110,6 @@
   color: var(--text-h);
 }
 
-.status-badge {
-  display: inline-block;
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background-color: #ece9e2;
-  color: var(--text);
-}
-
-.status-badge-accent {
-  background-color: #FAE3B8;
-  color: var(--text-h);
-  font-weight: 500;
-}
-
 .orders-table-wrapper {
   overflow-x: auto;
 }
