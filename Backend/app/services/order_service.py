@@ -1,7 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 from decimal import Decimal
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models.inventory_movement import InventoryMovement
 from app.models.order import Order
 from app.models.order_item import OrderItem
@@ -17,7 +17,7 @@ STAFF_VIEW_ALL_ROLES = ("admin", "soporte")
 
 
 def get_orders(db: Session, current_user: User) -> List[Order]:
-    query = db.query(Order)
+    query = db.query(Order).options(joinedload(Order.company))
 
     if current_user.role in STAFF_VIEW_ALL_ROLES:
         return query.all()
@@ -28,12 +28,11 @@ def get_orders(db: Session, current_user: User) -> List[Order]:
     if current_user.role == "cliente_operativo":
         return query.filter(Order.created_by_user_id == current_user.id).all()
 
-    # Cualquier otro rol de AridosCo (logistica, cartera, operaciones) ve todo por ahora. Ajustar en caso de ser necesario más adelante.
     return query.all()
 
 
 def get_order_by_id(db: Session, order_id: UUID) -> Optional[Order]:
-    return db.query(Order).filter(Order.id == order_id).first()
+    return db.query(Order).options(joinedload(Order.company)).filter(Order.id == order_id).first()
 
 
 def can_access_order(order: Order, current_user: User) -> bool:

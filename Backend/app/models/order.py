@@ -19,3 +19,4 @@ class Order(Base, AuditMixin):
 
 
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+    company = relationship("Company")
