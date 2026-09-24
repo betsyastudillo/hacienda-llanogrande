@@ -10,6 +10,7 @@ class Company(Base, AuditMixin):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     client_code = Column(String, unique=True, nullable=False) # Código de cliente para facilitar memorización y agilización en procesos futuros.
     legal_name = Column(String, nullable=False)
+    display_name = Column(String, nullable=True)  # nombre corto para mostrar en la UI; si es null, se usa legal_name
     nit = Column(String, nullable=False)
     type = Column(String, nullable=False) # El 1 registro es "own" para identificarse, los siguientes son "client"
     address = Column(String, nullable=False)

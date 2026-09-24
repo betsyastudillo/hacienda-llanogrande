@@ -7,6 +7,7 @@ from app.schemas.mixins import AuditResponseMixin
 
 class CompanyBase (BaseModel):
     legal_name: str
+    display_name: Optional[str] = None
     nit: str
     type: str
     address: str

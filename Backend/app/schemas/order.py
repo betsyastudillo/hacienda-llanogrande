@@ -41,8 +41,11 @@ class OrderResponse(AuditResponseMixin):
     # Le dice a Pydantic que el campo no viene directo de una columna, sino que se calcula dinámicamente cada vez que se renderiza la respuesta
     @computed_field
     @property
-    def company_legal_name(self) -> Optional[str]:
-        return self.company.legal_name if self.company else None
+    def company_display_name(self) -> Optional[str]:
+        if not self.company:
+            return None
+        
+        return self.company.display_name or self.company.legal_name
 
     class Config:
         from_attributes = True

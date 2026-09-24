@@ -41,6 +41,7 @@ def create_a_company(db: Session, company: CompanyCreate) -> Company:
 
     new_company = Company(
         legal_name=company.legal_name,
+        display_name=company.display_name,
         nit=company.nit,
         type=company.type,
         address=company.address,
@@ -66,6 +67,7 @@ def edit_company(db: Session, company_id: UUID, company_update: CompanyCreate) -
 
     # Se agrega campo por campo para evitar asignación masiva
     company.legal_name = company_update.legal_name
+    company.display_name = company_update.display_name
     company.nit = company_update.nit
     company.type = company_update.type
     company.address = company_update.address
