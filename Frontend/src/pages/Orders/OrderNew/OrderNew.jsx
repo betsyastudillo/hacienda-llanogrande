@@ -4,6 +4,7 @@ import api from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
 import UnitReferenceHelper from '../../../components/UnitReferenceHelper/UnitReferenceHelper'
 import { estimateWeightKg } from '../../../constants/units'
+import { Pencil, Trash } from 'lucide-react'
 import './OrderNew.css'
 
 export default function OrderNew() {
@@ -17,6 +18,7 @@ export default function OrderNew() {
   const [selectedMaterialId, setSelectedMaterialId] = useState('')
   const [quantity, setQuantity] = useState('')
   const [items, setItems] = useState([])
+  const [editingIndex, setEditingIndex] = useState(null)
 
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -36,24 +38,52 @@ export default function OrderNew() {
 
   const handleAddItem = () => {
     setError('')
-    if (!selectedMaterialId || !quantity || Number(quantity) <= 0) {
+    const qty = Number(quantity)
+
+    if (!selectedMaterialId || !quantity || qty <= 0) {
       setError('Selecciona un producto y una cantidad válida')
+      return
+    }
+
+    if (!Number.isInteger(qty)) {
+      setError('La cantidad debe ser un número entero, sin decimales')
       return
     }
 
     const material = materials.find((m) => m.id === selectedMaterialId)
 
-    setItems([
-      ...items,
-      {
+    const newItem = {
         material_id: selectedMaterialId,
         material_name: material?.name,
         material_unit: material?.unit,
         approx_weight_kg: material?.approx_weight_kg,
         unit_price: material?.price,
         quantity_m3: Number(quantity),
-      },
-    ])
+      }
+
+      if (editingIndex !== null) {
+        // Editamos una fila existente, la reemplazamos en la misma posición en que está
+        const updatedItems = [...items]
+        updatedItems[editingIndex] = newItem
+        setItems(updatedItems)
+        setEditingIndex(null)
+      } else {
+        setItems([...items, newItem])
+      }
+    
+    setSelectedMaterialId('')
+    setQuantity('')
+  }
+
+  const handleEditItem = (index) => {
+    const item = items[index]
+    setSelectedMaterialId(item.material_id)
+    setQuantity(String(item.quantity_m3))
+    setEditingIndex(index)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingIndex(null)
     setSelectedMaterialId('')
     setQuantity('')
   }
@@ -103,7 +133,7 @@ export default function OrderNew() {
 
   return (
     <main className="order-new-main">
-      <h1 className="order-new-title">Crear pedido</h1>
+      <h1 className="order-new-title">Nuevo pedido</h1>
 
       {error && <div className="order-new-error">{error}</div>}
 
@@ -146,8 +176,8 @@ export default function OrderNew() {
 
           <input
             type="number"
-            step="0.01"
-            min="0.01"
+            step="1"
+            min="1"
             placeholder={
                 selectedMaterialId
                 ? `Cantidad en ${materials.find((m) => m.id === selectedMaterialId)?.unit || ''}`
@@ -159,8 +189,14 @@ export default function OrderNew() {
           />
 
           <button type="button" className="order-new-add-btn" onClick={handleAddItem}>
-            Agregar
+            {editingIndex !== null ? 'Guardar' : 'Confirmar'}
           </button>
+
+          {editingIndex !== null && (
+            <button type="button" className="order-new-cancel-edit-btn" onClick={handleCancelEdit}>
+              Cancelar
+            </button>
+          )}
         </div>
 
         {items.length > 0 && (
@@ -190,12 +226,11 @@ export default function OrderNew() {
                     <td>{formatCurrency(item.unit_price)}</td>
                     <td className="order-new-line-total">{formatCurrency(lineTotal)}</td>
                     <td>
-                      <button
-                        type="button"
-                        className="order-new-remove-btn"
-                        onClick={() => handleRemoveItem(index)}
-                        >
-                        Quitar
+                      <button type="button" className="order-new-edit-btn" onClick={() => handleEditItem(index)}>
+                        <Pencil size={16} />
+                      </button>
+                      <button type="button" className="order-new-remove-btn" onClick={() => handleRemoveItem(index)}>
+                        <Trash size={16} />
                       </button>
                     </td>
                   </tr>
@@ -234,7 +269,7 @@ export default function OrderNew() {
           onClick={handleSubmit}
           disabled={submitting}
         >
-          {submitting ? 'Creando...' : 'Crear pedido'}
+          {submitting ? 'Creando...' : 'Crear'}
         </button>
       </div>
     </main>

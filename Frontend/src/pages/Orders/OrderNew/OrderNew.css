@@ -59,7 +59,7 @@
 
 .order-new-item-row {
   display: grid;
-  grid-template-columns: 1fr 140px auto;
+  grid-template-columns: 1fr 140px auto auto;
   gap: 10px;
 }
 
@@ -108,11 +108,34 @@
   border-bottom: 1px solid var(--border);
 }
 
+.order-new-edit-btn {
+  border: 1px solid var(--border);
+  color: var(--text-footer);
+  background: none;
+  border-radius: 9px;
+  padding: 7px;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.order-new-cancel-edit-btn {
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: var(--white-bg);
+  color: var(--text-footer);
+  font-size: 14px;
+  cursor: pointer;
+}
+
 .order-new-remove-btn {
   background: none;
-  border: none;
+  border-radius: 9px;
+  border-radius: 9px;
+  padding: 7px;
+  border: 1px solid var(--error);
   color: var(--error);
-  font-size: 13px;
   cursor: pointer;
 }
 

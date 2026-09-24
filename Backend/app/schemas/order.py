@@ -7,13 +7,13 @@ from app.schemas.mixins import AuditResponseMixin
 
 class OrderItemCreate(BaseModel):
     material_id: UUID
-    quantity_m3: Decimal
+    quantity_m3: int
     
 
 class OrderItemResponse(BaseModel):
     id: UUID
     material_id: UUID
-    quantity_m3: Decimal
+    quantity_m3: int
     unit_price: Decimal
     subtotal: Decimal
 

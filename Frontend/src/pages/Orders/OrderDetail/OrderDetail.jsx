@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import api from '../../../services/api'
-import { ORDER_STATUS_STEPS, STATUS_LABELS } from '../../../constants/orderStatus'
+import { ORDER_STATUS_STEPS } from '../../../constants/orderStatus'
+import { CircleCheck, CircleX, Clock } from 'lucide-react'
 import './OrderDetail.css'
 
 const API_BASE = 'http://localhost:8000'
@@ -65,7 +66,6 @@ export default function OrderDetail() {
       }
 
       // Estas secciones son opcionales según el estado del pedido —
-      // un 404 aquí es normal ("aún no existe"), no un error real.
       try {
         const res = await api.get(`/payments/order/${orderId}`)
         setPayment(res.data)
@@ -111,6 +111,17 @@ export default function OrderDetail() {
   if (error) return <main className="detail-main"><p className="detail-empty detail-error-text">{error}</p></main>
   if (!order) return null
 
+  const PAYMENT_STATUS_CONFIG = {
+    confirmed: { label: 'Confirmado', icon: CircleCheck, className: 'is-accent' },
+    failed: { label: 'Fallido', icon: CircleX, className: 'is-error' },
+    pending: { label: 'Pendiente', icon: Clock, className: '' },
+  }
+
+  const ASSIGNMENT_STATUS_CONFIG = {
+    approved: { label: 'Aprobado', icon: CircleCheck, className: 'is-accent' },
+    rejected: { label: 'Rechazado', icon: CircleX, className: 'is-error' },
+    pending: { label: 'Pendiente de validación', icon: Clock, className: '' },
+  }
   return (
     <main className="detail-main">
       <div className="detail-header">
@@ -181,27 +192,35 @@ export default function OrderDetail() {
                   <span>Referencia</span>
                   <span>{payment.proforma_number}</span>
                 </div>
-                <div className="detail-info-row">
-                  <span>Estado</span>
-                  <span className={`detail-badge ${payment.status === 'confirmed' ? 'is-accent' : ''}`}>
-                    {payment.status === 'confirmed' ? 'Confirmado' : payment.status === 'failed' ? 'Fallido' : 'Pendiente'}
-                  </span>
-                </div>
-                {bankAccount && (
-                  <>
+                {(() => {
+                  const config = PAYMENT_STATUS_CONFIG[payment.status] || PAYMENT_STATUS_CONFIG.pending
+                  const Icon = config.icon
+                  return (
                     <div className="detail-info-row">
-                      <span>Banco</span>
-                      <span>{bankAccount.bank_name}</span>
+                      <span>Estado</span>
+                      <span className={`detail-badge ${config.className}`}>
+                        <Icon size={14} style={{ marginRight: 4, verticalAlign: -2 }} />
+                        {config.label}
+                      </span>
                     </div>
-                    <div className="detail-info-row">
-                      <span>Cuenta</span>
-                      <span>{bankAccount.account_number}</span>
-                    </div>
-                  </>
-                )}
-              </div>
+                  )
+                })()}
+
+              {bankAccount && (
+                <>
+                  <div className="detail-info-row">
+                    <span>Banco</span>
+                    <span>{bankAccount.bank_name}</span>
+                  </div>
+                  <div className="detail-info-row">
+                    <span>Cuenta</span>
+                    <span>{bankAccount.account_number}</span>
+                  </div>
+                </>
+              )}
+            </div>
             ) : (
-              <p className="detail-empty-inline">Aún no se ha generado la proforma de pago.</p>
+            <p className="detail-empty-inline">Aún no se ha generado la proforma de pago.</p>
             )}
           </div>
 
@@ -209,24 +228,19 @@ export default function OrderDetail() {
             <p className="detail-card-title">Transporte</p>
             {assignment ? (
               <div className="detail-info-list">
-                <div className="detail-info-row">
-                  <span>Estado</span>
-                  <span
-                    className={`detail-badge ${
-                      assignment.validation_status === 'approved'
-                        ? 'is-accent'
-                        : assignment.validation_status === 'rejected'
-                        ? 'is-error'
-                        : ''
-                    }`}
-                  >
-                    {assignment.validation_status === 'approved'
-                      ? 'Aprobado'
-                      : assignment.validation_status === 'rejected'
-                      ? 'Rechazado'
-                      : 'Pendiente de validación'}
-                  </span>
-                </div>
+                {(() => {
+                  const config = ASSIGNMENT_STATUS_CONFIG[assignment.validation_status] || ASSIGNMENT_STATUS_CONFIG.pending
+                  const Icon = config.icon
+                  return (
+                    <div className="detail-info-row">
+                      <span>Estado</span>
+                      <span className={`detail-badge ${config.className}`}>
+                        <Icon size={14} style={{ marginRight: 4, verticalAlign: -2 }} />
+                        {config.label}
+                      </span>
+                    </div>
+                  )
+                })()}
                 {assignment.rejection_reason && (
                   <div className="detail-info-row">
                     <span>Motivo</span>
@@ -238,7 +252,6 @@ export default function OrderDetail() {
               <p className="detail-empty-inline">Aún no se ha enviado información de transporte.</p>
             )}
           </div>
-
           <div className="detail-card detail-qr-card">
             <p className="detail-card-title">Guía de despacho</p>
             {dispatchGuide ? (

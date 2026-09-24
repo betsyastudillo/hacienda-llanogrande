@@ -205,9 +205,10 @@
 }
 
 .detail-badge {
-  display: inline-block;
+  display: flex;
+  align-items: center;
   font-size: 12px;
-  padding: 2px 8px;
+  padding: 4px 8px;
   border-radius: 6px;
   background-color: #ece9e2;
 }
@@ -215,6 +216,7 @@
 .detail-badge.is-accent {
   background-color: var(--green-disabled);
   font-weight: 500;
+  color: var(--white-bg);
 }
 
 .detail-badge.is-error {

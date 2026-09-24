@@ -8,7 +8,7 @@ from app.schemas.mixins import AuditResponseMixin
 class InventoryMovementCreate(BaseModel):
     material_id: UUID
     movement_type: Literal["entrada", "ajuste"]  # "salida" solo la genera el sistema al crear un pedido
-    quantity: Decimal
+    quantity: int
     reason: Optional[str] = None
 
 
@@ -17,7 +17,7 @@ class InventoryMovementResponse(AuditResponseMixin):
     material_id: UUID
     order_id: Optional[UUID] = None
     movement_type: str
-    quantity: Decimal
+    quantity: int
     reason: Optional[str] = None
 
     class Config:
@@ -26,4 +26,4 @@ class InventoryMovementResponse(AuditResponseMixin):
 
 class StockResponse(BaseModel):
     material_id: UUID
-    current_stock: Decimal
+    current_stock: int
