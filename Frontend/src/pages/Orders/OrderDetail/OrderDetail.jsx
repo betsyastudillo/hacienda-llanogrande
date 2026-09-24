@@ -28,9 +28,6 @@ function StatusStepper({ currentStatus }) {
               >
                 {isDone ? '✓' : index + 1}
               </div>
-              {/* {index < ORDER_STATUS_STEPS.length - 1 && (
-                <div className={`detail-stepper-connector ${isDone ? 'is-done' : ''}`} />
-              )} */}
             </div>
             <p className={`detail-stepper-label ${isCurrent ? 'is-current' : ''}`}>{step.label}</p>
           </div>
@@ -118,8 +115,8 @@ export default function OrderDetail() {
     <main className="detail-main">
       <div className="detail-header">
         <div>
-          <p className="detail-eyebrow">Pedido</p>
-          <p className="detail-order-id">#{order.id.slice(0, 8).toUpperCase()}</p>
+          <p className="detail-eyebrow">Empresa:</p>
+          <p className="detail-order-id">{order.company_display_name}</p>
           <p className="detail-order-date">Creado el {formatDate(order.created_at)}</p>
         </div>
       </div>
