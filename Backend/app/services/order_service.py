@@ -9,7 +9,7 @@ from app.models.material import Material
 from app.models.company import Company
 from app.models.user import User
 from app.schemas.order import OrderCreate
-from app.services.inventory_service import get_current_stock, register_order_deduction
+from app.services.inventory_service import get_sellable_stock, register_order_deduction
 
 
 CLIENT_ROLES = ("cliente_operativo", "cliente_admin")
@@ -93,6 +93,14 @@ def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
         if not material.is_active:
             raise ValueError(f"Material with id {item_data.material_id} is not active")
 
+        sellable = get_sellable_stock(db, material)
+        
+        if item_data.quantity_m3 > sellable:
+            raise ValueError(
+                f"Insufficient stock for {material.name}: requested {item_data.quantity_m3}, "
+                f"available {sellable}"
+            )
+        
         item_subtotal = material.price * item_data.quantity_m3
         item_tax = item_subtotal * material.tax_rate
         subtotal += item_subtotal
@@ -106,9 +114,9 @@ def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
             subtotal=item_subtotal
         )
 
-        db.add(order_item)
+        register_order_deduction(db, material, new_order.id, item_data.quantity_m3, current_user)
 
-        # register_order_deduction(db, material.id, new_order.id, item_data.quantity_m3, current_user)
+        db.add(order_item)
 
     new_order.subtotal = subtotal
     new_order.tax = tax
@@ -153,18 +161,18 @@ def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_use
         if not material.is_active:
             raise ValueError(f"Material with id {item_data.material_id} is not active")
 
-        available_stock = get_current_stock(db, material.id)
+        sellable = get_sellable_stock(db, material)
 
-        if item_data.quantity_m3 > available_stock:
+        if item_data.quantity_m3 > sellable:
             raise ValueError(
-                f"Insufficient stock for {material.name}: requested {item_data.quantity_m3}, available {available_stock}"
+                f"Insufficient stock for {material.name}: requested {item_data.quantity_m3}, available {sellable}"
             )
         
         item_subtotal = material.price * item_data.quantity_m3
         item_tax = item_subtotal * material.tax_rate
         subtotal += item_subtotal
         tax += item_tax
-
+        
         order_item = OrderItem(
             order_id=order.id,
             material_id=item_data.material_id,
@@ -172,6 +180,8 @@ def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_use
             unit_price=material.price,
             subtotal=item_subtotal
         )
+        
+        register_order_deduction(db, material, order.id, item_data.quantity_m3, current_user)
         
         db.add(order_item)
 

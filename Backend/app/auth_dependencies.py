@@ -66,3 +66,7 @@ OrderEditorLimited = Annotated[User, Depends(require_permission("order:editar_li
 
 # BlackList
 BlacklistManager = Annotated[User, Depends(require_permission("blacklist:gestionar"))]
+
+# InventoryManager
+InventoryManager = Annotated[User, Depends(require_permission("inventory:gestionar"))]
+InventoryViewer = Annotated[User, Depends(require_permission("inventory:ver"))]

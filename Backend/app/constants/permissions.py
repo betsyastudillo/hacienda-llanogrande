@@ -20,6 +20,7 @@ ROLES_PERMISSIONS = {
         "document:revisar", "document:ver",
         "vehicle:ver", "carrier:ver",
         "order:ver_todos",
+        "inventory:gestionar", "inventory:ver",
     },
     "soporte": {
         "order:ver_todos", "order:editar_limitado",
