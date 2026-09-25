@@ -46,9 +46,10 @@ export default function Orders() {
 
   const filteredOrders = orders.filter((order) => {
     const term = searchTerm.toLowerCase()
+
     return (
       order.id.toLowerCase().includes(term) ||
-      order.company_legal_name?.toLowerCase().includes(term) ||
+      order.company_display_name?.toLowerCase().includes(term) ||
       STATUS_LABELS[order.status]?.toLowerCase().includes(term)
     )
   })
@@ -93,7 +94,7 @@ export default function Orders() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
+                {filteredOrders.map((order) => (
                   <tr
                     key={order.id}
                     className="orders-row"

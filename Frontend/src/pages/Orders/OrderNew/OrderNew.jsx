@@ -205,10 +205,11 @@ export default function OrderNew() {
               <thead>
                 <tr>
                   <th>Producto</th>
-                  <th>Cantidad</th>
+                  <th>Q</th>
                   <th>Peso aprox.</th>
                   <th>Precio unitario</th>
                   <th>Total</th>
+                  <th>Acciones</th>
                   <th></th>
                 </tr>
               </thead>
@@ -226,12 +227,14 @@ export default function OrderNew() {
                     <td>{formatCurrency(item.unit_price)}</td>
                     <td className="order-new-line-total">{formatCurrency(lineTotal)}</td>
                     <td>
-                      <button type="button" className="order-new-edit-btn" onClick={() => handleEditItem(index)}>
-                        <Pencil size={16} />
-                      </button>
-                      <button type="button" className="order-new-remove-btn" onClick={() => handleRemoveItem(index)}>
-                        <Trash size={16} />
-                      </button>
+                      <div className='order-new-actions-cell'>
+                        <button type="button" className="order-new-edit-btn" onClick={() => handleEditItem(index)}>
+                          <Pencil size={16} />
+                        </button>
+                        <button type="button" className="order-new-remove-btn" onClick={() => handleRemoveItem(index)}>
+                          <Trash size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                   )
@@ -243,7 +246,7 @@ export default function OrderNew() {
           {items.length > 0 && (
             <div className="order-new-summary">
               <p className="order-new-total-weight">
-                Peso total aproximado: ≈{' '}
+                Peso total aprox: ≈{' '}
                 {items
                   .reduce((sum, item) => {
                     const kg = estimateWeightKg(item.approx_weight_kg, item.material_unit, item.quantity_m3)
@@ -253,7 +256,7 @@ export default function OrderNew() {
                 kg
               </p>
               <p className="order-new-total-price">
-                Total del pedido: {formatCurrency(items.reduce((sum, item) => sum + item.unit_price * item.quantity_m3, 0))}
+                Total: {formatCurrency(items.reduce((sum, item) => sum + item.unit_price * item.quantity_m3, 0))}
               </p>
             </div>
           )}

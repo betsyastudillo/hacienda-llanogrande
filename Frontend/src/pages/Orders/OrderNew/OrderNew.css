@@ -89,6 +89,7 @@
 
 .order-new-items-table {
   width: 100%;
+  min-width: 560px;
   border-collapse: collapse;
   margin-top: 16px;
   font-size: 14px;
@@ -108,16 +109,6 @@
   border-bottom: 1px solid var(--border);
 }
 
-.order-new-edit-btn {
-  border: 1px solid var(--border);
-  color: var(--text-footer);
-  background: none;
-  border-radius: 9px;
-  padding: 7px;
-  cursor: pointer;
-  margin-right: 10px;
-}
-
 .order-new-cancel-edit-btn {
   height: 42px;
   padding: 0 14px;
@@ -129,16 +120,37 @@
   cursor: pointer;
 }
 
+.order-new-edit-btn,
 .order-new-remove-btn {
-  background: none;
-  border-radius: 9px;
-  border-radius: 9px;
-  padding: 7px;
-  border: 1px solid var(--error);
-  color: var(--error);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background-color: var(--white-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  padding: 0;
 }
 
+.order-new-edit-btn {
+  color: var(--text);
+  margin-left: 15px;
+}
+
+.order-new-remove-btn {
+  color: var(--error);
+  border-color: var(--red-soft);
+}
+
+.order-new-edit-btn:hover {
+  background-color: #f4f3ee;
+}
+
+.order-new-remove-btn:hover {
+  background-color: var(--error-bg);
+}
 .order-new-weight-cell {
   color: var(--text-footer);
   font-size: 13px;
@@ -208,6 +220,12 @@
 
 .order-new-items-table-wrapper {
   overflow-x: auto;
+}
+
+.order-new-actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 @media (max-width: 600px) {
