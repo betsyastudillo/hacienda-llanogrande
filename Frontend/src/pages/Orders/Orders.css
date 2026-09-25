@@ -8,7 +8,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 8px;
 }
 
 .orders-title {
@@ -52,6 +52,12 @@
 
 .orders-error-text {
   color: var(--error);
+}
+
+.search-input-wrapper {
+  width: 280px;
+  margin-left: auto;
+  margin-bottom: 1.5rem;
 }
 
 .orders-table-wrapper {
@@ -120,12 +126,14 @@
   }
 
   .orders-main-header {
-    /* flex-direction: column; */
+    flex-wrap: wrap;
     align-items: flex-start;
-    gap: 12px;
+    gap: 16px;
   }
 
-  /* .orders-create-btn {
+  .search-input-wrapper {
     width: 100%;
-  } */
+    margin-left: 0;
+  }
+
 }

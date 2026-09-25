@@ -58,12 +58,6 @@ export default function Orders() {
       <main className="orders-main">
         <div className="orders-main-header">
           <h1 className="orders-title">Pedidos</h1>
-          <div className='orders-header-actions'>
-            <SearchInput
-              value={searchTerm}
-              onChange={setSearchTerm}
-              placeholder="Buscar por empresa..."
-            />
           {canCreate && (
             <button className='orders-create-btn' onClick={() => navigate('/orders/new')}>
               <CirclePlus size={18} />
@@ -71,7 +65,12 @@ export default function Orders() {
             </button>
           )}
           </div>
-        </div>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Buscar por empresa..."
+            />
+          {/* </div> */}
 
         {loading && <p className="orders-empty">Cargando pedidos...</p>}
         {error && <p className="orders-empty orders-error-text">{error}</p>}
