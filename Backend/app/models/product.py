@@ -6,8 +6,8 @@ from app.database import Base
 from app.models.mixins import AuditMixin
 
 
-class Material(Base, AuditMixin):
-    __tablename__ = "materials"
+class Product(Base, AuditMixin):
+    __tablename__ = "products"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
@@ -18,8 +18,8 @@ class Material(Base, AuditMixin):
     tax_rate = Column(Numeric(5, 4), nullable=False, default=0.19) # 19% IVA pero editable
     is_active = Column(Boolean, nullable=False, default=True)
 
-    parent_material_id = Column(UUID(as_uuid=True), ForeignKey("materials.id"), nullable=True)
+    parent_product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=True)
     units_per_pack = Column(Numeric(10, 3), nullable=True)  # ej. 24 (manzanas x24), 5 (libras de uva)
 
-    # El remote_side es para conocer la relación padre, es decir, las manzanas son padre y los hijos son los grupos de presentación que se pueden encontrar. Con materials.packs da la lista de paquetes desde el producto, sin tener que consultarlo aparte.
-    parent_material = relationship("Material", remote_side=[id], backref="packs")
+    # El remote_side es para conocer la relación padre, es decir, las manzanas son padre y los hijos son los grupos de presentación que se pueden encontrar. Con products.packs da la lista de paquetes desde el producto, sin tener que consultarlo aparte.
+    parent_product = relationship("Product", remote_side=[id], backref="packs")

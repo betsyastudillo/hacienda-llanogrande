@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.models.inventory_movement import InventoryMovement
 from app.models.order import Order
 from app.models.order_item import OrderItem
-from app.models.material import Material
+from app.models.product import Product
 from app.models.company import Company
 from app.models.user import User
 from app.schemas.order import OrderCreate
@@ -85,36 +85,36 @@ def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
     tax = Decimal("0")
     
     for item_data in order.items:
-        material = db.query(Material).filter(Material.id == item_data.material_id).first()
+        product = db.query(Product).filter(Product.id == item_data.product_id).first()
 
-        if not material:
-            raise ValueError(f"Material with id {item_data.material_id} not found")
+        if not product:
+            raise ValueError(f"Product with id {item_data.product_id} not found")
         
-        if not material.is_active:
-            raise ValueError(f"Material with id {item_data.material_id} is not active")
+        if not product.is_active:
+            raise ValueError(f"Product with id {item_data.product_id} is not active")
 
-        sellable = get_sellable_stock(db, material)
+        sellable = get_sellable_stock(db, product)
         
         if item_data.quantity_m3 > sellable:
             raise ValueError(
-                f"Insufficient stock for {material.name}: requested {item_data.quantity_m3}, "
+                f"Insufficient stock for {product.name}: requested {item_data.quantity_m3}, "
                 f"available {sellable}"
             )
         
-        item_subtotal = material.price * item_data.quantity_m3
-        item_tax = item_subtotal * material.tax_rate
+        item_subtotal = product.price * item_data.quantity_m3
+        item_tax = item_subtotal * product.tax_rate
         subtotal += item_subtotal
         tax += item_tax
 
         order_item = OrderItem(
             order_id=new_order.id,
-            material_id=item_data.material_id,
+            product_id=item_data.product_id,
             quantity_m3=item_data.quantity_m3,
-            unit_price=material.price,
+            unit_price=product.price,
             subtotal=item_subtotal
         )
 
-        register_order_deduction(db, material, new_order.id, item_data.quantity_m3, current_user)
+        register_order_deduction(db, product, new_order.id, item_data.quantity_m3, current_user)
 
         db.add(order_item)
 
@@ -153,43 +153,42 @@ def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_use
     tax = Decimal("0")
 
     for item_data in order_data.items:
-        material = db.query(Material).filter(Material.id == item_data.material_id).first()
+        product = db.query(Product).filter(Product.id == item_data.product_id).first()
 
-        if not material:
-            raise ValueError(f"Material with id {item_data.material_id} not found")
+        if not product:
+            raise ValueError(f"Product with id {item_data.product_id} not found")
         
-        if not material.is_active:
-            raise ValueError(f"Material with id {item_data.material_id} is not active")
+        if not product.is_active:
+            raise ValueError(f"Product with id {item_data.product_id} is not active")
 
-        sellable = get_sellable_stock(db, material)
+        sellable = get_sellable_stock(db, product)
 
         if item_data.quantity_m3 > sellable:
             raise ValueError(
-                f"Insufficient stock for {material.name}: requested {item_data.quantity_m3}, available {sellable}"
+                f"Insufficient stock for {product.name}: requested {item_data.quantity_m3}, available {sellable}"
             )
         
-        item_subtotal = material.price * item_data.quantity_m3
-        item_tax = item_subtotal * material.tax_rate
+        item_subtotal = product.price * item_data.quantity_m3
+        item_tax = item_subtotal * product.tax_rate
         subtotal += item_subtotal
         tax += item_tax
         
         order_item = OrderItem(
             order_id=order.id,
-            material_id=item_data.material_id,
+            product_id=item_data.product_id,
             quantity_m3=item_data.quantity_m3,
-            unit_price=material.price,
+            unit_price=product.price,
             subtotal=item_subtotal
         )
         
-        register_order_deduction(db, material, order.id, item_data.quantity_m3, current_user)
-        
         db.add(order_item)
 
-        register_order_deduction(db, material.id, order.id, item_data.quantity_m3, current_user)
+        register_order_deduction(db, product.id, order.id, item_data.quantity_m3, current_user)
 
     order.subtotal = subtotal
     order.tax = tax
     order.total = subtotal + tax
+    
     db.commit()
     db.refresh(order)
     

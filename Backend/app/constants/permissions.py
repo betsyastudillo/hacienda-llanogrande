@@ -16,7 +16,7 @@ ROLES_PERMISSIONS = {
         "blacklist:gestionar", 
     },
     "operaciones": {
-        "material:gestionar",
+        "product:gestionar",
         "document:revisar", "document:ver",
         "vehicle:ver", "carrier:ver",
         "order:ver_todos",

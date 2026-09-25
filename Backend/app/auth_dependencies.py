@@ -47,7 +47,7 @@ DispatchGuideViewerAny = Annotated[User, Depends(require_any_permission(
 DispatchGuideViewerOwn = Annotated[User, Depends(require_permission("dispatch_guide:ver_propio"))]
 
 # Producto 
-ProductManager = Annotated[User, Depends(require_permission("material:gestionar"))]
+ProductManager = Annotated[User, Depends(require_permission("product:gestionar"))]
 
 # Document 
 DocumentReviewer = Annotated[User, Depends(require_permission("document:revisar"))]

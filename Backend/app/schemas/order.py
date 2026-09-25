@@ -6,13 +6,13 @@ from typing import List, Optional, Any
 from app.schemas.mixins import AuditResponseMixin
 
 class OrderItemCreate(BaseModel):
-    material_id: UUID
+    product_id: UUID
     quantity_m3: int
     
 
 class OrderItemResponse(BaseModel):
     id: UUID
-    material_id: UUID
+    product_id: UUID
     quantity_m3: int
     unit_price: Decimal
     subtotal: Decimal

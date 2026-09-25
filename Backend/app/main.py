@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import company, document, auth, user, material, order, vehicle, carrier, assignment, payment, dispatch_guide, bank_account, document_blacklist, inventory
+from app.routers import company, document, auth, user, product, order, vehicle, carrier, assignment, payment, dispatch_guide, bank_account, document_blacklist, inventory
 
 app = FastAPI(title="Hacienda Llanogrande API")
 
@@ -19,7 +19,7 @@ app.include_router(auth.router)
 app.include_router(company.router)
 app.include_router(document.router)
 app.include_router(user.router)
-app.include_router(material.router)
+app.include_router(product.router)
 app.include_router(order.router)
 app.include_router(vehicle.router)
 app.include_router(carrier.router)

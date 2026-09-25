@@ -5,22 +5,22 @@ from uuid import UUID
 from decimal import Decimal
 from app.schemas.mixins import AuditResponseMixin
 
-class MaterialBase(BaseModel):
+class ProductBase(BaseModel):
     name: str
     category: str
     price: Decimal # Decimal no Float para que coincida con el Numeric
     tax_rate: Decimal = Decimal("0.19") # Decimal no Float para que coincida con el Numeric
     unit: str = "kg"  # kg, tonelada, unidad, canasta, bulto
     approx_weight_kg: Optional[Decimal] = None 
-    parent_material_id: Optional[UUID] = None
+    parent_product_id: Optional[UUID] = None
     units_per_pack: Optional[Decimal] = None
 
 
-class MaterialCreate(MaterialBase):
+class ProductCreate(ProductBase):
     pass
 
 
-class MaterialResponse(MaterialBase, AuditResponseMixin):
+class ProductResponse(ProductBase, AuditResponseMixin):
     id: UUID
     is_active: bool
 

@@ -26,7 +26,7 @@ def get_dispatch_guide_by_order(db: Session, order_id: UUID) -> Optional[Dispatc
 
 
 def build_cargo_detail(order: Order) -> str:
-    parts = [f"{item.quantity_m3} m3 {item.material.name}" for item in order.items]
+    parts = [f"{item.quantity_m3} m3 {item.product.name}" for item in order.items]
     return ", ".join(parts)
 
 
