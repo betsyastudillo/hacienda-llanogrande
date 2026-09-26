@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from uuid import UUID
 from sqlalchemy.orm import Session
@@ -13,8 +13,9 @@ router = APIRouter(prefix="/companies", tags=["Companies"])
 def list_companies(
     current_user: CompanyViewer,
     db: Session = Depends(get_db),
+    company_type: Optional[str] = None,
 ):
-    return get_companies(db)
+    return get_companies(db, company_type)
 
 
 @router.get("/id/{company_id}", response_model=CompanyResponse, summary="Busca una empresa por ID")

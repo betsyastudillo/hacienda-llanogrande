@@ -6,8 +6,13 @@ from app.schemas.company import CompanyBase, CompanyCreate, CompanyResponse
 
 
 # Trae todas las empresas
-def get_companies(db: Session) -> list[Company]:
-    return db.query(Company).filter(Company.is_active == True).all()
+def get_companies(db: Session, company_type: Optional[str] = None) -> list[Company]:
+    query = db.query(Company)
+
+    if company_type:
+        query = query.filter(Company.type == company_type)
+
+    return query.all()
 
 
 # Buscador de empresas por id (UUID)

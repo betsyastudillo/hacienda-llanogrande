@@ -130,7 +130,7 @@ export default function OrderNew() {
       const payload = {
         items: items.map(({ product_id, quantity_m3 }) => ({ product_id, quantity_m3 })),
       }
-      console.log(payload)
+
       if (isAdmin) {
         payload.company_id = selectedCompanyId
       }
@@ -139,7 +139,7 @@ export default function OrderNew() {
       navigate(`/orders/${response.data.id}`)
 
     } catch (err) {
-      console.log("error", err)
+
       setError(err.response?.data?.detail || 'No se pudo crear el pedido')
     } finally {
       setSubmitting(false)

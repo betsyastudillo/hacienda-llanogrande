@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
-import { STATUS_LABELS } from '../../constants/orderStatus'
 import SearchInput from '../../components/SearchInput/SearchInput'
 import { formatDate } from '../../utils/formatDate'
 import StatusBadge from '../../components/StatusBadge/StatusBadge'
+import { STATUS_LABELS, STATUS_COLORS, STATUS_ICONS } from '../../constants/orderStatus'
 import StatusHelpPopover from '../../components/StatusHelpPopover/StatusHelpPopover'
 import { CirclePlus, Eye } from 'lucide-react'
 import './Orders.css'
@@ -24,12 +24,12 @@ export default function Orders() {
 
   const navigate = useNavigate()
 
-
+  
   useEffect(() => {
     async function fetchOrders() {
       try {
         const response = await api.get('/orders/')
-
+        
         setOrders(response.data)
       } catch (err) {
         setError('No se pudieron cargar los pedidos')
@@ -39,14 +39,14 @@ export default function Orders() {
     }
     fetchOrders()
   }, [])
-
+  
   
   const formatCurrency = (value) =>
     new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value)
-
+  
   const filteredOrders = orders.filter((order) => {
     const term = searchTerm.toLowerCase()
-
+    
     return (
       order.id.toLowerCase().includes(term) ||
       order.company_display_name?.toLowerCase().includes(term) ||
@@ -54,6 +54,7 @@ export default function Orders() {
     )
   })
 
+  
   return (
       <main className="orders-main">
         <div className="orders-main-header">
@@ -93,7 +94,10 @@ export default function Orders() {
                 </tr>
               </thead>
               <tbody>
-                {filteredOrders.map((order) => (
+                {filteredOrders.map((order) => {
+                  const colors = STATUS_COLORS[order.status] || { bg: '#ece9e2', text: '#5f5e5a' }
+                  
+                  return(
                   <tr
                     key={order.id}
                     className="orders-row"
@@ -102,13 +106,21 @@ export default function Orders() {
                     <td>{order.company_display_name}</td>
                     <td>{formatDate(order.created_at)}</td>
                     <td>{order.items.length}</td>
-                    <td><StatusBadge status={order.status} /></td>
+                    <td>
+                      <StatusBadge
+                        label={STATUS_LABELS[order.status] || order.status}
+                        bgColor={colors.bg}
+                        textColor={colors.text}
+                        icon={STATUS_ICONS[order.status]}
+                      />
+                    </td>
                     <td className="orders-align-right orders-total-cell">{formatCurrency(order.total)}</td>
                     <td className="orders-id-cell">
                       <Eye/>
                     </td>
                   </tr>
-                ))}
+                  )  
+                })}
               </tbody>
             </table>
           </div>

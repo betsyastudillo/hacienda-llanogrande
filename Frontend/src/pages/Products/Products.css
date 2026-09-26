@@ -84,7 +84,7 @@
   font-weight: 500;
   padding: 3px 10px;
   border-radius: 6px;
-  background-color: var(--green-disabled);
+  background-color: var(--green-bg);
   color: var(--green);
 }
 .products-out-of-stock-badge {

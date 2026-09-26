@@ -1,17 +1,13 @@
-import { STATUS_LABELS, STATUS_COLORS, STATUS_ICONS } from '../../constants/orderStatus'
 import './StatusBadge.css'
 
-export default function StatusBadge({ status }) {
-  const colors = STATUS_COLORS[status] || { bg: '#ece9e2', text: '#5f5e5a' }
-  const Icon = STATUS_ICONS[status]
-
+export default function StatusBadge({label, bgColor, textoColor, icon: Icon }) {
   return (
     <span
-      className="status-badge"
-      style={{ backgroundColor: colors.bg, color: colors.text }}
+      className='status-badge'
+      style={{backgroundColor: bgColor, color: textoColor }}
     >
-      {Icon && <Icon size={16} style={{ marginRight: 4, verticalAlign: -2 }} />}
-      {STATUS_LABELS[status] || status}
+      {Icon && <Icon size={16} style={{marginRight: 4, verticalAlign: -2 }} />}
+      {label}
     </span>
-  )
+    )
 }

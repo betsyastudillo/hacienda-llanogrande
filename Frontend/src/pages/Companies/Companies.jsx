@@ -6,7 +6,7 @@ import { STATUS_LABELS } from '../../constants/orderStatus'
 import SearchInput from '../../components/SearchInput/SearchInput'
 import { formatDate } from '../../utils/formatDate'
 import StatusBadge from '../../components/StatusBadge/StatusBadge'
-import StatusHelpPopover from '../../components/StatusHelpPopover/StatusHelpPopover'
+import { COMPANY_STATUS_LABELS, COMPANY_STATUS_COLORS } from '../../constants/companyStatus'
 import { CirclePlus, Eye } from 'lucide-react'
 import './Companies.css'
 
@@ -28,8 +28,7 @@ export default function Companies() {
   useEffect(() => {
     async function fetchCompanies() {
       try {
-        const response = await api.get('/companies/')
-        console.log("respuests serv", response.data)
+        const response = await api.get('/companies/?company_type=client')
         setCompanies(response.data)
       } catch (err) {
         setError('No se pudieron cargar las empresas')
@@ -40,19 +39,6 @@ export default function Companies() {
     fetchCompanies()
   }, [])
 
-  
-  // const formatCurrency = (value) =>
-  //   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value)
-
-  // const companies = companies.filter((company) => {
-  //   const term = searchTerm.toLowerCase()
-
-  //   return (
-  //     company.id.toLowerCase().includes(term) ||
-  //     company.company_display_name?.toLowerCase().includes(term) ||
-  //     STATUS_LABELS[company.status]?.toLowerCase().includes(term)
-  //   )
-  // })
 
   return (
       <main className="companies-main">
@@ -98,7 +84,10 @@ export default function Companies() {
                 </tr>
               </thead>
               <tbody>
-                {companies.map((company) => (
+                {companies.map((company) => {
+                  const colors = COMPANY_STATUS_COLORS[company.verification_status] || { bg: '#ece9e2', text: '#5f5e5a' }
+
+                  return (
                   <tr
                     key={company.id}
                     className="companies-row"
@@ -110,12 +99,19 @@ export default function Companies() {
                     <td>{company.address}</td>
                     <td>{company.phone}</td>
                     <td>{company.email}</td>
-                    <td>{company.verification_status}</td>
+                    <td>
+                      <StatusBadge
+                        label={COMPANY_STATUS_LABELS[company.verification_status]}
+                        bgColor={colors.bg}
+                        textColor={colors.text}
+                      />
+                    </td>
                     <td className="companies-id-cell">
                       <Eye/>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

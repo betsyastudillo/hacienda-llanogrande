@@ -214,7 +214,7 @@
 }
 
 .detail-badge.is-accent {
-  background-color: var(--green-disabled);
+  background-color: var(--green-bg);
   font-weight: 500;
   color: var(--white-bg);
 }

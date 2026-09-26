@@ -44,7 +44,7 @@ export default function ProductForm() {
     if (!isEditing) return
     api.get(`/products/${productId}`).then((res) => {
       const m = res.data
-      console.log("trae", m)
+
       setForm({
         name: m.name,
         category: m.category || '',
@@ -76,7 +76,7 @@ export default function ProductForm() {
       setError('Selecciona el producto base y la cantidad por paquete')
       return
     }
-    console.log("form", form)
+
     setSubmitting(true)
 
     const payload = {
@@ -89,11 +89,11 @@ export default function ProductForm() {
       parent_product_id: isPack ? form.parent_product_id : null,
       units_per_pack: isPack ? form.units_per_pack : null,
     }
-    console.log(payload)
+
     try {
       if (isEditing) {
         const response = await api.put(`/products/${productId}`, payload)
-        console.log(response)
+
       } else {
         await api.post('/products/', payload)
       }
