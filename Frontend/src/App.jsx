@@ -10,7 +10,7 @@ import Products from "./pages/Products/Products"
 import ProductForm from "./pages/Products/ProductForm/ProductForm"
 import ProductInventory from "./pages/Products/ProductInventory/ProductInventory"
 import LinkLogic from "./pages/LinkLogin/LinkLogin"
-
+import Companies from "./pages/Companies/Companies"
 
 function App() {
   return (
@@ -33,7 +33,9 @@ function App() {
             <Route path="/products/new" element={<ProductForm />} />
             <Route path="/products/:productId/edit" element={<ProductForm />} />
             <Route path="/products/:productId/inventory" element={<ProductInventory />} />
-            <Route path="/link-login" element={<LinkLogic/>}/>         
+            <Route path="/link-login" element={<LinkLogic/>}/>     
+
+            <Route path="/companies" element={<Companies />} />    
           </Route> 
           <Route path="*" element={<Navigate to="/orders" replace />} />
         </Routes>

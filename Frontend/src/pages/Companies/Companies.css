@@ -1,0 +1,139 @@
+.companies-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 2rem;
+}
+
+.companies-main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.companies-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.companies-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.companies-create-btn {
+  background-color: var(--red-soft);
+  color: var(--white-bg);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.companies-create-btn:hover {
+  background-color: var(--red-wine);
+}
+
+.companies-empty {
+  color: var(--text-footer);
+  font-size: 14px;
+  padding: 2rem 0;
+  text-align: center;
+}
+
+.companies-error-text {
+  color: var(--error);
+}
+
+.search-input-wrapper {
+  width: 280px;
+  margin-left: auto;
+  margin-bottom: 1.5rem;
+}
+
+.companies-table-wrapper {
+  background-color: var(--code-bg);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.companies-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.companies-table thead th {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-footer);
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.companies-row {
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.companies-row:hover {
+  background-color: var(--code-bg);
+}
+
+.companies-row td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.companies-row:last-child td {
+  border-bottom: none;
+}
+
+.companies-id-cell {
+  font-weight: 500;
+  color: var(--text-h);
+  text-decoration: underline;
+}
+
+.companies-align-right {
+  text-align: right;
+}
+
+.companies-total-cell {
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.companies-table-wrapper {
+  overflow-x: auto;
+}
+
+@media (max-width: 600px) {
+  .companies-main {
+    padding: 1.25rem 1rem;
+  }
+
+  .companies-main-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .search-input-wrapper {
+    width: 100%;
+    margin-left: 0;
+  }
+
+}

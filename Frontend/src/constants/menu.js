@@ -20,7 +20,7 @@ export const MENU_ITEMS = [
 
   // { label: 'Documentos', path: '/documents', permission: 'document:ver' },
 
-  // { label: 'Empresas', path: '/companies', permission: 'company:ver' },
+  { label: 'Empresas', path: '/companies', permission: 'company:ver' },
 
   // { label: 'Lista negra', path: '/document-blacklist', permission: 'blacklist:gestionar' },
 

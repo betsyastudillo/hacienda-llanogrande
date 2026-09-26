@@ -17,6 +17,7 @@ export default function Products() {
 
   const canManage = hasPermission('product:gestionar')
   const canViewInventory = hasPermission('inventory:ver')
+  const canSeeStock = canViewInventory || hasPermission('order:crear')
 
   useEffect(() => {
     async function loadProducts() {
@@ -24,7 +25,7 @@ export default function Products() {
       setProducts(res.data)
       setLoading(false)
 
-      if (!canViewInventory) return
+      if (!canSeeStock) return
 
       // Solo se consulta stock de los productos PADRE (sin parent_product_id) por ahora
       const baseProducts = res.data.filter((p) => !p.parent_product_id)
@@ -42,7 +43,7 @@ export default function Products() {
     }
 
     loadProducts()
-  }, [canViewInventory])
+  }, [canSeeStock])
 
   const formatCurrency = (value) =>
     new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value)
@@ -92,8 +93,8 @@ export default function Products() {
                 <th>Categoría</th>
                 <th>Precio</th>
                 <th>Presentación</th>
-                {canViewInventory && <th>Stock</th>}
-                <th>Acciones</th>
+                {canSeeStock && <th>Disponibilidad</th>}
+                {canManage && <th>Acciones</th>}
                 <th></th>
               </tr>
             </thead>
@@ -106,6 +107,7 @@ export default function Products() {
                   stock={stockByProduct[product.id]}
                   canManage={canManage}
                   canViewInventory={canViewInventory}
+                  canSeeStock={canSeeStock}
                   navigate={navigate}
                   formatCurrency={formatCurrency}
                 />
@@ -118,7 +120,11 @@ export default function Products() {
   )
 }
 
-function ProductRow({ product, packs, stock, canManage, canViewInventory, navigate, formatCurrency }) {
+function ProductRow({ product, packs, stock, canManage, canViewInventory, canSeeStock, navigate, formatCurrency }) {
+
+  const isOutOfStock = stock === 0
+
+
   return (
     <>
       <tr className="products-row-base">
@@ -130,35 +136,38 @@ function ProductRow({ product, packs, stock, canManage, canViewInventory, naviga
         <td>{product.category || '—'}</td>
         <td>{formatCurrency(product.price)}</td>
         <td>{product.unit}</td>
-        {canViewInventory && (
+
+        {canSeeStock && (
           <td>
-            <div className="products-stock-cell">
-              <span className="products-stock-value">
-                {stock !== null && stock !== undefined ? `${stock}` : '—'}
-              </span>
-            </div>
+            {canViewInventory ? (
+              <div className='products-stock-cell'>
+                <span className='products-stock-value'>
+                  {stock !== null && stock !== undefined ? `${stock} ${product.unit}` : '—'}
+                </span>
+                <button
+                  type='button'
+                  className='products-stock-link'
+                  onClick={() => navigate(`/products/${product.id}/inventory`)}
+                  >
+                  <Eye size={16} />
+                </button>
+              </div>
+            ) : (
+              isOutOfStock ? <span className='products-out-of-stock-badge'>Agotado</span> : <span className='products-with-stock-badge'> Disponible </span>
+            )}
           </td>
         )}
-        <td>
-          {canManage && (
-            <div className='products-actions-cell'>
-              <button
-                type="button"
-                className="products-edit-btn"
-                onClick={() => navigate(`/products/${product.id}/edit`)}
-              >
-                <Pencil size={16}/>
-              </button>
-              <button
-                type="button"
-                className="products-stock-link"
-                onClick={() => navigate(`/products/${product.id}/inventory`)}
-              >
-                <Eye size={16} />
-              </button>
-            </div>
-          )}
-        </td>
+        {canManage && (
+          <td>
+            <button
+              type='button'
+              className='products-edit-btn'
+              onClick={() => navigate(`/products/${product.id}/edit`)}
+            >
+              <Pencil size={16}/>
+            </button>
+          </td>
+        )}
       </tr>
 
       {packs.map((pack) => (
@@ -171,9 +180,13 @@ function ProductRow({ product, packs, stock, canManage, canViewInventory, naviga
           <td>{pack.category || '—'}</td>
           <td>{formatCurrency(pack.price)}</td>
           <td>Pqt x {Number(pack.units_per_pack)}</td>
-          {canViewInventory && <td className="products-empty-inline">Usa stock de {product.name}</td>}
-          <td>
-            {canManage && (
+          {canSeeStock && ( 
+            <td className={canViewInventory ? "products-empty-inline" : ''}>
+              {canViewInventory ? `Usa stock de ${product.name}` : ''}
+            </td>
+          )}
+          {canManage && (
+            <td>
               <button
                 type="button"
                 className="products-edit-btn"
@@ -181,8 +194,8 @@ function ProductRow({ product, packs, stock, canManage, canViewInventory, naviga
               >
                 <Pencil size={16}/>
               </button>
-            )}
-          </td>
+            </td>
+          )}
         </tr>
       ))}
     </>
