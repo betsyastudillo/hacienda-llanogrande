@@ -9,6 +9,7 @@ import OrderDetail from "./pages/Orders/OrderDetail/OrderDetail"
 import Products from "./pages/Products/Products"
 import ProductForm from "./pages/Products/ProductForm/ProductForm"
 import ProductInventory from "./pages/Products/ProductInventory/ProductInventory"
+import LinkLogic from "./pages/LinkLogin/LinkLogin"
 
 
 function App() {
@@ -23,7 +24,7 @@ function App() {
                 <Layout />
               </ProtectedRoute>
             }
-            >
+          >
             <Route path="/orders" element={<Orders />} />
             <Route path="/orders/new" element={<OrderNew />} />
             <Route path="/orders/:orderId" element={<OrderDetail />} />
@@ -32,7 +33,8 @@ function App() {
             <Route path="/products/new" element={<ProductForm />} />
             <Route path="/products/:productId/edit" element={<ProductForm />} />
             <Route path="/products/:productId/inventory" element={<ProductInventory />} />
-          </Route>
+            <Route path="/link-login" element={<LinkLogic/>}/>         
+          </Route> 
           <Route path="*" element={<Navigate to="/orders" replace />} />
         </Routes>
       </BrowserRouter>
