@@ -18,6 +18,7 @@ export default function OrderNew() {
   const [selectedProductId, setSelectedProductId] = useState('')
   const [quantity, setQuantity] = useState('')
   const [items, setItems] = useState([])
+  const [stockByProduct, setStockByProduct] = useState({})
   const [editingIndex, setEditingIndex] = useState(null)
 
   const [error, setError] = useState('')
@@ -25,9 +26,27 @@ export default function OrderNew() {
 
   const isAdmin = user?.role === 'admin'
 
+  // Muestra solo los productos que tienen stock, y se muestra en la creación la ctd disponible al seleccionar uno.
   useEffect(() => {
-    api.get('/products/').then((res) => setProducts(res.data))
-  }, [])
+  async function loadProducts() {
+    const res = await api.get('/products/')
+    setProducts(res.data)
+
+    const stockEntries = await Promise.all(
+      res.data.map(async (p) => {
+        try {
+          const stockRes = await api.get(`/inventory/products/${p.id}/stock`)
+          return [p.id, stockRes.data.current_stock]
+        } catch {
+          return [p.id, 0]
+        }
+      })
+    )
+    setStockByProduct(Object.fromEntries(stockEntries))
+  }
+
+  loadProducts()
+}, [])
 
   useEffect(() => {
     if (!isAdmin) return
@@ -133,7 +152,7 @@ export default function OrderNew() {
 
   return (
     <main className="order-new-main">
-      <h1 className="order-new-title">Nuevo pedido</h1>
+      <h1 className="order-new-title">Crear pedido</h1>
 
       {error && <div className="order-new-error">{error}</div>}
 
@@ -156,7 +175,7 @@ export default function OrderNew() {
       )}
 
       <div className="order-new-card">
-        <p className="order-new-card-title">Agregar producto</p>
+        <p className="order-new-card-title">Seleccionar productos:</p>
         
         <UnitReferenceHelper />
 
@@ -167,11 +186,13 @@ export default function OrderNew() {
             onChange={(e) => setSelectedProductId(e.target.value)}
           >
             <option value="">Selecciona un producto</option>
-            {products.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
+            {products
+              .filter((m) => (stockByProduct[m.id] || 0) > 0)
+              .map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
           </select>
 
           <input
@@ -189,8 +210,14 @@ export default function OrderNew() {
           />
 
           <button type="button" className="order-new-add-btn" onClick={handleAddItem}>
-            {editingIndex !== null ? 'Guardar' : 'Confirmar'}
+            {editingIndex !== null ? 'Guardar' : 'Agregar'}
           </button>
+
+          {selectedProductId && (
+            <p className='order-new-stock-hint'>
+              Disponible: {stockByProduct[selectedProductId]} {products.find((m) => m.id === selectedProductId)?.unit}(es)
+            </p>
+          )}
 
           {editingIndex !== null && (
             <button type="button" className="order-new-cancel-edit-btn" onClick={handleCancelEdit}>
@@ -272,7 +299,7 @@ export default function OrderNew() {
           onClick={handleSubmit}
           disabled={submitting}
         >
-          {submitting ? 'Creando...' : 'Crear'}
+          {submitting ? 'Creando...' : 'Confirmar'}
         </button>
       </div>
     </main>

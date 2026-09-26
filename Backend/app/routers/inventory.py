@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
 from app.database import get_db
-from app.auth_dependencies import InventoryManager, InventoryViewer
+from app.auth_dependencies import InventoryManager, InventoryViewer, StockViewerAny
 from app.models.product import Product
 from app.schemas.inventory_movement import InventoryMovementCreate, InventoryMovementResponse, StockResponse
 from app.services.inventory_service import (
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/inventory", tags=["Inventory"])
 @router.get("/products/{product_id}/stock", response_model=StockResponse)
 def get_stock(
     product_id: UUID,
-    current_user: InventoryViewer,
+    current_user: StockViewerAny,
     db: Session = Depends(get_db),
 ):
     product = db.query(Product).filter(Product.id == product_id).first()

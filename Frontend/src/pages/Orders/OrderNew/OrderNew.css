@@ -87,6 +87,14 @@
   background-color: var(--border);
 }
 
+.order-new-stock-hint {
+  font-size: 12px;
+  color: var(--text-footer);
+  /* margin: -6px 0 10px; */
+  display: flex;
+  align-items: center;
+}
+
 .order-new-items-table {
   width: 100%;
   min-width: 560px;
