@@ -11,11 +11,11 @@ export default function OrderNew() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  const [materials, setMaterials] = useState([])
+  const [products, setProducts] = useState([])
   const [companies, setCompanies] = useState([])
   const [selectedCompanyId, setSelectedCompanyId] = useState('')
 
-  const [selectedMaterialId, setSelectedMaterialId] = useState('')
+  const [selectedProductId, setSelectedProductId] = useState('')
   const [quantity, setQuantity] = useState('')
   const [items, setItems] = useState([])
   const [editingIndex, setEditingIndex] = useState(null)
@@ -26,7 +26,7 @@ export default function OrderNew() {
   const isAdmin = user?.role === 'admin'
 
   useEffect(() => {
-    api.get('/materials/').then((res) => setMaterials(res.data))
+    api.get('/products/').then((res) => setProducts(res.data))
   }, [])
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export default function OrderNew() {
     setError('')
     const qty = Number(quantity)
 
-    if (!selectedMaterialId || !quantity || qty <= 0) {
+    if (!selectedProductId || !quantity || qty <= 0) {
       setError('Selecciona un producto y una cantidad válida')
       return
     }
@@ -50,41 +50,41 @@ export default function OrderNew() {
       return
     }
 
-    const material = materials.find((m) => m.id === selectedMaterialId)
+    const product = products.find((m) => m.id === selectedProductId)
 
     const newItem = {
-        material_id: selectedMaterialId,
-        material_name: material?.name,
-        material_unit: material?.unit,
-        approx_weight_kg: material?.approx_weight_kg,
-        unit_price: material?.price,
-        quantity_m3: Number(quantity),
-      }
+      product_id: selectedProductId,
+      product_name: product?.name,
+      product_unit: product?.unit,
+      approx_weight_kg: product?.approx_weight_kg,
+      unit_price: product?.price,
+      quantity_m3: Number(quantity),
+    }
 
-      if (editingIndex !== null) {
-        // Editamos una fila existente, la reemplazamos en la misma posición en que está
-        const updatedItems = [...items]
-        updatedItems[editingIndex] = newItem
-        setItems(updatedItems)
-        setEditingIndex(null)
-      } else {
-        setItems([...items, newItem])
-      }
+    if (editingIndex !== null) {
+      // Editamos una fila existente, la reemplazamos en la misma posición en que está
+      const updatedItems = [...items]
+      updatedItems[editingIndex] = newItem
+      setItems(updatedItems)
+      setEditingIndex(null)
+    } else {
+      setItems([...items, newItem])
+    }
     
-    setSelectedMaterialId('')
+    setSelectedProductId('')
     setQuantity('')
   }
 
   const handleEditItem = (index) => {
     const item = items[index]
-    setSelectedMaterialId(item.material_id)
+    setSelectedProductId(item.product_id)
     setQuantity(String(item.quantity_m3))
     setEditingIndex(index)
   }
 
   const handleCancelEdit = () => {
     setEditingIndex(null)
-    setSelectedMaterialId('')
+    setSelectedProductId('')
     setQuantity('')
   }
 
@@ -109,7 +109,7 @@ export default function OrderNew() {
 
     try {
       const payload = {
-        items: items.map(({ material_id, quantity_m3 }) => ({ material_id, quantity_m3 })),
+        items: items.map(({ product_id, quantity_m3 }) => ({ product_id, quantity_m3 })),
       }
       console.log(payload)
       if (isAdmin) {
@@ -117,8 +117,8 @@ export default function OrderNew() {
       }
 
       const response = await api.post('/orders/', payload)
-      console.log(response)
       navigate(`/orders/${response.data.id}`)
+
     } catch (err) {
       console.log("error", err)
       setError(err.response?.data?.detail || 'No se pudo crear el pedido')
@@ -145,12 +145,12 @@ export default function OrderNew() {
             value={selectedCompanyId}
             onChange={(e) => setSelectedCompanyId(e.target.value)}
           >
-            <option value="">Selecciona una empresa</option>
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.legal_name} ({c.client_code})
-              </option>
-            ))}
+          <option value="">Selecciona una empresa</option>
+          {companies.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.legal_name} ({c.client_code})
+            </option>
+          ))}
           </select>
         </div>
       )}
@@ -163,11 +163,11 @@ export default function OrderNew() {
         <div className="order-new-item-row">
           <select
             className="order-new-select"
-            value={selectedMaterialId}
-            onChange={(e) => setSelectedMaterialId(e.target.value)}
+            value={selectedProductId}
+            onChange={(e) => setSelectedProductId(e.target.value)}
           >
             <option value="">Selecciona un producto</option>
-            {materials.map((m) => (
+            {products.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
               </option>
@@ -179,8 +179,8 @@ export default function OrderNew() {
             step="1"
             min="1"
             placeholder={
-                selectedMaterialId
-                ? `Cantidad en ${materials.find((m) => m.id === selectedMaterialId)?.unit || ''}`
+                selectedProductId
+                ? `Cantidad en ${products.find((m) => m.id === selectedProductId)?.unit || ''}`
                 : 'Cantidad'
             }
             className="order-new-input-qty"
@@ -215,12 +215,12 @@ export default function OrderNew() {
               </thead>
               <tbody>
                 {items.map((item, index) => {
-                  const estimatedKg = estimateWeightKg(item.approx_weight_kg, item.material_unit, item.quantity_m3)
+                  const estimatedKg = estimateWeightKg(item.approx_weight_kg, item.product_unit, item.quantity_m3)
                   const lineTotal = item.unit_price * item.quantity_m3
                   return(
                     <tr key={index}>
-                    <td>{item.material_name}</td>
-                    <td>{item.quantity_m3} {item.material_unit}</td>
+                    <td>{item.product_name}</td>
+                    <td>{item.quantity_m3} {item.product_unit}</td>
                     <td className="order-new-weight-cell">
                       {estimatedKg !== null ? `≈ ${estimatedKg.toFixed(2)} kg` : '—'}
                     </td>
@@ -249,7 +249,7 @@ export default function OrderNew() {
                 Peso total aprox: ≈{' '}
                 {items
                   .reduce((sum, item) => {
-                    const kg = estimateWeightKg(item.approx_weight_kg, item.material_unit, item.quantity_m3)
+                    const kg = estimateWeightKg(item.approx_weight_kg, item.product_unit, item.quantity_m3)
                     return sum + (kg || 0)
                   }, 0)
                   .toFixed(2)}{' '}

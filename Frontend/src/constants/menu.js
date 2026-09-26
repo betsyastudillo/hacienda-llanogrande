@@ -3,6 +3,8 @@
 export const MENU_ITEMS = [
   { label: 'Pedidos', path: '/orders', permission: null },  // visible para cualquier autenticado
 
+  { label: 'Productos', path: '/products', permission: null },  // GET abierto a cualquier autenticado
+
   // { label: 'Pagos', path: '/payments', permission: 'payment:ver' },
   // { label: 'Mis pagos', path: '/my-payments', permission: 'payment:ver_propio' },
 
@@ -15,7 +17,6 @@ export const MENU_ITEMS = [
   // { label: 'Vehículos', path: '/vehicles', permission: 'vehicle:ver' },
   // { label: 'Transportistas', path: '/carriers', permission: 'carrier:ver' },
 
-  // { label: 'Materiales', path: '/materials', permission: null },  // GET abierto a cualquier autenticado
 
   // { label: 'Documentos', path: '/documents', permission: 'document:ver' },
 

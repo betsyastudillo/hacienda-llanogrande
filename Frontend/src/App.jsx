@@ -6,6 +6,9 @@ import Login from "./pages/Login/Login"
 import Orders from "./pages/Orders/Orders"
 import OrderNew from "./pages/Orders/OrderNew/OrderNew"
 import OrderDetail from "./pages/Orders/OrderDetail/OrderDetail"
+import Products from "./pages/Products/Products"
+import ProductForm from "./pages/Products/ProductForm/ProductForm"
+import ProductInventory from "./pages/Products/ProductInventory/ProductInventory"
 
 
 function App() {
@@ -15,16 +18,20 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route
-            path="/orders"
             element={
               <ProtectedRoute>
                 <Layout />
               </ProtectedRoute>
             }
             >
-            <Route index element={<Orders />} />
-            <Route path="new" element={<OrderNew />} />
-            <Route path=":orderId" element={<OrderDetail />} />
+            <Route path="/orders" element={<Orders />} />
+            <Route path="/orders/new" element={<OrderNew />} />
+            <Route path="/orders/:orderId" element={<OrderDetail />} />
+
+            <Route path="/products" element={<Products />} />
+            <Route path="/products/new" element={<ProductForm />} />
+            <Route path="/products/:productId/edit" element={<ProductForm />} />
+            <Route path="/products/:productId/inventory" element={<ProductInventory />} />
           </Route>
           <Route path="*" element={<Navigate to="/orders" replace />} />
         </Routes>

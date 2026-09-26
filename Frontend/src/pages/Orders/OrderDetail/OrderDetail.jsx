@@ -42,7 +42,7 @@ export default function OrderDetail() {
   const { orderId } = useParams()
 
   const [order, setOrder] = useState(null)
-  const [materials, setMaterials] = useState([])
+  const [products, setProducts] = useState([])
   const [payment, setPayment] = useState(null)
   const [bankAccount, setBankAccount] = useState(null)
   const [assignment, setAssignment] = useState(null)
@@ -53,12 +53,12 @@ export default function OrderDetail() {
   useEffect(() => {
     async function fetchAll() {
       try {
-        const [orderRes, materialsRes] = await Promise.all([
+        const [orderRes, productsRes] = await Promise.all([
           api.get(`/orders/${orderId}`),
-          api.get('/materials/'),
+          api.get('/products/'),
         ])
         setOrder(orderRes.data)
-        setMaterials(materialsRes.data)
+        setProducts(productsRes.data)
       } catch (err) {
         setError('No se pudo cargar el pedido')
         setLoading(false)
@@ -105,7 +105,7 @@ export default function OrderDetail() {
   const formatDate = (value) =>
     new Date(value).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
-  const getMaterial = (materialId) => materials.find((m) => m.id === materialId)
+  const getProduct = (productId) => products.find((m) => m.id === productId)
 
   if (loading) return <main className="detail-main"><p className="detail-empty">Cargando pedido...</p></main>
   if (error) return <main className="detail-main"><p className="detail-empty detail-error-text">{error}</p></main>
@@ -153,11 +153,11 @@ export default function OrderDetail() {
               </thead>
               <tbody>
                 {order.items.map((item) => {
-                  const material = getMaterial(item.material_id)
+                  const product = getProduct(item.product_id)
                   return (
                     <tr key={item.id}>
-                      <td>{material?.name || 'Producto'}</td>
-                      <td>{item.quantity_m3} {material?.unit}</td>
+                      <td>{product?.name || 'Producto'}</td>
+                      <td>{item.quantity_m3} {product?.unit}</td>
                       <td>{formatCurrency(item.unit_price)}</td>
                       <td className="detail-line-total">{formatCurrency(item.subtotal)}</td>
                     </tr>

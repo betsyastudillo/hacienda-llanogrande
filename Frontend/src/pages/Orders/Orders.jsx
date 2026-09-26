@@ -29,7 +29,7 @@ export default function Orders() {
     async function fetchOrders() {
       try {
         const response = await api.get('/orders/')
-        console.log(response)
+
         setOrders(response.data)
       } catch (err) {
         setError('No se pudieron cargar los pedidos')

@@ -89,7 +89,7 @@ def edit_product(db: Session, product_id: UUID, data: ProductCreate) -> Optional
     product_exists.tax_rate = data.tax_rate
     product_exists.unit = data.unit
     product_exists.approx_weight_kg = _resolve_approx_weight(data, parent)
-    product_exists.parent_product = data.parent_product_id
+    product_exists.parent_product_id = data.parent_product_id
     product_exists.units_per_pack = data.units_per_pack
 
     db.commit()

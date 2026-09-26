@@ -1,0 +1,130 @@
+.products-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.products-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.products-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.products-create-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--red-soft);
+  color: var(--white-bg);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.products-create-btn:hover {
+  background-color: var(--red-wine);
+}
+
+.products-empty {
+  text-align: center;
+  color: var(--text-footer);
+  font-size: 14px;
+  padding: 2rem 0;
+}
+
+.products-table-wrapper {
+  overflow-x: auto;
+  background-color: var(--white-bg);
+  border-radius: 12px;
+  margin-top: 1.5rem;
+}
+
+.products-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.products-table th {
+  text-align: left;
+  font-size: 16px;
+  color: var(--text-footer);
+  font-weight: 500;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.products-table td {
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.products-row-pack td {
+  background-color: #fbfaf6;
+  font-size: 13px;
+  color: var(--text-footer);
+}
+
+.products-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1a1a18;
+  font-weight: 500;
+}
+
+.products-pack-indent {
+  padding-left: 12px;
+  font-weight: 400;
+}
+
+.products-actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.products-stock-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.products-stock-value {
+  font-weight: 500;
+  color: #1a1a18;
+}
+
+.products-edit-btn, .products-stock-link {
+  background-color: var(--white-bg);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.products-edit-btn:hover {
+  background-color: #f4f3ee;
+}
+
+.products-empty-inline {
+  font-size: 12px;
+  color: var(--text-footer);
+  font-style: italic;
+}

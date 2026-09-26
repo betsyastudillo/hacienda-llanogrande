@@ -1,0 +1,149 @@
+.inventory-main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.inventory-back-btn {
+  background: none;
+  border: none;
+  color: var(--text-footer);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1rem;
+}
+
+.inventory-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1a1a18;
+  margin: 0;
+}
+
+.inventory-subtitle {
+  font-size: 14px;
+  color: var(--text-footer);
+  margin: 4px 0 1.5rem;
+}
+
+.inventory-form-card,
+.inventory-history-card {
+  background-color: var(--white-bg);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.inventory-form-title {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 12px;
+}
+
+.inventory-form-error {
+  background-color: var(--error);
+  color: var(--white-bg);
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.inventory-form-row {
+  display: grid;
+  grid-template-columns: 1fr 140px;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.inventory-form-select,
+.inventory-form-input-qty,
+.inventory-form-input-reason {
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.inventory-form-input-reason {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.inventory-form-submit-btn {
+  height: 42px;
+  padding: 0 20px;
+  border-radius: 8px;
+  border: none;
+  background-color: var(--red-soft);
+  color: var(--white-bg);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.inventory-form-submit-btn:hover:not(:disabled) {
+  background-color: var(--red-wine);
+}
+
+.inventory-empty {
+  font-size: 13px;
+  color: var(--text-footer);
+}
+
+.inventory-movements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inventory-movement-row {
+  display: grid;
+  grid-template-columns: 100px 80px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.inventory-movement-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.inventory-movement-badge.is-entry {
+  background-color: #D9F0DC;
+  color: #1F5C29;
+}
+
+.inventory-movement-badge.is-exit {
+  background-color: #FCE8C4;
+  color: #8A5A0A;
+}
+
+.inventory-movement-badge.is-adjust {
+  background-color: #DCEAFB;
+  color: #1E4E8C;
+}
+
+.inventory-movement-qty {
+  font-weight: 500;
+}
+
+.inventory-movement-reason {
+  color: var(--text-footer);
+}
+
+.inventory-movement-date {
+  color: var(--text-footer);
+  font-size: 12px;
+  white-space: nowrap;
+}

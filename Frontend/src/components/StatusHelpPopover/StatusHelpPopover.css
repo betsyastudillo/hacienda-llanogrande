@@ -21,9 +21,9 @@
 }
 
 .status-help-panel {
-  position: absolute;
-  top: 22px;
-  left: 0;
+  position: fixed;
+  top: auto;
+  margin-top: 8px;
   z-index: 21;
   width: 220px;
   max-width: 85vw;
