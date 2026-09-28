@@ -14,3 +14,4 @@ class InventoryMovement(Base, AuditMixin):
     movement_type = Column(String, nullable=False)  # entrada | salida | ajuste
     quantity = Column(Integer, nullable=False)  # positivo en entrada/salida; puede ser +/- en ajuste
     reason = Column(String, nullable=True)
+    category = Column(String, nullable=True)  # solo en ajustes: damage | count_difference | other

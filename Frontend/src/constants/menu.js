@@ -4,7 +4,8 @@ export const MENU_ITEMS = [
   { label: 'Pedidos', path: '/orders', permission: null },  // visible para cualquier autenticado
 
   { label: 'Productos', path: '/products', permission: null },  // GET abierto a cualquier autenticado
-
+  
+  { label: 'Inventario', path: '/inventory', permission: 'inventory:ver' },
   // { label: 'Pagos', path: '/payments', permission: 'payment:ver' },
   // { label: 'Mis pagos', path: '/my-payments', permission: 'payment:ver_propio' },
 
