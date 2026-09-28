@@ -47,7 +47,7 @@ export default function Companies() {
           {canCreate && (
             <button 
               className='companies-create-btn' 
-              // onClick={() => navigate('/companies/new')}
+              onClick={() => navigate('/companies/new')}
             >
               <CirclePlus size={18} />
               Crear

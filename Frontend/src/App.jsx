@@ -11,6 +11,7 @@ import ProductForm from "./pages/Products/ProductForm/ProductForm"
 import ProductInventory from "./pages/Products/ProductInventory/ProductInventory"
 import LinkLogic from "./pages/LinkLogin/LinkLogin"
 import Companies from "./pages/Companies/Companies"
+import CompanyNew from "./pages/Companies/CompanyNew/CompanyNew"
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
             <Route path="/link-login" element={<LinkLogic/>}/>     
 
             <Route path="/companies" element={<Companies />} />    
+            <Route path="/companies/new" element={<CompanyNew />} />    
           </Route> 
           <Route path="*" element={<Navigate to="/orders" replace />} />
         </Routes>
