@@ -30,7 +30,7 @@
 .detail-order-id {
   font-size: 22px;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text-black);
   margin: 0;
 }
 
@@ -112,7 +112,7 @@
 }
 
 .detail-stepper-label.is-current {
-  color: var(--text-h);
+  color: var(--text-black);
   font-weight: 500;
 }
 
@@ -176,7 +176,7 @@
 }
 
 .detail-totals-final {
-  color: var(--text-h);
+  color: var(--text-black);
   font-weight: 600;
   font-size: 15px;
   margin-top: 4px;

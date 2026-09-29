@@ -7,7 +7,7 @@
 .product-form-title {
   font-size: 22px;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text-black);
   margin: 0 0 1.5rem;
 }
 
@@ -85,7 +85,7 @@
   border: 1px solid var(--border);
   font-size: 14px;
   background-color: var(--white-bg);
-  color: var(--text-h);
+  color: var(--text-black);
   box-sizing: border-box;
 }
 

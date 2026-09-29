@@ -1,7 +1,7 @@
 :root {
   --text: #444441;
   --text-footer: #5f5e5a;
-  --text-h: #08060d;
+  --text-black: #08060d;
   --bg: #EAEFEF;
   --border: #d3d1c7;
   --code-bg: #f4f3ec;
@@ -61,7 +61,7 @@ h1,
 h2 {
   font-family: var(--heading);
   font-weight: 500;
-  color: var(--text-h);
+  color: var(--text-black);
 }
 
 h1 {
@@ -91,7 +91,7 @@ code,
   font-family: var(--mono);
   display: inline-flex;
   border-radius: 4px;
-  color: var(--text-h);
+  color: var(--text-black);
 }
 
 code {

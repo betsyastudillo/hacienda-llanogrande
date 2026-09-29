@@ -8,11 +8,11 @@ import OrderNew from "./pages/Orders/OrderNew/OrderNew"
 import OrderDetail from "./pages/Orders/OrderDetail/OrderDetail"
 import Products from "./pages/Products/Products"
 import ProductForm from "./pages/Products/ProductForm/ProductForm"
-import ProductInventory from "./pages/Products/Inventory/ProductInventory/ProductInventory"
 import LinkLogic from "./pages/LinkLogin/LinkLogin"
 import Companies from "./pages/Companies/Companies"
 import CompanyNew from "./pages/Companies/CompanyNew/CompanyNew"
-import Inventory from "./pages/Products/Inventory/Inventory"
+import Inventory from './pages/Inventory/Inventory'
+import ProductInventory from './pages/Inventory/ProductInventory/ProductInventory'
 
 function App() {
   return (

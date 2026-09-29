@@ -19,7 +19,7 @@
   border: 1px solid var(--border);
   font-size: 14px;
   background-color: var(--white-bg);
-  color: var(--text-h);
+  color: var(--text-black);
 }
 
 .search-input:focus {

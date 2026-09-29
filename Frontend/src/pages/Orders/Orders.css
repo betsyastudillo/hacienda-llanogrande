@@ -14,7 +14,7 @@
 .orders-title {
   font-size: 22px;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text-black);
   margin: 0;
 }
 
@@ -103,7 +103,7 @@
 
 .orders-id-cell {
   font-weight: 500;
-  color: var(--text-h);
+  color: var(--text-black);
   text-decoration: underline;
 }
 
@@ -113,7 +113,7 @@
 
 .orders-total-cell {
   font-weight: 500;
-  color: var(--text-h);
+  color: var(--text-black);
 }
 
 .orders-table-wrapper {

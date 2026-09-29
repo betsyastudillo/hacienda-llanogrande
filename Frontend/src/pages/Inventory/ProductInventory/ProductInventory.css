@@ -31,7 +31,7 @@
 .inventory-title {
   font-size: 22px;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text-black);
   margin: 0;
 }
 
@@ -88,7 +88,7 @@
   border-radius: 8px;
   border: 1px solid var(--border);
   background-color: var(--social-bg);
-  color: var(--text-h);
+  color: var(--text-black);
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
@@ -135,7 +135,7 @@
 .inventory-kardex-value {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text-black);
 }
 
 .inventory-kardex-value.is-entry {

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowDown, ArrowUp, Wrench, CirclePlus } from 'lucide-react'
-import api from '../../../../services/api'
-import { useAuth } from '../../../../context/AuthContext'
-import { formatDate } from '../../../../utils/formatDate'
-import Modal from '../../../../components/Modal/Modal'
-import { ADJUSTMENT_CATEGORIES } from '../../../../constants/inventoryReasons'
+import api from '../../../services/api'
+import { useAuth } from '../../../context/AuthContext'
+import { formatDate } from '../../../utils/formatDate'
+import Modal from '../../../components/Modal/Modal'
+import { ADJUSTMENT_CATEGORIES } from '../../../constants/inventoryReasons'
 import './ProductInventory.css'
 
 const MOVEMENT_CONFIG = {
@@ -110,13 +110,14 @@ export default function ProductInventory() {
 
     setSubmitting(true)
     try {
-      await api.post('/inventory/movements', {
+      const response = await api.post('/inventory/movements', {
         product_id: productId,
         movement_type: movementType,
         quantity: qty,
         reason: reason || null,
         category: movementType === 'ajuste' ? category : null,
       })
+      console.log(response)
       handleClose()
       await loadData()
       await loadKardex()
