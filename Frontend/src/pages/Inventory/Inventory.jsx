@@ -1,40 +1,105 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye } from 'lucide-react'
+import { Eye, CirclePlus } from 'lucide-react'
 import api from '../../services/api'
+import { useAuth } from '../../context/AuthContext'
 import SearchInput from '../../components/SearchInput/SearchInput'
+import Modal from '../../components/Modal/Modal'
+import { ADJUSTMENT_CATEGORIES } from '../../constants/inventoryReasons'
 import './Inventory.css'
 
 export default function Inventory() {
   const navigate = useNavigate()
+  const { hasPermission } = useAuth()
 
   const [products, setProducts] = useState([])
   const [stockByProduct, setStockByProduct] = useState({})
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
 
+  const [showModal, setShowModal] = useState(false)
+  const [selectedProductId, setSelectedProductId] = useState('')
+  const [movementType, setMovementType] = useState('entrada')
+  const [quantity, setQuantity] = useState('')
+  const [category, setCategory] = useState('')
+  const [reason, setReason] = useState('')
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const canManage = hasPermission('inventory:gestionar')
+  const canAdjust = hasPermission('inventory:ajustar')
+
+  const loadData = async () => {
+    const res = await api.get('/products/')
+    const baseProducts = res.data.filter((p) => !p.parent_product_id)
+    setProducts(baseProducts)
+
+    const stockEntries = await Promise.all(
+      baseProducts.map(async (p) => {
+        try {
+          const stockRes = await api.get(`/inventory/products/${p.id}/stock`)
+          return [p.id, stockRes.data.current_stock]
+        } catch {
+          return [p.id, null]
+        }
+      })
+    )
+    setStockByProduct(Object.fromEntries(stockEntries))
+    setLoading(false)
+  }
+
   useEffect(() => {
-    async function loadData() {
-      const res = await api.get('/products/')
-      const baseProducts = res.data.filter((p) => !p.parent_product_id)
-      setProducts(baseProducts)
-
-      const stockEntries = await Promise.all(
-        baseProducts.map(async (p) => {
-          try {
-            const stockRes = await api.get(`/inventory/products/${p.id}/stock`)
-            return [p.id, stockRes.data.current_stock]
-          } catch {
-            return [p.id, null]
-          }
-        })
-      )
-      setStockByProduct(Object.fromEntries(stockEntries))
-      setLoading(false)
-    }
-
     loadData()
   }, [])
+
+  const resetForm = () => {
+    setSelectedProductId('')
+    setMovementType('entrada')
+    setQuantity('')
+    setCategory('')
+    setReason('')
+    setError('')
+  }
+
+  const handleClose = () => {
+    resetForm()
+    setShowModal(false)
+  }
+
+  const handleRegister = async () => {
+    setError('')
+    const qty = Number(quantity)
+
+    if (!selectedProductId) {
+      setError('Selecciona un producto')
+      return
+    }
+    if (!quantity || (movementType === 'ajuste' ? qty === 0 : qty <= 0) || !Number.isInteger(qty)) {
+      setError('Ingresa una cantidad entera válida')
+      return
+    }
+    if (movementType === 'ajuste' && (!category || !reason)) {
+      setError('Los ajustes requieren categoría y motivo')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await api.post('/inventory/movements', {
+        product_id: selectedProductId,
+        movement_type: movementType,
+        quantity: qty,
+        reason: reason || null,
+        category: movementType === 'ajuste' ? category : null,
+      })
+      handleClose()
+      await loadData()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'No se pudo registrar el movimiento')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -42,7 +107,19 @@ export default function Inventory() {
 
   return (
     <main className="inventory-list-main">
-      <h1 className="inventory-list-title">Inventario</h1>
+      <div className="inventory-list-header">
+        <h1 className="inventory-list-title">Inventario</h1>
+        {canManage && (
+          <button
+            type="button"
+            className="inventory-list-create-btn"
+            onClick={() => setShowModal(true)}
+          >
+            <CirclePlus size={18} />
+            Nuevo movimiento
+          </button>
+        )}
+      </div>
 
       <SearchInput
         value={searchTerm}
@@ -68,7 +145,7 @@ export default function Inventory() {
             <tbody>
               {filteredProducts.map((product) => {
                 const stock = stockByProduct[product.id]
-                const isLow = stock !== null && stock !== undefined && stock === 0
+                const isLow = stock === 0
                 return (
                   <tr
                     key={product.id}
@@ -91,6 +168,77 @@ export default function Inventory() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {showModal && (
+        <Modal title="Registrar movimiento" onClose={handleClose}>
+          {error && <div className="inventory-form-error">{error}</div>}
+
+          <select
+            className="reason-picker-select"
+            value={selectedProductId}
+            onChange={(e) => setSelectedProductId(e.target.value)}
+          >
+            <option value="">Selecciona un producto</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+
+          <div className="inventory-form-row">
+            <select
+              className="reason-picker-select"
+              value={movementType}
+              onChange={(e) => {
+                setMovementType(e.target.value)
+                setCategory('')
+                setReason('')
+              }}
+            >
+              <option value="entrada">Entrada (cosecha)</option>
+              {canAdjust && <option value="ajuste">Ajuste (+/-)</option>}
+            </select>
+
+            <input
+              type="number"
+              step="1"
+              className="inventory-form-input-qty"
+              placeholder="Cantidad"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+            />
+          </div>
+
+          {movementType === 'ajuste' && (
+            <select
+              className="reason-picker-select"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              <option value="">Selecciona una categoría</option>
+              {ADJUSTMENT_CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+          )}
+
+          <input
+            type="text"
+            className="reason-picker-input"
+            placeholder={movementType === 'ajuste' ? 'Motivo (obligatorio)' : 'Motivo (opcional)'}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+
+          <button
+            type="button"
+            className="inventory-form-submit-btn"
+            onClick={handleRegister}
+            disabled={submitting}
+          >
+            {submitting ? 'Registrando...' : 'Registrar'}
+          </button>
+        </Modal>
       )}
     </main>
   )
