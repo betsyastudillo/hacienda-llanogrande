@@ -1,5 +1,5 @@
 .inventory-main {
-  max-width: 640px;
+  max-width: 680px;
   margin: 0 auto;
   padding: 2rem;
 }
@@ -127,10 +127,6 @@
   color: var(--text);
 }
 
-/* .inventory-kardex-label, .inventory-kardex-value {
-  color: #ffffff;
-} */
-
 .inventory-kardex-label {
   font-size: 11px;
   color: var(--text-footer);
@@ -151,6 +147,10 @@
 
 }
 
+.inventory-movements-wrapper {
+  overflow-x: auto;
+}
+
 .inventory-movements-list {
   display: flex;
   flex-direction: column;
@@ -169,11 +169,11 @@
 .inventory-movement-row {
   display: grid;
   grid-template-columns: 110px 90px 1fr 100px;
-  gap: 12px;
   align-items: start;
   font-size: 13px;
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
+  min-width: 500px;
 }
 
 .inventory-movement-badge {
@@ -287,6 +287,23 @@
 }
 
 @media (max-width: 600px) {
+  .inventory-main {
+    padding: 1.25rem 1rem;
+  }
+
+  .inventory-header-actions {
+    justify-content: center;
+  }
+
+  .inventory-kardex-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .inventory-kardex-sep {
+    display: none;
+  }
+  
   .inventory-kardex-grid {
     grid-template-columns: repeat(2, 1fr);
   }

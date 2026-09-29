@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, CirclePlus } from 'lucide-react'
-import api from '../../services/api'
-import { useAuth } from '../../context/AuthContext'
-import SearchInput from '../../components/SearchInput/SearchInput'
-import Modal from '../../components/Modal/Modal'
-import { ADJUSTMENT_CATEGORIES } from '../../constants/inventoryReasons'
+import api from '../../../services/api'
+import { useAuth } from '../../../context/AuthContext'
+import SearchInput from '../../../components/SearchInput/SearchInput'
+import Modal from '../../../components/Modal/Modal'
+import { ADJUSTMENT_CATEGORIES } from '../../../constants/inventoryReasons'
 import './Inventory.css'
 
 export default function Inventory() {

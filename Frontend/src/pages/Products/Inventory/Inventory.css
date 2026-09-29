@@ -11,6 +11,19 @@
   margin: 0 0 1rem;
 }
 
+.inventory-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.search-input-wrapper {
+  width: 200px;
+  margin-left: auto;
+  margin-bottom: 1.5rem;
+}
+
 .inventory-list-empty {
   text-align: center;
   color: var(--text-footer);
@@ -64,4 +77,11 @@
 
 .inventory-list-icon-cell {
   color: var(--text-footer);
+}
+
+@media (max-width: 600px) {
+  .search-input-wrapper {
+    width: 100%;
+    margin-left: 0;
+  }
 }

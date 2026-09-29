@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowDown, ArrowUp, Wrench, CirclePlus } from 'lucide-react'
-import api from '../../../services/api'
-import { useAuth } from '../../../context/AuthContext'
-import { formatDate } from '../../../utils/formatDate'
-import Modal from '../../../components/Modal/Modal'
-import { ADJUSTMENT_CATEGORIES } from '../../../constants/inventoryReasons'
+import api from '../../../../services/api'
+import { useAuth } from '../../../../context/AuthContext'
+import { formatDate } from '../../../../utils/formatDate'
+import Modal from '../../../../components/Modal/Modal'
+import { ADJUSTMENT_CATEGORIES } from '../../../../constants/inventoryReasons'
 import './ProductInventory.css'
 
 const MOVEMENT_CONFIG = {
@@ -134,8 +134,8 @@ export default function ProductInventory() {
 
   return (
     <main className="inventory-main">
-      <button className="inventory-back-btn" onClick={() => navigate('/products')}>
-        ← Volver a productos
+      <button className="inventory-back-btn" onClick={() => navigate('/inventory')}>
+        ← Volver a inventario
       </button>
       <div className='inventory-header-block'>
         <div className='inventory-title-center'>
@@ -219,31 +219,33 @@ export default function ProductInventory() {
         {movements.length === 0 ? (
           <p className="inventory-empty">Aún no hay movimientos registrados.</p>
         ) : (
-          <div className="inventory-movements-list">
-            <div className="inventory-movement-row inventory-movement-header">
-              <span>Tipo</span>
-              <span>Fecha</span>
-              <span>Cantidad</span>
-              <span>Motivo</span>
-            </div>
+          <div className='inventory-movements-wrapper'>
+            <div className="inventory-movements-list">
+              <div className="inventory-movement-row inventory-movement-header">
+                <span>Tipo</span>
+                <span>Fecha</span>
+                <span>Cantidad</span>
+                <span>Motivo</span>
+              </div>
 
-            {movements.map((m) => {
-              const config = MOVEMENT_CONFIG[m.movement_type]
-              const Icon = config.icon
-              return (
-                <div key={m.id} className="inventory-movement-row">
-                  <span className={`inventory-movement-badge ${config.className}`}>
-                    <Icon size={14} />
-                    {config.label}
-                  </span>
-                  <span className="inventory-movement-date">{formatDate(m.created_at)}</span>
-                  <span className="inventory-movement-qty">{m.quantity} {product.unit}</span>
-                  <span className="inventory-movement-reason">
-                    {m.category ? `${categoryLabel(m.category)} — ` : ''}{m.reason || '—'}
-                  </span>
-                </div>
-              )
-            })}
+              {movements.map((m) => {
+                const config = MOVEMENT_CONFIG[m.movement_type]
+                const Icon = config.icon
+                return (
+                  <div key={m.id} className="inventory-movement-row">
+                    <span className={`inventory-movement-badge ${config.className}`}>
+                      <Icon size={14} />
+                      {config.label}
+                    </span>
+                    <span className="inventory-movement-date">{formatDate(m.created_at)}</span>
+                    <span className="inventory-movement-qty">{m.quantity} {product.unit}</span>
+                    <span className="inventory-movement-reason">
+                      {m.category ? `${categoryLabel(m.category)} — ` : ''}{m.reason || '—'}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>

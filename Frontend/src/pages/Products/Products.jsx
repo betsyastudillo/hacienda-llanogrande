@@ -77,7 +77,7 @@ export default function Products() {
       <SearchInput
         value={searchTerm}
         onChange={setSearchTerm}
-        placeholder="Buscar por nombre o categoría..."
+        placeholder="Buscar producto..."
       />
 
       {loading ? (
@@ -144,13 +144,6 @@ function ProductRow({ product, packs, stock, canManage, canViewInventory, canSee
                 <span className='products-stock-value'>
                   {stock !== null && stock !== undefined ? `${stock} ${product.unit}` : '—'}
                 </span>
-                <button
-                  type='button'
-                  className='products-stock-link'
-                  onClick={() => navigate(`/products/${product.id}/inventory`)}
-                  >
-                  <Eye size={16} />
-                </button>
               </div>
             ) : (
               isOutOfStock ? <span className='products-out-of-stock-badge'>Agotado</span> : <span className='products-with-stock-badge'> Disponible </span>
