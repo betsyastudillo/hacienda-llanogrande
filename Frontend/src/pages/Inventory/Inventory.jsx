@@ -172,8 +172,10 @@ export default function Inventory() {
 
       {showModal && (
         <Modal title="Registrar movimiento" onClose={handleClose}>
-          {error && <div className="inventory-form-error">{error}</div>}
-
+        {error && <div className="inventory-form-error">{error}</div>}
+        
+        <div className="modal-field">
+          <label className="modal-field-label">Producto</label>
           <select
             className="reason-picker-select"
             value={selectedProductId}
@@ -184,32 +186,38 @@ export default function Inventory() {
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
+        </div>
 
-          <div className="inventory-form-row">
-            <select
-              className="reason-picker-select"
-              value={movementType}
-              onChange={(e) => {
-                setMovementType(e.target.value)
-                setCategory('')
-                setReason('')
-              }}
-            >
-              <option value="entrada">Entrada (cosecha)</option>
-              {canAdjust && <option value="ajuste">Ajuste (+/-)</option>}
-            </select>
+        <div className="modal-field">
+          <label className="modal-field-label">Tipo de movimiento</label>
+          <select
+            className="reason-picker-select"
+            value={movementType}
+            onChange={(e) => {
+              setMovementType(e.target.value)
+              setCategory('')
+            }}
+          >
+            <option value="entrada">Entrada (cosecha)</option>
+            {canAdjust && <option value="ajuste">Ajuste (+/-)</option>}
+          </select>
+        </div>
 
-            <input
-              type="number"
-              step="1"
-              className="inventory-form-input-qty"
-              placeholder="Cantidad"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-            />
-          </div>
+        <div className="modal-field">
+          <label className="modal-field-label">Cantidad</label>
+          <input
+            type="number"
+            step="1"
+            className="reason-picker-input"
+            placeholder="Cantidad"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+          />
+        </div>
 
-          {movementType === 'ajuste' && (
+        {movementType === 'ajuste' && (
+          <div className="modal-field">
+            <label className="modal-field-label">Categoría</label>
             <select
               className="reason-picker-select"
               value={category}
@@ -220,25 +228,29 @@ export default function Inventory() {
                 <option key={c.value} value={c.value}>{c.label}</option>
               ))}
             </select>
-          )}
+          </div>
+        )}
 
+        <div className="modal-field">
+          <label className="modal-field-label">Motivo</label>
           <input
             type="text"
             className="reason-picker-input"
-            placeholder={movementType === 'ajuste' ? 'Motivo (obligatorio)' : 'Motivo (opcional)'}
+            placeholder={movementType === 'ajuste' ? 'Obligatorio' : 'Opcional'}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
+        </div>
 
-          <button
-            type="button"
-            className="inventory-form-submit-btn"
-            onClick={handleRegister}
-            disabled={submitting}
-          >
-            {submitting ? 'Registrando...' : 'Registrar'}
-          </button>
-        </Modal>
+        <button
+          type="button"
+          className="inventory-form-submit-btn modal-submit-full"
+          onClick={handleRegister}
+          disabled={submitting}
+        >
+          {submitting ? 'Registrando...' : 'Guardar'}
+        </button>
+      </Modal>
       )}
     </main>
   )
