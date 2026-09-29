@@ -61,7 +61,7 @@ def get_movements_by_product(db: Session, product_id: UUID) -> List[InventoryMov
 def create_manual_movement(
   db: Session, product_id: UUID, movement_type: str, quantity: int, reason: Optional[str], category: Optional[str], current_user
 ) -> InventoryMovement:
-    
+
   product = db.query(Product).filter(Product.id == product_id).first()
   
   if not product:

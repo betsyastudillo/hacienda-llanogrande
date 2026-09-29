@@ -5,6 +5,7 @@ import { useAuth } from '../../../context/AuthContext'
 import UnitReferenceHelper from '../../../components/UnitReferenceHelper/UnitReferenceHelper'
 import { estimateWeightKg } from '../../../constants/units'
 import { Pencil, Trash } from 'lucide-react'
+import { formatCurrency } from '../../../utils/formatCurrency'
 import './OrderNew.css'
 
 export default function OrderNew() {
@@ -145,10 +146,6 @@ export default function OrderNew() {
       setSubmitting(false)
     }
   }
-
-  const formatCurrency = (value) =>
-    new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value)
-
 
   return (
     <main className="order-new-main">

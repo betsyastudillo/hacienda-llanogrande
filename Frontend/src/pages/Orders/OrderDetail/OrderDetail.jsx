@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom'
 import api from '../../../services/api'
 import { ORDER_STATUS_STEPS } from '../../../constants/orderStatus'
 import { CircleCheck, CircleX, Clock } from 'lucide-react'
+import { formatCurrency } from '../../../utils/formatCurrency'
+import { formatDate } from '../../../utils/formatDate'
 import './OrderDetail.css'
 
 const API_BASE = 'http://localhost:8000'
@@ -98,12 +100,6 @@ export default function OrderDetail() {
 
     fetchAll()
   }, [orderId])
-
-  const formatCurrency = (value) =>
-    new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value)
-
-  const formatDate = (value) =>
-    new Date(value).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
   const getProduct = (productId) => products.find((m) => m.id === productId)
 

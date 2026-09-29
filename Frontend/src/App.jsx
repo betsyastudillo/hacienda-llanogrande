@@ -34,13 +34,13 @@ function App() {
             <Route path="/products" element={<Products />} />
             <Route path="/products/new" element={<ProductForm />} />
             <Route path="/products/:productId/edit" element={<ProductForm />} />
-            <Route path="/products/:productId/inventory" element={<ProductInventory />} />
             <Route path="/link-login" element={<LinkLogic/>}/>     
 
             <Route path="/companies" element={<Companies />} />    
             <Route path="/companies/new" element={<CompanyNew />} />    
 
             <Route path="/inventory" element={<Inventory />} />
+            <Route path="/inventory/:productId" element={<ProductInventory />} />
           </Route> 
           <Route path="*" element={<Navigate to="/orders" replace />} />
         </Routes>

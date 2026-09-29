@@ -4,6 +4,7 @@ import { Package, CirclePlus, Boxes, Eye, Pencil } from 'lucide-react'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import SearchInput from '../../components/SearchInput/SearchInput'
+import { formatCurrency } from '../../utils/formatCurrency'
 import './Products.css'
 
 export default function Products() {
@@ -44,9 +45,6 @@ export default function Products() {
 
     loadProducts()
   }, [canSeeStock])
-
-  const formatCurrency = (value) =>
-    new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value)
 
   const filteredProducts = products.filter((m) => {
     const term = searchTerm.toLowerCase()

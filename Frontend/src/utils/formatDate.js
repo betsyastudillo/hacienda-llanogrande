@@ -14,3 +14,10 @@ export function formatDate(value) {
 
   return `${day}/${month}/${year}`
 }
+
+// Para fechas SIN hora (formato "YYYY-MM-DD", ej. las del kardex) —
+// evita el desfase de un día que causa new Date() al asumir UTC.
+export function formatDateOnly(value) {
+  const [year, month, day] = value.split('-')
+  return `${day}/${MONTHS_SHORT[Number(month) - 1]}/${year.slice(-2)}`
+}

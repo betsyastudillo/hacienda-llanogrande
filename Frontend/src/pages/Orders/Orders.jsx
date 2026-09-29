@@ -8,6 +8,7 @@ import StatusBadge from '../../components/StatusBadge/StatusBadge'
 import { STATUS_LABELS, STATUS_COLORS, STATUS_ICONS } from '../../constants/orderStatus'
 import StatusHelpPopover from '../../components/StatusHelpPopover/StatusHelpPopover'
 import { CirclePlus, Eye } from 'lucide-react'
+import { formatCurrency } from '../../utils/formatCurrency'
 import './Orders.css'
 
 
@@ -40,10 +41,7 @@ export default function Orders() {
     fetchOrders()
   }, [])
   
-  
-  const formatCurrency = (value) =>
-    new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value)
-  
+
   const filteredOrders = orders.filter((order) => {
     const term = searchTerm.toLowerCase()
     

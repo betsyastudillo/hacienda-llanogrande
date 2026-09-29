@@ -3,15 +3,28 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowDown, ArrowUp, Wrench, CirclePlus } from 'lucide-react'
 import api from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
-import { formatDate } from '../../../utils/formatDate'
 import Modal from '../../../components/Modal/Modal'
 import { ADJUSTMENT_CATEGORIES } from '../../../constants/inventoryReasons'
+import { formatCurrency } from '../../../utils/formatCurrency'
+import { formatDate, formatDateOnly } from '../../../utils/formatDate'
 import './ProductInventory.css'
 
 const MOVEMENT_CONFIG = {
   entrada: { label: 'Entrada', icon: ArrowDown, className: 'is-entry' },
   salida: { label: 'Salida', icon: ArrowUp, className: 'is-exit' },
   ajuste: { label: 'Ajuste', icon: Wrench, className: 'is-adjust' },
+}
+
+function KardexCard({ label, value, price, valueClass = '', sign = '', isFinal = false }) {
+  const total = Math.abs(value) * price
+
+  return (
+    <div className={`inventory-kardex-item ${isFinal ? 'is-final' : ''}`}>
+      <span className="inventory-kardex-label">{label}</span>
+      <span className={`inventory-kardex-value ${valueClass}`}>{sign}{value}</span>
+      <span className="inventory-kardex-total">{formatCurrency(total)}</span>
+    </div>
+  )
 }
 
 function todayISO() {
@@ -68,6 +81,7 @@ export default function ProductInventory() {
       const res = await api.get(`/inventory/products/${productId}/kardex`, {
         params: { start_date: kardexStart, end_date: kardexEnd },
       })
+      console.log("data", res.data)
       setKardex(res.data)
     } catch (err) {
       setKardexError(err.response?.data?.detail || 'No se pudo consultar el kardex')
@@ -185,32 +199,22 @@ export default function ProductInventory() {
         {kardexError && <div className="inventory-form-error">{kardexError}</div>}
 
         {kardex && (
-          <div className="inventory-kardex-grid">
-            <div className="inventory-kardex-item">
-              <span className="inventory-kardex-label">Saldo inicial</span>
-              <span className="inventory-kardex-value">{kardex.opening_balance} {product.unit}</span>
+          <>
+            <p className="inventory-kardex-range-label">
+              Del {formatDateOnly(kardex.start_date)} al {formatDateOnly(kardex.end_date)}
+            </p>
+            <p className="inventory-kardex-unit-note">
+              Todas las cantidades están expresadas en {product.unit} · Precio: {formatCurrency(product.price)} / {product.unit}
+            </p>
+            <div className="inventory-kardex-grid">
+              <KardexCard label="Saldo inicial" value={kardex.opening_balance} price={product.price} />
+              <KardexCard label="Entradas" value={kardex.entries} price={product.price} valueClass="is-entry" sign="+" />
+              <KardexCard label="Salidas" value={kardex.exits} price={product.price} valueClass="is-exit" sign="−" />
+              <KardexCard label="Pérdida por daño" value={kardex.adjustments_damage} price={product.price} valueClass="is-exit" />
+              <KardexCard label="Otros ajustes" value={kardex.adjustments_other} price={product.price} />
+              <KardexCard label="Saldo final" value={kardex.closing_balance} price={product.price} isFinal />
             </div>
-            <div className="inventory-kardex-item">
-              <span className="inventory-kardex-label">Entradas</span>
-              <span className="inventory-kardex-value is-entry">+{kardex.entries} {product.unit}</span>
-            </div>
-            <div className="inventory-kardex-item">
-              <span className="inventory-kardex-label">Salidas</span>
-              <span className="inventory-kardex-value is-exit">−{kardex.exits} {product.unit}</span>
-            </div>
-            <div className="inventory-kardex-item">
-              <span className="inventory-kardex-label">Pérdida por daño</span>
-              <span className="inventory-kardex-value is-exit">{kardex.adjustments_damage} {product.unit}</span>
-            </div>
-            <div className="inventory-kardex-item">
-              <span className="inventory-kardex-label">Otros ajustes</span>
-              <span className="inventory-kardex-value">{kardex.adjustments_other} {product.unit}</span>
-            </div>
-            <div className="inventory-kardex-item is-final">
-              <span className="inventory-kardex-label">Saldo final</span>
-              <span className="inventory-kardex-value">{kardex.closing_balance} {product.unit}</span>
-            </div>
-          </div>
+          </>
         )}
       </div>
 

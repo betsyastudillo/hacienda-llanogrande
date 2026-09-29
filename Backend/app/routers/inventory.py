@@ -45,8 +45,18 @@ def register_movement(
   current_user: InventoryManager,
   db: Session = Depends(get_db),
 ):
+
   try:
-    return create_manual_movement(db, data.product_id, data.movement_type, data.quantity, data.category, data.reason, current_user)
+    return create_manual_movement(
+      db=db, 
+      product_id=data.product_id, 
+      movement_type=data.movement_type, 
+      quantity=data.quantity, 
+      reason=data.reason, 
+      category=data.category, 
+      current_user=current_user
+    )
+  
   except ValueError as e:
     raise HTTPException(status_code=400, detail=str(e))
   

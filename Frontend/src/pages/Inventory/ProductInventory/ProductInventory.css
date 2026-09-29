@@ -113,6 +113,13 @@
   gap: 12px;
 }
 
+.inventory-kardex-unit-note {
+  font-size: 12px;
+  color: var(--text-footer);
+  font-style: italic;
+  margin: 0 0 12px;
+}
+
 .inventory-kardex-item {
   background-color: var(--code-bg);
   border-radius: 8px;
@@ -145,6 +152,26 @@
 .inventory-kardex-value.is-exit {
   color: #8A5A0A;
 
+}
+
+.inventory-kardex-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-black);
+}
+
+.inventory-kardex-total {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-footer);
+  margin-top: 2px;
+}
+
+.inventory-kardex-range-label {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-footer);
+  margin: 0 0 16px;
 }
 
 .inventory-movements-wrapper {

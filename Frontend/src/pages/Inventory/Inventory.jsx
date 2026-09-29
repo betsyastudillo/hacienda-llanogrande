@@ -85,13 +85,14 @@ export default function Inventory() {
 
     setSubmitting(true)
     try {
-      await api.post('/inventory/movements', {
+      const response = await api.post('/inventory/movements', {
         product_id: selectedProductId,
         movement_type: movementType,
         quantity: qty,
         reason: reason || null,
         category: movementType === 'ajuste' ? category : null,
       })
+      console.log(response)
       handleClose()
       await loadData()
     } catch (err) {
@@ -150,7 +151,7 @@ export default function Inventory() {
                   <tr
                     key={product.id}
                     className="inventory-list-row"
-                    onClick={() => navigate(`/products/${product.id}/inventory`)}
+                    onClick={() => navigate(`/inventory/${product.id}`)}
                   >
                     <td>{product.name}</td>
                     <td>{product.unit}</td>
