@@ -1,304 +1,361 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../../services/api'
-import { useAuth } from '../../../context/AuthContext'
-import UnitReferenceHelper from '../../../components/UnitReferenceHelper/UnitReferenceHelper'
-import { estimateWeightKg } from '../../../constants/units'
-import { Pencil, Trash } from 'lucide-react'
-import { formatCurrency } from '../../../utils/formatCurrency'
+import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES } from '../../../constants/companyDocuments'
 import './CompanyNew.css'
 
 export default function CompanyNew() {
-  const { user } = useAuth()
   const navigate = useNavigate()
 
-  const [products, setProducts] = useState([])
-  const [companies, setCompanies] = useState([])
-  const [selectedCompanyId, setSelectedCompanyId] = useState('')
+  const [step, setStep] = useState(1)
+  const [companyId, setCompanyId] = useState(null)
 
-  const [selectedProductId, setSelectedProductId] = useState('')
-  const [quantity, setQuantity] = useState('')
-  const [items, setItems] = useState([])
-  const [stockByProduct, setStockByProduct] = useState({})
-  const [editingIndex, setEditingIndex] = useState(null)
+  const [sameAsOperational, setSameAsOperational] = useState(true)
+
+  const [form, setForm] = useState({
+    legal_name: '',
+    display_name: '',
+    nit: '',
+    type: 'client', // fijo — este formulario siempre crea empresas cliente
+    person_type: 'juridica',
+    address: '',
+    phone: '',
+    email: '',
+    fiscal_address: '',
+    fiscal_phone: '',
+    fiscal_email: '',
+  })
+
+  const [documentType, setDocumentType] = useState('')
+  const [file, setFile] = useState(null)
+  const [pendingDocs, setPendingDocs] = useState([])
+  const [uploadedDocs, setUploadedDocs] = useState([])
+  const [uploading, setUploading] = useState(false)
 
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const isAdmin = user?.role === 'admin'
+  const documentTypes = form.person_type === 'natural' ? NATURAL_DOCUMENT_TYPES : JURIDICA_DOCUMENT_TYPES
 
-  // Muestra solo los productos que tienen stock, y se muestra en la creación la ctd disponible al seleccionar uno.
-  useEffect(() => {
-  async function loadProducts() {
-    const res = await api.get('/products/')
-    setProducts(res.data)
-
-    const stockEntries = await Promise.all(
-      res.data.map(async (p) => {
-        try {
-          const stockRes = await api.get(`/inventory/products/${p.id}/stock`)
-          return [p.id, stockRes.data.current_stock]
-        } catch {
-          return [p.id, 0]
-        }
-      })
-    )
-    setStockByProduct(Object.fromEntries(stockEntries))
+  const handleChange = (field) => (e) => {
+    setForm({ ...form, [field]: e.target.value })
   }
 
-  loadProducts()
-}, [])
-
-  useEffect(() => {
-    if (!isAdmin) return
-    api.get('/companies/').then((res) => {
-      setCompanies(res.data.filter((c) => c.type === 'client'))
-    })
-  }, [isAdmin])
-
-  const handleAddItem = () => {
-    setError('')
-    const qty = Number(quantity)
-
-    if (!selectedProductId || !quantity || qty <= 0) {
-      setError('Selecciona un producto y una cantidad válida')
-      return
-    }
-
-    if (!Number.isInteger(qty)) {
-      setError('La cantidad debe ser un número entero, sin decimales')
-      return
-    }
-
-    const product = products.find((m) => m.id === selectedProductId)
-
-    const newItem = {
-      product_id: selectedProductId,
-      product_name: product?.name,
-      product_unit: product?.unit,
-      approx_weight_kg: product?.approx_weight_kg,
-      unit_price: product?.price,
-      quantity_m3: Number(quantity),
-    }
-
-    if (editingIndex !== null) {
-      // Editamos una fila existente, la reemplazamos en la misma posición en que está
-      const updatedItems = [...items]
-      updatedItems[editingIndex] = newItem
-      setItems(updatedItems)
-      setEditingIndex(null)
-    } else {
-      setItems([...items, newItem])
-    }
-    
-    setSelectedProductId('')
-    setQuantity('')
-  }
-
-  const handleEditItem = (index) => {
-    const item = items[index]
-    setSelectedProductId(item.product_id)
-    setQuantity(String(item.quantity_m3))
-    setEditingIndex(index)
-  }
-
-  const handleCancelEdit = () => {
-    setEditingIndex(null)
-    setSelectedProductId('')
-    setQuantity('')
-  }
-
-  const handleRemoveItem = (index) => {
-    setItems(items.filter((_, i) => i !== index))
-  }
-
-  const handleSubmit = async () => {
+  const handleCreateCompany = async () => {
     setError('')
 
-    if (items.length === 0) {
-      setError('Agrega al menos un producto al pedido')
-      return
-    }
-
-    if (isAdmin && !selectedCompanyId) {
-      setError('Selecciona la empresa para la que se crea el pedido')
+    if (!form.legal_name || !form.nit || !form.address || !form.phone || !form.email) {
+      setError('Nombre, NIT, dirección, teléfono y correo son obligatorios')
       return
     }
 
     setSubmitting(true)
-
     try {
       const payload = {
-        items: items.map(({ product_id, quantity_m3 }) => ({ product_id, quantity_m3 })),
+        ...form,
+        fiscal_address: sameAsOperational ? null : form.fiscal_address || null,
+        fiscal_phone: sameAsOperational ? null : form.fiscal_phone || null,
+        fiscal_email: sameAsOperational ? null : form.fiscal_email || null,
       }
 
-      if (isAdmin) {
-        payload.company_id = selectedCompanyId
-      }
-
-      const response = await api.post('/orders/', payload)
-      navigate(`/orders/${response.data.id}`)
-
+      const response = await api.post('/companies/', payload)
+      setCompanyId(response.data.id)
+      setStep(2)
     } catch (err) {
-
-      setError(err.response?.data?.detail || 'No se pudo crear el pedido')
+      setError(err.response?.data?.detail || 'No se pudo crear la empresa')
     } finally {
       setSubmitting(false)
     }
   }
 
+  const handleAddToQueue = () => {
+  setError('')
+
+  if (!documentType || !file) {
+    setError('Selecciona el tipo de documento y el archivo')
+    return
+  }
+
+  setPendingDocs([...pendingDocs, { documentType, file, id: crypto.randomUUID() }])
+  setDocumentType('')
+  setFile(null)
+}
+
+const handleRemoveFromQueue = (id) => {
+  setPendingDocs(pendingDocs.filter((d) => d.id !== id))
+}
+
+const handleUploadAll = async () => {
+  setError('')
+
+  if (pendingDocs.length === 0) {
+    setError('Agrega al menos un documento antes de subir')
+    return
+  }
+
+  setUploading(true)
+  const succeeded = []
+  const failed = []
+
+  for (const doc of pendingDocs) {
+    try {
+      const formData = new FormData()
+      formData.append('document_type', doc.documentType)
+      formData.append('file', doc.file)
+
+      const response = await api.post(`/documents/${companyId}/documents`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      succeeded.push(response.data)
+    } catch (err) {
+      failed.push(doc.documentType)
+    }
+  }
+
+  setUploadedDocs([...uploadedDocs, ...succeeded])
+  setPendingDocs(pendingDocs.filter((d) => failed.includes(d.documentType))) // deja en cola solo los que fallaron
+
+  if (failed.length > 0) {
+    setError(`No se pudieron subir: ${failed.map(documentTypeLabel).join(', ')}. Puedes reintentar.`)
+  }
+
+  setUploading(false)
+}
+
+  const documentTypeLabel = (value) =>
+    documentTypes.find((t) => t.value === value)?.label || value
+
   return (
-    <main className="order-new-main">
-      <h1 className="order-new-title">Crear empresa</h1>
+    <main className="company-form-main">
+      <h1 className="company-form-title">Nueva empresa</h1>
 
-      {error && <div className="order-new-error">{error}</div>}
+      <div className="company-form-steps">
+        <span className={`company-form-step ${step === 1 ? 'is-active' : 'is-done'}`}>1. Datos</span>
+        <span className={`company-form-step ${step === 2 ? 'is-active' : ''}`}>2. Documentos</span>
+      </div>
 
-      {isAdmin && (
-        <div className="order-new-field">
-          <label className="order-new-label">Empresa</label>
-          <select
-            className="order-new-select"
-            value={selectedCompanyId}
-            onChange={(e) => setSelectedCompanyId(e.target.value)}
-          >
-          <option value="">Selecciona una empresa</option>
-          {companies.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.legal_name} ({c.client_code})
-            </option>
-          ))}
-          </select>
+      {error && <div className="company-form-error">{error}</div>}
+
+      {step === 1 && (
+        <div className="company-form-card">
+          <div className="company-form-field">
+            <label className="company-form-label">Tipo de persona</label>
+            <select
+              className="company-form-input"
+              value={form.person_type}
+              onChange={handleChange('person_type')}
+            >
+              <option value="juridica">Jurídica</option>
+              <option value="natural">Natural</option>
+            </select>
+          </div>
+
+          <div className="company-form-field">
+            <label className="company-form-label">
+              {form.person_type === 'natural' ? 'Nombre completo' : 'Razón social'}
+            </label>
+            <input
+              className="company-form-input"
+              value={form.legal_name}
+              onChange={handleChange('legal_name')}
+              placeholder={form.person_type === 'natural' ? 'ej. Juan Pérez Gómez' : 'ej. Constructora Galindo S.A.S.'}
+            />
+          </div>
+
+          <div className="company-form-field">
+            <label className="company-form-label">Nombre corto (opcional)</label>
+            <input
+              className="company-form-input"
+              value={form.display_name}
+              onChange={handleChange('display_name')}
+            />
+          </div>
+
+          <div className="company-form-row">
+            <div className="company-form-field">
+              <label className="company-form-label">{form.person_type === 'natural' ? 'Cédula' : 'NIT'}</label>
+              <input
+                className="company-form-input"
+                value={form.nit}
+                onChange={handleChange('nit')}
+              />
+            </div>
+          </div>
+
+          <p className="company-form-section-title">Datos de contacto</p>
+
+          <div className="company-form-field">
+            <label className="company-form-label">Dirección</label>
+            <input
+              className="company-form-input"
+              value={form.address}
+              onChange={handleChange('address')}
+            />
+          </div>
+
+          <div className="company-form-row">
+            <div className="company-form-field">
+              <label className="company-form-label">Teléfono</label>
+              <input
+                className="company-form-input"
+                value={form.phone}
+                onChange={handleChange('phone')}
+              />
+            </div>
+
+            <div className="company-form-field">
+              <label className="company-form-label">Correo</label>
+              <input
+                type="email"
+                className="company-form-input"
+                value={form.email}
+                onChange={handleChange('email')}
+              />
+            </div>
+          </div>
+
+          <label className="company-form-checkbox-row">
+            <input
+              type="checkbox"
+              checked={sameAsOperational}
+              onChange={(e) => setSameAsOperational(e.target.checked)}
+            />
+            Los datos fiscales (RUT) coinciden con los de contacto
+          </label>
+
+          {!sameAsOperational && (
+            <>
+              <p className="company-form-section-title">Datos fiscales (según RUT)</p>
+
+              <div className="company-form-field">
+                <label className="company-form-label">Dirección fiscal</label>
+                <input
+                  className="company-form-input"
+                  value={form.fiscal_address}
+                  onChange={handleChange('fiscal_address')}
+                />
+              </div>
+
+              <div className="company-form-row">
+                <div className="company-form-field">
+                  <label className="company-form-label">Teléfono fiscal</label>
+                  <input
+                    className="company-form-input"
+                    value={form.fiscal_phone}
+                    onChange={handleChange('fiscal_phone')}
+                  />
+                </div>
+
+                <div className="company-form-field">
+                  <label className="company-form-label">Correo fiscal</label>
+                  <input
+                    type="email"
+                    className="company-form-input"
+                    value={form.fiscal_email}
+                    onChange={handleChange('fiscal_email')}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          <div className="company-form-actions">
+            <button type="button" className="company-form-cancel-btn" onClick={() => navigate('/companies')}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="company-form-submit-btn"
+              onClick={handleCreateCompany}
+              disabled={submitting}
+            >
+              {submitting ? 'Creando...' : 'Continuar'}
+            </button>
+          </div>
         </div>
       )}
 
-      <div className="order-new-card">
-        <p className="order-new-card-title">Seleccionar productos:</p>
-        
-        <UnitReferenceHelper />
+      {step === 2 && (
+        <div className="company-form-card">
+          <p className="company-form-hint">
+            Empresa creada. Agrega los documentos que necesites y súbelos todos juntos (opcional, puedes completarlo después).
+          </p>
 
-        <div className="order-new-item-row">
-          <select
-            className="order-new-select"
-            value={selectedProductId}
-            onChange={(e) => setSelectedProductId(e.target.value)}
-          >
-            <option value="">Selecciona un producto</option>
-            {products
-              .filter((m) => (stockByProduct[m.id] || 0) > 0)
-              .map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-          </select>
+          <div className="company-form-row">
+            <div className="company-form-field">
+              <label className="company-form-label">Tipo de documento</label>
+              <select
+                className="company-form-input"
+                value={documentType}
+                onChange={(e) => setDocumentType(e.target.value)}
+              >
+                <option value="">Selecciona un tipo</option>
+                {documentTypes.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
 
-          <input
-            type="number"
-            step="1"
-            min="1"
-            placeholder={
-                selectedProductId
-                ? `Cantidad en ${products.find((m) => m.id === selectedProductId)?.unit || ''}`
-                : 'Cantidad'
-            }
-            className="order-new-input-qty"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-          />
+            <div className="company-form-field">
+              <label className="company-form-label">Archivo</label>
+              <input
+                type="file"
+                className="company-form-input"
+                onChange={(e) => setFile(e.target.files[0])}
+              />
+            </div>
+          </div>
 
-          <button type="button" className="order-new-add-btn" onClick={handleAddItem}>
-            {editingIndex !== null ? 'Guardar' : 'Agregar'}
+          <button type="button" className="company-form-add-queue-btn" onClick={handleAddToQueue}>
+            + Agregar
           </button>
 
-          {selectedProductId && (
-            <p className='order-new-stock-hint'>
-              Disponible: {stockByProduct[selectedProductId]} {products.find((m) => m.id === selectedProductId)?.unit}(es)
-            </p>
-          )}
+          {pendingDocs.length > 0 && (
+            <div className="company-form-queue-list">
+              <p className="company-form-uploaded-title">Por subir</p>
+              {pendingDocs.map((doc) => (
+                <div key={doc.id} className="company-form-queue-row">
+                  <span>{documentTypeLabel(doc.documentType)} — {doc.file.name}</span>
+                  <button
+                    type="button"
+                    className="company-form-queue-remove-btn"
+                    onClick={() => handleRemoveFromQueue(doc.id)}
+                  >
+                    Quitar
+                  </button>
+                </div>
+              ))}
 
-          {editingIndex !== null && (
-            <button type="button" className="order-new-cancel-edit-btn" onClick={handleCancelEdit}>
-              Cancelar
-            </button>
-          )}
-        </div>
-
-        {items.length > 0 && (
-          <div className='order-new-items-table-wrapper'>
-            <table className="order-new-items-table">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Q</th>
-                  <th>Peso aprox.</th>
-                  <th>Precio unitario</th>
-                  <th>Total</th>
-                  <th>Acciones</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, index) => {
-                  const estimatedKg = estimateWeightKg(item.approx_weight_kg, item.product_unit, item.quantity_m3)
-                  const lineTotal = item.unit_price * item.quantity_m3
-                  return(
-                    <tr key={index}>
-                    <td>{item.product_name}</td>
-                    <td>{item.quantity_m3} {item.product_unit}</td>
-                    <td className="order-new-weight-cell">
-                      {estimatedKg !== null ? `≈ ${estimatedKg.toFixed(2)} kg` : '—'}
-                    </td>
-                    <td>{formatCurrency(item.unit_price)}</td>
-                    <td className="order-new-line-total">{formatCurrency(lineTotal)}</td>
-                    <td>
-                      <div className='order-new-actions-cell'>
-                        <button type="button" className="order-new-edit-btn" onClick={() => handleEditItem(index)}>
-                          <Pencil size={16} />
-                        </button>
-                        <button type="button" className="order-new-remove-btn" onClick={() => handleRemoveItem(index)}>
-                          <Trash size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-          )}
-          {items.length > 0 && (
-            <div className="order-new-summary">
-              <p className="order-new-total-weight">
-                Peso total aprox: ≈{' '}
-                {items
-                  .reduce((sum, item) => {
-                    const kg = estimateWeightKg(item.approx_weight_kg, item.product_unit, item.quantity_m3)
-                    return sum + (kg || 0)
-                  }, 0)
-                  .toFixed(2)}{' '}
-                kg
-              </p>
-              <p className="order-new-total-price">
-                Total: {formatCurrency(items.reduce((sum, item) => sum + item.unit_price * item.quantity_m3, 0))}
-              </p>
+              <button
+                type="button"
+                className="company-form-upload-btn"
+                onClick={handleUploadAll}
+                disabled={uploading}
+              >
+                {uploading ? 'Subiendo...' : `Subir ${pendingDocs.length} documento(s)`}
+              </button>
             </div>
           )}
-        </div>
 
-      <div className="order-new-actions">
-        <button type="button" className="order-new-cancel-btn" onClick={() => navigate('/orders')}>
-          Cancelar
-        </button>
-        <button
-          type="button"
-          className="order-new-submit-btn"
-          onClick={handleSubmit}
-          disabled={submitting}
-        >
-          {submitting ? 'Creando...' : 'Confirmar'}
-        </button>
-      </div>
+          {uploadedDocs.length > 0 && (
+            <div className="company-form-uploaded-list">
+              <p className="company-form-uploaded-title">Documentos subidos</p>
+              {uploadedDocs.map((doc) => (
+                <div key={doc.id} className="company-form-uploaded-row">
+                  <span>{documentTypeLabel(doc.document_type)}</span>
+                  <span className="company-form-uploaded-status">Pendiente de revisión</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="company-form-actions">
+            <button type="button" className="company-form-submit-btn" onClick={() => navigate('/companies')}>
+              Finalizar
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

@@ -90,7 +90,6 @@ export default function Products() {
                 <th>Producto</th>
                 <th>Categoría</th>
                 <th>Precio</th>
-                <th>Presentación</th>
                 {canSeeStock && <th>Disponibilidad</th>}
                 {canManage && <th>Acciones</th>}
                 <th></th>
@@ -128,12 +127,11 @@ function ProductRow({ product, packs, stock, canManage, canViewInventory, canSee
       <tr className="products-row-base">
         <td>
           <div className="products-name-cell">
-            {product.name}
+            {product.name} ({product.unit})
           </div>
         </td>
         <td>{product.category || '—'}</td>
         <td>{formatCurrency(product.price)}</td>
-        <td>{product.unit}</td>
 
         {canSeeStock && (
           <td>
@@ -170,7 +168,6 @@ function ProductRow({ product, packs, stock, canManage, canViewInventory, canSee
           </td>
           <td>{pack.category || '—'}</td>
           <td>{formatCurrency(pack.price)}</td>
-          <td>Pqt x {Number(pack.units_per_pack)}</td>
           {canSeeStock && ( 
             <td className={canViewInventory ? "products-empty-inline" : ''}>
               {canViewInventory ? `Usa stock de ${product.name}` : ''}

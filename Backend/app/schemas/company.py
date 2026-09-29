@@ -10,9 +10,13 @@ class CompanyBase (BaseModel):
     display_name: Optional[str] = None
     nit: str
     type: str
+    person_type: str = "juridica"
     address: str
     phone: str
     email: str
+    fiscal_address : Optional[str] = None
+    fiscal_phone : Optional[str] = None
+    fiscal_email : Optional[str] = None
 
 class CompanyCreate(CompanyBase):
     pass

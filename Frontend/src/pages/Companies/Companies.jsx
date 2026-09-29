@@ -107,7 +107,7 @@ export default function Companies() {
                       />
                     </td>
                     <td className="companies-id-cell">
-                      {/* <Eye/> */}
+                      <Eye/>
                     </td>
                   </tr>
                   )

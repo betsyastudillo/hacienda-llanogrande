@@ -13,8 +13,18 @@ class Company(Base, AuditMixin):
     display_name = Column(String, nullable=True)  # nombre corto para mostrar en la UI; si es null, se usa legal_name
     nit = Column(String, nullable=False)
     type = Column(String, nullable=False) # El 1 registro es "own" para identificarse, los siguientes son "client"
+    person_type = Column(String, nullable=False, default="juridica") # natural | juridica
+
+    # Datos operativos | Contacto del día a día
     address = Column(String, nullable=False)
     phone = Column(String, nullable=False)
     email = Column(String, nullable=False)
+
+    # Datos fiscales | Tal como aparecen en el RUT, si son null, se asume que coinciden con los operativos
+    fiscal_address = Column(String, nullable=True)
+    fiscal_phone = Column(String, nullable=True)
+    fiscal_email = Column(String, nullable=True)
+
+    
     verification_status = Column(String, nullable=False) # La empresa pasa a un estado de " en revisión" al crearse, y pasa a "verificado / aprobado" cuando se revisa la documentación
     is_active = Column(Boolean, default=True, nullable=False) # Si es cliente activo o por algún motivo ya no lo es, no se elimina, solo cambia de estado, para que conserve el historial de clientes.
