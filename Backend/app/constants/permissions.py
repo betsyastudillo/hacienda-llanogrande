@@ -21,6 +21,7 @@ ROLES_PERMISSIONS = {
         "vehicle:ver", "carrier:ver",
         "order:ver_todos",
         "inventory:gestionar", "inventory:ver",
+        "company:gestionar", "company:ver",
     },
     "soporte": {
         "order:ver_todos", "order:editar_limitado",

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../../services/api'
-import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES } from '../../../constants/companyDocuments'
+import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES, REQUIRED_JURIDICA_DOCS, REQUIRED_NATURAL_DOCS } from '../../../constants/companyDocuments'
 import './CompanyNew.css'
 
 export default function CompanyNew() {
@@ -29,6 +29,7 @@ export default function CompanyNew() {
   const [documentType, setDocumentType] = useState('')
   const [file, setFile] = useState(null)
   const [pendingDocs, setPendingDocs] = useState([])
+  const [customDocumentLabel, setCustomDocumentLabel] = useState('')
   const [uploadedDocs, setUploadedDocs] = useState([])
   const [uploading, setUploading] = useState(false)
 
@@ -68,66 +69,84 @@ export default function CompanyNew() {
     }
   }
 
+  const requiredTypes = form.person_type === 'natural' ? REQUIRED_NATURAL_DOCS : REQUIRED_JURIDICA_DOCS
+  const queuedTypes = new Set(pendingDocs.map((d) => d.documentType))
+  const missingRequiredDocs = requiredTypes.filter((t) => !queuedTypes.has(t))
+
+  // Para que cuando seleccione un documento, deje de aparecer en el select
+  const usedTypes = new Set(pendingDocs.map((d) => d.documentType))
+  
+  // La opción de "otro" documento siempre queda disponible, porque puede haber más de un documento "personalizado"
+  const availableDocumentTypes = documentTypes.filter(
+    (t) => t.value === 'otro' || !usedTypes.has(t.value)
+  )
+
   const handleAddToQueue = () => {
-  setError('')
+    setError('')
 
-  if (!documentType || !file) {
-    setError('Selecciona el tipo de documento y el archivo')
-    return
-  }
-
-  setPendingDocs([...pendingDocs, { documentType, file, id: crypto.randomUUID() }])
-  setDocumentType('')
-  setFile(null)
-}
-
-const handleRemoveFromQueue = (id) => {
-  setPendingDocs(pendingDocs.filter((d) => d.id !== id))
-}
-
-const handleUploadAll = async () => {
-  setError('')
-
-  if (pendingDocs.length === 0) {
-    setError('Agrega al menos un documento antes de subir')
-    return
-  }
-
-  setUploading(true)
-  const succeeded = []
-  const failed = []
-
-  for (const doc of pendingDocs) {
-    try {
-      const formData = new FormData()
-      formData.append('document_type', doc.documentType)
-      formData.append('file', doc.file)
-
-      const response = await api.post(`/documents/${companyId}/documents`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      succeeded.push(response.data)
-    } catch (err) {
-      failed.push(doc.documentType)
+    if (!documentType || !file) {
+      setError('Selecciona el tipo de documento y el archivo')
+      return
     }
+
+    const actualType = documentType === 'otro' ? customDocumentLabel.trim() : documentType
+
+    if (documentType === 'otro' && !actualType) {
+      setError('Especifica el nombre del documento')
+      return
+    }
+
+    setPendingDocs([...pendingDocs, { documentType: actualType, file, id: crypto.randomUUID() }])
+    setDocumentType('')
+    setFile(null)
+    setCustomDocumentLabel('')
   }
 
-  setUploadedDocs([...uploadedDocs, ...succeeded])
-  setPendingDocs(pendingDocs.filter((d) => failed.includes(d.documentType))) // deja en cola solo los que fallaron
-
-  if (failed.length > 0) {
-    setError(`No se pudieron subir: ${failed.map(documentTypeLabel).join(', ')}. Puedes reintentar.`)
+  const handleRemoveFromQueue = (id) => {
+    setPendingDocs(pendingDocs.filter((d) => d.id !== id))
   }
 
-  setUploading(false)
-}
+  const handleFinalize = async () => {
+    setError('')
+    setUploading(true)
+
+    const succeeded = []
+    const failed = []
+
+    for (const doc of pendingDocs) {
+      try {
+        const formData = new FormData()
+        formData.append('document_type', doc.documentType)
+        formData.append('file', doc.file)
+
+        const response = await api.post(`/documents/${companyId}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        succeeded.push(response.data)
+      } catch (err) {
+        console.log('Fallo al subir', doc.documentType, err.response?.status, err.response?.data)
+        failed.push(doc)
+      }
+    }
+
+    setUploadedDocs([...uploadedDocs, ...succeeded])
+    setPendingDocs(failed)
+    setUploading(false)
+
+    if (failed.length > 0) {
+      setError(`No se pudieron subir: ${failed.map((d) => documentTypeLabel(d.documentType)).join(', ')}. Revisa la lista e intenta de nuevo.`)
+      return
+    }
+
+    navigate('/companies')
+  }
 
   const documentTypeLabel = (value) =>
     documentTypes.find((t) => t.value === value)?.label || value
 
   return (
     <main className="company-form-main">
-      <h1 className="company-form-title">Nueva empresa</h1>
+      <h1 className="company-form-title">Crear empresa</h1>
 
       <div className="company-form-steps">
         <span className={`company-form-step ${step === 1 ? 'is-active' : 'is-done'}`}>1. Datos</span>
@@ -158,7 +177,7 @@ const handleUploadAll = async () => {
               className="company-form-input"
               value={form.legal_name}
               onChange={handleChange('legal_name')}
-              placeholder={form.person_type === 'natural' ? 'ej. Juan Pérez Gómez' : 'ej. Constructora Galindo S.A.S.'}
+              placeholder={form.person_type === 'natural' ? 'ej. Juan Pérez Gómez' : 'ej. Empresa XYZ S.A.S.'}
             />
           </div>
 
@@ -278,7 +297,7 @@ const handleUploadAll = async () => {
       {step === 2 && (
         <div className="company-form-card">
           <p className="company-form-hint">
-            Empresa creada. Agrega los documentos que necesites y súbelos todos juntos (opcional, puedes completarlo después).
+            Empresa creada. Agrega todos los documentos requeridos y finaliza para subirlos juntos.
           </p>
 
           <div className="company-form-row">
@@ -290,7 +309,7 @@ const handleUploadAll = async () => {
                 onChange={(e) => setDocumentType(e.target.value)}
               >
                 <option value="">Selecciona un tipo</option>
-                {documentTypes.map((t) => (
+                {availableDocumentTypes.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
@@ -306,13 +325,23 @@ const handleUploadAll = async () => {
             </div>
           </div>
 
+          {documentType === 'otro' && (
+            <input
+              type="text"
+              className="company-form-input"
+              placeholder="Especifica qué documento es"
+              value={customDocumentLabel}
+              onChange={(e) => setCustomDocumentLabel(e.target.value)}
+            />
+          )}
+
           <button type="button" className="company-form-add-queue-btn" onClick={handleAddToQueue}>
             + Agregar
           </button>
 
           {pendingDocs.length > 0 && (
             <div className="company-form-queue-list">
-              <p className="company-form-uploaded-title">Por subir</p>
+              <p className="company-form-uploaded-title">Documentos listos para subir</p>
               {pendingDocs.map((doc) => (
                 <div key={doc.id} className="company-form-queue-row">
                   <span>{documentTypeLabel(doc.documentType)} — {doc.file.name}</span>
@@ -325,33 +354,23 @@ const handleUploadAll = async () => {
                   </button>
                 </div>
               ))}
-
-              <button
-                type="button"
-                className="company-form-upload-btn"
-                onClick={handleUploadAll}
-                disabled={uploading}
-              >
-                {uploading ? 'Subiendo...' : `Subir ${pendingDocs.length} documento(s)`}
-              </button>
             </div>
           )}
 
-          {uploadedDocs.length > 0 && (
-            <div className="company-form-uploaded-list">
-              <p className="company-form-uploaded-title">Documentos subidos</p>
-              {uploadedDocs.map((doc) => (
-                <div key={doc.id} className="company-form-uploaded-row">
-                  <span>{documentTypeLabel(doc.document_type)}</span>
-                  <span className="company-form-uploaded-status">Pendiente de revisión</span>
-                </div>
-              ))}
-            </div>
+          {pendingDocs.length > 0 && missingRequiredDocs.length > 0 && (
+            <p className="company-form-missing-note">
+              Aún falta: {missingRequiredDocs.map(documentTypeLabel).join(', ')}
+            </p>
           )}
 
           <div className="company-form-actions">
-            <button type="button" className="company-form-submit-btn" onClick={() => navigate('/companies')}>
-              Finalizar
+            <button
+              type="button"
+              className="company-form-submit-btn"
+              onClick={handleFinalize}
+              disabled={uploading || missingRequiredDocs.length > 0}
+            >
+              {uploading ? 'Subiendo...' : 'Subir'}
             </button>
           </div>
         </div>
