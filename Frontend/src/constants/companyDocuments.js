@@ -8,7 +8,7 @@ export const JURIDICA_DOCUMENT_TYPES = [
 export const REQUIRED_JURIDICA_DOCS = ['camara_comercio', 'rut', 'cedula_representante']
 export const NATURAL_DOCUMENT_TYPES = [
   { value: 'cedula_ciudadania', label: 'Cédula de ciudadanía' },
-  { value: 'rut', label: 'RUT (si aplica)' },
+  { value: 'rut', label: 'RUT' },
   { value: 'otro', label: 'Otro' },
 ]
 

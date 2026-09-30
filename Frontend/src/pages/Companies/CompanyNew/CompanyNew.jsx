@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../../../services/api'
 import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES, REQUIRED_JURIDICA_DOCS, REQUIRED_NATURAL_DOCS } from '../../../constants/companyDocuments'
 import './CompanyNew.css'
+import { Trash } from 'lucide-react'
 
 export default function CompanyNew() {
   const navigate = useNavigate()
@@ -297,7 +298,7 @@ export default function CompanyNew() {
       {step === 2 && (
         <div className="company-form-card">
           <p className="company-form-hint">
-            Empresa creada. Agrega todos los documentos requeridos y finaliza para subirlos juntos.
+            Para completar el proceso de creación, agrega todos los documentos requeridos y finaliza para subirlos juntos.
           </p>
 
           <div className="company-form-row">
@@ -350,7 +351,7 @@ export default function CompanyNew() {
                     className="company-form-queue-remove-btn"
                     onClick={() => handleRemoveFromQueue(doc.id)}
                   >
-                    Quitar
+                    <Trash size={16}/>
                   </button>
                 </div>
               ))}
@@ -370,7 +371,7 @@ export default function CompanyNew() {
               onClick={handleFinalize}
               disabled={uploading || missingRequiredDocs.length > 0}
             >
-              {uploading ? 'Subiendo...' : 'Subir'}
+              {uploading ? 'Subiendo...' : 'Finalizar'}
             </button>
           </div>
         </div>
