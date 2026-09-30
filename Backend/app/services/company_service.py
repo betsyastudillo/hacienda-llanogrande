@@ -1,5 +1,6 @@
 from typing import Optional
 from uuid import UUID
+from datetime import datetime
 from sqlalchemy.orm import Session
 from app.models.company import Company
 from app.schemas.company import CompanyBase, CompanyCreate, CompanyResponse
@@ -40,7 +41,6 @@ def generate_client_code(db: Session, company_type: str) -> str:
   next_number = existing_count + 1
   
   return f"{prefix}-{next_number:04d}"
-
 
 
 # Crea una empresa
@@ -98,13 +98,37 @@ def edit_company(db: Session, company_id: UUID, company_update: CompanyCreate) -
 
 
 def deactivate_company(db: Session, company_id: UUID) -> Optional[Company]:
-    company = get_company_by_id(db, company_id)
-    
-    if not company:
-        return None
+  company = get_company_by_id(db, company_id)
+  
+  if not company:
+    return None
 
-    company.is_active = False
-    
-    db.commit()
-    
-    return company
+  company.is_active = False
+  
+  db.commit()
+  
+  return company
+
+
+# Verificación (admin) de la empresa creada.
+def verify_company(db: Session, company_id: UUID, decision: str, rejection_reason: Optional[str], current_user) -> Optional[Company]:
+  company = get_company_by_id(db, company_id)
+
+  if not company:
+    return None
+
+  if company.verification_status != "pending":
+    raise ValueError(f"Esta empresa ya fue {company.verification_status}")
+
+  if decision == "rejected" and not rejection_reason:
+    raise ValueError("Rechazar requiere un motivo")
+
+  company.verification_status = decision
+  company.rejection_reason = rejection_reason if decision == "rejected" else None
+  company.verified_at = datetime.utcnow()
+  company.verified_by_user_id = current_user.id
+
+  db.commit()
+  db.refresh(company)
+
+  return company

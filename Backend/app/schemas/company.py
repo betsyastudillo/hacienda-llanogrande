@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 from pydantic import BaseModel
 from uuid import UUID
 from app.schemas.mixins import AuditResponseMixin
@@ -20,6 +20,10 @@ class CompanyBase (BaseModel):
 
 class CompanyCreate(CompanyBase):
     pass
+
+class CompanyVerifyRequest(BaseModel):
+    decision: Literal["approved", "rejected"]
+    rejection_reason: Optional[str] = None
 
 class CompanyResponse(CompanyBase, AuditResponseMixin):
     id: UUID

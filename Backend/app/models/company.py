@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean
+from sqlalchemy import Column, DateTime, ForeignKey, String, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from app.database import Base
@@ -24,7 +24,11 @@ class Company(Base, AuditMixin):
     fiscal_address = Column(String, nullable=True)
     fiscal_phone = Column(String, nullable=True)
     fiscal_email = Column(String, nullable=True)
-
     
     verification_status = Column(String, nullable=False) # La empresa pasa a un estado de " en revisión" al crearse, y pasa a "verificado / aprobado" cuando se revisa la documentación
     is_active = Column(Boolean, default=True, nullable=False) # Si es cliente activo o por algún motivo ya no lo es, no se elimina, solo cambia de estado, para que conserve el historial de clientes.
+
+    # Campos para la verificación de la empresa
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+    verified_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    rejection_reason = Column(String, nullable=True)
