@@ -18,7 +18,7 @@ export default function Companies() {
   const [searchTerm, setSearchTerm] = useState('')
 
   const { hasPermission } = useAuth()
-  const canCreate = hasPermission('company:crear')
+  const canCreate = hasPermission('company:gestionar')
 
   const { user, logout } = useAuth()
 
@@ -59,7 +59,6 @@ export default function Companies() {
               onChange={setSearchTerm}
               placeholder="Buscar por nombre de empresa..."
             />
-          {/* </div> */}
 
         {loading && <p className="companies-empty">Cargando empresas...</p>}
         {error && <p className="companies-empty companies-error-text">{error}</p>}
@@ -75,7 +74,6 @@ export default function Companies() {
                 <tr>
                   <th>Razón social</th>
                   <th>Código</th>
-                  {/* <th>NIT</th> */}
                   <th>Dirección</th>
                   <th>Teléfono</th>
                   <th>Email</th>
@@ -95,7 +93,6 @@ export default function Companies() {
                   >
                     <td>{company.display_name}</td>
                     <td>{company.client_code}</td>
-                    {/* <td>{company.nit}</td> */}
                     <td>{company.address}</td>
                     <td>{company.phone}</td>
                     <td>{company.email}</td>
@@ -107,7 +104,12 @@ export default function Companies() {
                       />
                     </td>
                     <td className="companies-id-cell">
-                      <Eye/>
+                      <button 
+                        className='companies-create-btn' 
+                        onClick={() => navigate(`/companies/id/${company.id}`)}
+                      >
+                        <Eye size={16}/>
+                      </button>
                     </td>
                   </tr>
                   )

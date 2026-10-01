@@ -78,7 +78,7 @@ def remove_company(
   return {"detail": "Company deactivated successfully"}
     
 
-@router.patch("/{company_id}/verify", response_model=CompanyResponse)
+@router.patch("/{company_id}/verify", response_model=CompanyResponse, summary="Verifica y aprueba o rechaza una empresa")
 def verify_company_endpoint(
   company_id: UUID,
   data: CompanyVerifyRequest,

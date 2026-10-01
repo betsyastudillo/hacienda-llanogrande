@@ -1,0 +1,252 @@
+.company-detail-main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.company-detail-back-btn {
+  background: none;
+  border: none;
+  color: var(--text-footer);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1rem;
+}
+
+.company-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.company-detail-eyebrow {
+  font-size: 12px;
+  color: var(--text-footer);
+  margin: 0 0 4px;
+}
+
+.company-detail-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1a1a18;
+  margin: 0;
+}
+
+.company-detail-subtitle {
+  font-size: 13px;
+  color: var(--text-footer);
+  margin: 4px 0 0;
+}
+
+.company-detail-error {
+  background-color: var(--error-bg);
+  color: var(--error);
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+}
+
+.company-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.company-detail-card {
+  background-color: var(--white-bg);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.company-detail-card-title {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 12px;
+}
+
+.company-detail-card-title-spaced {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.company-detail-info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.company-detail-info-row span:first-child {
+  color: var(--text-footer);
+}
+
+.company-detail-rejection-text {
+  font-size: 13px;
+  color: var(--error);
+  margin: 0;
+}
+
+.company-detail-empty {
+  font-size: 13px;
+  color: var(--text-footer);
+}
+
+.company-detail-docs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.company-detail-doc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.company-detail-doc-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.company-detail-doc-type {
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.company-detail-doc-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background-color: #ece9e2;
+}
+
+.company-detail-doc-badge.is-accent {
+  background-color: #FAE3B8;
+}
+
+.company-detail-doc-badge.is-error {
+  background-color: var(--error-bg);
+  color: var(--error);
+}
+
+.company-detail-doc-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.company-detail-download-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.company-detail-doc-approve-btn,
+.company-detail-doc-reject-btn {
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.company-detail-doc-reject-btn {
+  color: var(--error);
+}
+
+.company-detail-approve-card {
+  background-color: var(--white-bg);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.company-detail-approve-hint {
+  font-size: 13px;
+  color: var(--text-footer);
+  margin: 0 0 1rem;
+}
+
+.company-detail-approve-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.company-detail-approve-btn {
+  height: 40px;
+  padding: 0 20px;
+  border-radius: 8px;
+  border: none;
+  background-color: var(--accent);
+  color: var(--text-h);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.company-detail-reject-trigger-btn,
+.company-detail-cancel-reject-btn {
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.company-detail-reject-box {
+  margin-top: 8px;
+}
+
+.company-detail-reject-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  margin-bottom: 10px;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.company-detail-reject-confirm-btn {
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: none;
+  background-color: var(--error);
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 700px) {
+  .company-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .company-detail-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+}

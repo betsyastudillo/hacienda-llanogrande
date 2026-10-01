@@ -17,32 +17,32 @@ router = APIRouter(prefix="/users", tags=["Users"])
 # Se colocan con /me para que FastAPI no vaya a interpretarlas como UUID
 @router.get("/me", response_model=UserResponse, summary="Trae información del perfil desde donde se inicia sesión")
 def get_my_profile(current_user: CurrentUser):
-    return UserResponse(
-        id=current_user.id,
-        document_id=current_user.document_id,
-        full_name=current_user.full_name,
-        email=current_user.email,
-        role=current_user.role,
-        company_id=current_user.company_id,
-        is_active=current_user.is_active,
-        permissions=get_permissions_for_role(current_user.role)
-    )
+  return UserResponse(
+    id=current_user.id,
+    document_id=current_user.document_id,
+    full_name=current_user.full_name,
+    email=current_user.email,
+    role=current_user.role,
+    company_id=current_user.company_id,
+    is_active=current_user.is_active,
+    permissions=get_permissions_for_role(current_user.role)
+  )
 
 
 @router.put("/me", response_model=UserResponse, summary="Actualiza el usuario desde donde se inicia sesión")
 def update_my_profile(
-    data: UserSelfUpdate,
-    current_user: CurrentUser,
-    db: Session = Depends(get_db),
+  data: UserSelfUpdate,
+  current_user: CurrentUser,
+  db: Session = Depends(get_db),
 ):
-    return update_own_profile(db, current_user, data)
+  return update_own_profile(db, current_user, data)
 
 
 @router.patch("/me/password", response_model=UserResponse, summary="Cambio de contraseña")
 def change_my_password(
-    data: PasswordChangeRequest,
-    current_user: CurrentUser,
-    db: Session = Depends(get_db),
+  data: PasswordChangeRequest,
+  current_user: CurrentUser,
+  db: Session = Depends(get_db),
 ):
     try:
         return change_password(db, current_user, data)
@@ -55,51 +55,51 @@ def change_my_password(
 
 @router.get("/", response_model=list[UserResponse], summary="Lista todos los usuarios. Función solo para admin")
 def list_users(
-    current_user: UserManager,
-    db: Session = Depends(get_db),
+  current_user: UserManager,
+  db: Session = Depends(get_db),
 ):
-    return get_users(db)
+  return get_users(db)
 
 
 @router.get("/{user_id}", response_model=UserResponse, summary="Trae un usuario. Función solo para admin")
 def get_user(
-    user_id: UUID,
-    current_user: UserManager,
-    db: Session = Depends(get_db),
+  user_id: UUID,
+  current_user: UserManager,
+  db: Session = Depends(get_db),
 ):
-    user = get_user_by_id(db, user_id)
+  user = get_user_by_id(db, user_id)
     
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    return user
+  if not user:
+    raise HTTPException(status_code=404, detail="User not found")
+  
+  return user
 
 
 @router.put("/{user_id}", response_model=UserResponse, summary="Actualiza un usuario. Función solo para admin")
 def edit_user(
-    user_id: UUID,
-    data: UserUpdate,
-    current_user: UserManager,
-    db: Session = Depends(get_db),
+  user_id: UUID,
+  data: UserUpdate,
+  current_user: UserManager,
+  db: Session = Depends(get_db),
 ):
-    user = update_user(db, user_id, data)
-    
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    return user
+  user = update_user(db, user_id, data)
+  
+  if not user:
+    raise HTTPException(status_code=404, detail="User not found")
+  
+  return user
 
 
 # Desactiva al usuario, no lo elimina
 @router.delete("/{user_id}", summary="Desactiva un usuario. Función solo para admin")
 def remove_user(
-    user_id: UUID,
-    current_user: UserManager,
-    db: Session = Depends(get_db),
+  user_id: UUID,
+  current_user: UserManager,
+  db: Session = Depends(get_db),
 ):
-    user = deactivate_user(db, user_id)
+  user = deactivate_user(db, user_id)
     
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    return {"detail": "User deactivated"}
+  if not user:
+    raise HTTPException(status_code=404, detail="User not found")
+  
+  return {"detail": "User deactivated"}

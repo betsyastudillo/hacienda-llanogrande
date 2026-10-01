@@ -11,6 +11,7 @@ import ProductForm from "./pages/Products/ProductForm/ProductForm"
 import LinkLogic from "./pages/LinkLogin/LinkLogin"
 import Companies from "./pages/Companies/Companies"
 import CompanyNew from "./pages/Companies/CompanyNew/CompanyNew"
+import CompanyDetail from "./pages/Companies/CompanyDetail/CompanyDetail"
 import Inventory from './pages/Inventory/Inventory'
 import ProductInventory from './pages/Inventory/ProductInventory/ProductInventory'
 
@@ -38,6 +39,7 @@ function App() {
 
             <Route path="/companies" element={<Companies />} />    
             <Route path="/companies/new" element={<CompanyNew />} />    
+            <Route path="/companies/:companyId" element={<CompanyDetail />} />
 
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/inventory/:productId" element={<ProductInventory />} />
