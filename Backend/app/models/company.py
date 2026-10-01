@@ -11,8 +11,9 @@ class Company(Base, AuditMixin):
     client_code = Column(String, unique=True, nullable=False) # Código de cliente para facilitar memorización y agilización en procesos futuros.
     legal_name = Column(String, nullable=False) # Nombre tal cual aparece en el RUT o C y Cio.
     display_name = Column(String, nullable=True)  # Nombre corto para mostrar en la UI; si es null, se usa legal_name
-    nit = Column(String, nullable=False)
-    type = Column(String, nullable=False) # El 1 registro es "own" para identificarse, los siguientes son "client"
+    document_type = Column(String, nullable=False, default="NIT") # PN: CC, PP, etc. PJ: Nit
+    document_number = Column(String, nullable=False)
+    company_type = Column(String, nullable=False) # El 1 registro es "own" para identificarse, los siguientes son "client"
     business_sector = Column(String, nullable=True)  # Construccion | Agro 
     person_type = Column(String, nullable=False, default="juridica") # natural | juridica
 

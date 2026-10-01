@@ -30,7 +30,7 @@
 .company-detail-title {
   font-size: 22px;
   font-weight: 600;
-  color: #1a1a18;
+  color: var(--text-black);
   margin: 0;
 }
 
@@ -56,7 +56,7 @@
 }
 
 .company-detail-card {
-  background-color: var(--white-bg);
+  background-color: var(--code-bg);
   border-radius: 12px;
   padding: 1.25rem;
 }
@@ -134,7 +134,7 @@
 }
 
 .company-detail-doc-badge.is-accent {
-  background-color: #FAE3B8;
+  background-color: var(--green-bg);
 }
 
 .company-detail-doc-badge.is-error {
@@ -165,8 +165,12 @@
   padding: 5px 10px;
   border-radius: 6px;
   border: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--white-bg);
   cursor: pointer;
+}
+
+.company-detail-doc-approve-btn {
+  color: var(--green);
 }
 
 .company-detail-doc-reject-btn {
@@ -174,7 +178,7 @@
 }
 
 .company-detail-approve-card {
-  background-color: var(--white-bg);
+  background-color: var(--code-bg);
   border-radius: 12px;
   padding: 1.25rem;
   margin-top: 1.5rem;
@@ -193,23 +197,29 @@
 }
 
 .company-detail-approve-btn {
-  height: 40px;
-  padding: 0 20px;
+  height: 42px;
+  padding: 0 16px;
   border-radius: 8px;
   border: none;
-  background-color: var(--accent);
-  color: var(--text-h);
+  background-color: var(--red-soft);
+  color: var(--white-bg);
   font-weight: 600;
+  font-size: 16px;
   cursor: pointer;
+}
+
+.company-detail-approve-btn:hover {
+  background-color: var(--red-wine);
 }
 
 .company-detail-reject-trigger-btn,
 .company-detail-cancel-reject-btn {
-  height: 40px;
-  padding: 0 18px;
+  height: 42px;
+  padding: 0 16px;
+  font-size: 16px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--white-bg);
   cursor: pointer;
 }
 
@@ -233,9 +243,10 @@
   height: 40px;
   padding: 0 18px;
   border-radius: 8px;
-  border: none;
-  background-color: var(--error);
-  color: #ffffff;
+  border: 1px solid var(--error);
+  background-color: var(--error-bg);
+  color: var(--error);
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
 }

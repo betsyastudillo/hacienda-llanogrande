@@ -29,6 +29,7 @@ export default function Companies() {
     async function fetchCompanies() {
       try {
         const response = await api.get('/companies/?company_type=client')
+
         setCompanies(response.data)
       } catch (err) {
         setError('No se pudieron cargar las empresas')
@@ -43,7 +44,7 @@ export default function Companies() {
   return (
       <main className="companies-main">
         <div className="companies-main-header">
-          <h1 className="companies-title">Empresas</h1>
+          <h1 className="companies-title">Empresas / Clientes</h1>
           {canCreate && (
             <button 
               className='companies-create-btn' 
@@ -57,7 +58,7 @@ export default function Companies() {
             <SearchInput
               value={searchTerm}
               onChange={setSearchTerm}
-              placeholder="Buscar por nombre de empresa..."
+              placeholder="Buscar por nombre..."
             />
 
         {loading && <p className="companies-empty">Cargando empresas...</p>}
@@ -91,7 +92,11 @@ export default function Companies() {
                     className="companies-row"
                     onClick={() => navigate(`/companies/${company.id}`)}
                   >
-                    <td>{company.display_name}</td>
+                    {company.display_name ? (
+                      <td>{company.display_name}</td>
+                    ) : (
+                      <td>{company.legal_name}</td>
+                    )}
                     <td>{company.client_code}</td>
                     <td>{company.address}</td>
                     <td>{company.phone}</td>
@@ -105,10 +110,10 @@ export default function Companies() {
                     </td>
                     <td className="companies-id-cell">
                       <button 
-                        className='companies-create-btn' 
+                        className='companies-edit-btn' 
                         onClick={() => navigate(`/companies/id/${company.id}`)}
                       >
-                        <Eye size={16}/>
+                        <Eye size={18}/>
                       </button>
                     </td>
                   </tr>

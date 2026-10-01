@@ -1,7 +1,7 @@
 export const JURIDICA_DOCUMENT_TYPES = [
   { value: 'camara_comercio', label: 'Cámara de Comercio' },
   { value: 'rut', label: 'RUT' },
-  { value: 'cedula_representante', label: 'Cédula del representante legal' },
+  { value: 'cedula_representante', label: 'Cédula representante legal' },
   { value: 'otro', label: 'Otro' },
 ]
 

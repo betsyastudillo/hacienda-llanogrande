@@ -1,23 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Trash } from 'lucide-react'
 import api from '../../../services/api'
 import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES, REQUIRED_JURIDICA_DOCS, REQUIRED_NATURAL_DOCS } from '../../../constants/companyDocuments'
+import { getComplianceChecks } from '../../../constants/complianceChecks'
 import './CompanyNew.css'
-import { Trash } from 'lucide-react'
 
-// Listas vinculantes para revisar de las empresas, se hace un "check list" para que quien cree, verifique que buscó información en estas listas.
-export const COMPLIANCE_CHECKS_COMMON = [
-  { key: 'listas_vinculantes', label: 'Listas vinculantes (ONU, OFAC/Lista Clinton)' },
-  { key: 'antecedentes_judiciales', label: 'Antecedentes judiciales (Policía Nacional)' },
-]
-
-export const COMPLIANCE_CHECKS_CONSTRUCTION = [
-  { key: 'dian_proveedores_ficticios', label: 'Boletín de Proveedores Ficticios (DIAN)' },
-]
-
-export const COMPLIANCE_CHECKS_AGRO = [
-  { key: 'contrabando', label: 'Listados de control de contrabando' },
-]
 
 export default function CompanyNew() {
   const navigate = useNavigate()
@@ -30,8 +18,9 @@ export default function CompanyNew() {
   const [form, setForm] = useState({
     legal_name: '',
     display_name: '',
-    nit: '',
-    type: 'client', // fijo — este formulario siempre crea empresas cliente
+    document_type: 'nit',
+    document_number: '',
+    company_type: 'client', // fijo — este formulario siempre crea empresas cliente
     person_type: 'juridica',
     address: '',
     phone: '',
@@ -41,17 +30,23 @@ export default function CompanyNew() {
     fiscal_email: '',
   })
 
+  // Paso 2: Checklist de cumplimiento
+  const [checks, setChecks] = useState({}) 
+  const [savingChecks, setSavingChecks] = useState(false)
+
+  // Paso 3: Subida de documentos
   const [documentType, setDocumentType] = useState('')
   const [file, setFile] = useState(null)
   const [pendingDocs, setPendingDocs] = useState([])
   const [customDocumentLabel, setCustomDocumentLabel] = useState('')
-  const [uploadedDocs, setUploadedDocs] = useState([])
+  // const [uploadedDocs, setUploadedDocs] = useState([])
   const [uploading, setUploading] = useState(false)
 
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const documentTypes = form.person_type === 'natural' ? NATURAL_DOCUMENT_TYPES : JURIDICA_DOCUMENT_TYPES
+  const complianceChecks = getComplianceChecks(form.business_sector)
 
   const handleChange = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value })
@@ -60,12 +55,18 @@ export default function CompanyNew() {
   const handleCreateCompany = async () => {
     setError('')
 
-    if (!form.legal_name || !form.nit || !form.address || !form.phone || !form.email) {
-      setError('Nombre, NIT, dirección, teléfono y correo son obligatorios')
+    if (!form.legal_name || !form.document_type || !form.document_number || !form.address || !form.phone || !form.email) {
+      setError('Todos los campos son obligatorios.')
+      return
+    }
+
+    if (!form.business_sector) {
+      setError('Selecciona el sector del cliente.')
       return
     }
 
     setSubmitting(true)
+    
     try {
       const payload = {
         ...form,
@@ -84,8 +85,70 @@ export default function CompanyNew() {
     }
   }
 
+  // Paso 2: Checklist de cumplimiento
+  const getCheckState = (key) => checks[key] || { reviewed: false, has_findings: false, note: '' }
+
+  const toggleReviewed = (key) => {
+    const current = getCheckState(key)
+    setChecks({
+      ...checks,
+      [key]: { ...current, reviewed: !current.reviewed },
+    })
+  }
+
+  const toggleFindings = (key) => {
+    const current = getCheckState(key)
+    setChecks({ 
+      ...checks,
+      [key]: { ...current, has_findings: !current.has_findings },
+    })
+  }
+
+  const setNote = (key, note) => {
+    const current = getCheckState(key)
+    setChecks({
+      ...checks,
+      [key]: { ...current, note },
+    })
+  }
+
+  const allChecksReviewed = complianceChecks.every((c) => getCheckState(c.key).reviewed)
+  const findingsWithoutNote = complianceChecks.some((c) => getCheckState(c.key).has_findings && !getCheckState(c.key).note.trim())
+
+  const handleSaveChecks = async () => {
+    setError('')
+    
+    if (!allChecksReviewed) {
+      setError('Marca todos los checks como revisados antes de continuar.')
+      return
+    }
+
+    if (findingsWithoutNote) {
+      setError('Describe qué se encontró en los puntos marcados con hallazgo')
+      return
+    }
+
+    setSavingChecks(true)
+
+    try {
+      for (const c of complianceChecks) {
+        const state = getCheckState(c.key)
+        await api.put(`/compliance-checks/company/${companyId}/${c.key}`, {
+          has_findings: state.has_findings,
+          note: state.has_findings ? state.note: null,
+        })
+      }
+      setStep(3)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'No se pudieron guardar los checks de cumplimiento')
+    } finally {
+      setSavingChecks(false)
+    }
+  }
+
+  // Paso 3: Subida de documentos
   const requiredTypes = form.person_type === 'natural' ? REQUIRED_NATURAL_DOCS : REQUIRED_JURIDICA_DOCS
-  const queuedTypes = new Set(pendingDocs.map((d) => d.documentType))
+  const queuedTypes = new Set(pendingDocs.map((d) => d.documentType)) // Documentos en cola
   const missingRequiredDocs = requiredTypes.filter((t) => !queuedTypes.has(t))
 
   // Para que cuando seleccione un documento, deje de aparecer en el select
@@ -96,6 +159,10 @@ export default function CompanyNew() {
     (t) => t.value === 'otro' || !usedTypes.has(t.value)
   )
 
+  const documentTypeLabel = (value) =>
+    documentTypes.find((t) => t.value === value)?.label || value
+
+  // Agrega un documento a la cola de subida
   const handleAddToQueue = () => {
     setError('')
 
@@ -144,7 +211,6 @@ export default function CompanyNew() {
       }
     }
 
-    setUploadedDocs([...uploadedDocs, ...succeeded])
     setPendingDocs(failed)
     setUploading(false)
 
@@ -156,8 +222,6 @@ export default function CompanyNew() {
     navigate('/companies')
   }
 
-  const documentTypeLabel = (value) =>
-    documentTypes.find((t) => t.value === value)?.label || value
 
   return (
     <main className="company-form-main">
@@ -165,23 +229,39 @@ export default function CompanyNew() {
 
       <div className="company-form-steps">
         <span className={`company-form-step ${step === 1 ? 'is-active' : 'is-done'}`}>1. Datos</span>
-        <span className={`company-form-step ${step === 2 ? 'is-active' : ''}`}>2. Documentos</span>
+        <span className={`company-form-step ${step === 2 ? 'is-active' : step > 2 ? 'is-done' : ''}`}>2. Verificación</span>
+        <span className={`company-form-step ${step === 3 ? 'is-active' : ''}`}>3. Documentos</span>
       </div>
 
       {error && <div className="company-form-error">{error}</div>}
 
       {step === 1 && (
         <div className="company-form-card">
-          <div className="company-form-field">
-            <label className="company-form-label">Tipo de persona</label>
-            <select
-              className="company-form-input"
-              value={form.person_type}
-              onChange={handleChange('person_type')}
-            >
-              <option value="juridica">Jurídica</option>
-              <option value="natural">Natural</option>
-            </select>
+          <div className='company-form-row'>
+            <div className="company-form-field">
+              <label className="company-form-label">Tipo de persona</label>
+              <select
+                className="company-form-input"
+                value={form.person_type}
+                onChange={handleChange('person_type')}
+              >
+                <option value="juridica">Jurídica</option>
+                <option value="natural">Natural</option>
+              </select>
+            </div>
+
+            <div className="company-form-field">
+              <label className="company-form-label">Sector</label>
+              <select
+                className="company-form-input"
+                value={form.business_sector}
+                onChange={handleChange('business_sector')}
+              >
+                <option value="">Selecciona un sector</option>
+                <option value="construccion">Construcción</option>
+                <option value="agro">Agro / alimentos</option>
+              </select>
+            </div>
           </div>
 
           <div className="company-form-field">
@@ -196,22 +276,43 @@ export default function CompanyNew() {
             />
           </div>
 
-          <div className="company-form-field">
-            <label className="company-form-label">Nombre corto (opcional)</label>
-            <input
-              className="company-form-input"
-              value={form.display_name}
-              onChange={handleChange('display_name')}
-            />
-          </div>
+          { form.person_type === 'juridica' ? (
+            <div className="company-form-field">
+              <label className="company-form-label">Nombre corto (opcional)</label>
+              <input
+                className="company-form-input"
+                value={form.display_name}
+                onChange={handleChange('display_name')}
+              />
+            </div>
+          ) : ( null )}
+
+          {form.person_type === 'natural' && (
+            <div className="company-form-field">
+              <label className="company-form-label">Tipo de documento</label>
+              <select
+                className="company-form-input"
+                value={form.document_type}
+                onChange={handleChange('document_type')}
+              >
+                <option value="">Selecciona un tipo</option>
+                <option value="CC">Cédula de ciudadanía</option>
+                <option value="CE">Cédula de extranjería</option>
+                <option value="PP">Pasaporte</option>
+                <option value="PPT">Permiso por Protección Temporal</option>
+                <option value="PEP">Permiso Especial de Permanencia</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+          )}
 
           <div className="company-form-row">
             <div className="company-form-field">
-              <label className="company-form-label">{form.person_type === 'natural' ? 'Cédula' : 'NIT'}</label>
+              <label className="company-form-label">{form.person_type === 'natural' ? 'Número de documento' : 'NIT'}</label>
               <input
                 className="company-form-input"
-                value={form.nit}
-                onChange={handleChange('nit')}
+                value={form.document_number}
+                onChange={handleChange('document_number')}
               />
             </div>
           </div>
@@ -312,6 +413,68 @@ export default function CompanyNew() {
       {step === 2 && (
         <div className="company-form-card">
           <p className="company-form-hint">
+            Antes de subir documentos, confirma que revisaste a este cliente en cada una de las siguientes fuentes.
+          </p>
+
+          <div className="compliance-checks-list">
+            {complianceChecks.map((c) => {
+              const state = getCheckState(c.key)
+              return (
+                <div key={c.key} className="compliance-check-row">
+                  <div className="compliance-check-main">
+                    <span className="compliance-check-label">{c.label}</span>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={state.reviewed}
+                        onChange={() => toggleReviewed(c.key)}
+                      />
+                      <span className="switch-slider"></span>
+                    </label>
+                  </div>
+
+                  {state.reviewed && (
+                    <div className="compliance-check-details">
+                      <label className="compliance-findings-row">
+                        <input
+                          type="checkbox"
+                          checked={state.has_findings}
+                          onChange={() => toggleFindings(c.key)}
+                        />
+                        ¿Se encontró algo?
+                      </label>
+
+                      {state.has_findings && (
+                        <textarea
+                          className="compliance-note-textarea"
+                          placeholder="Describe qué se encontró"
+                          value={state.note}
+                          onChange={(e) => setNote(c.key, e.target.value)}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="company-form-actions">
+            <button
+              type="button"
+              className="company-form-submit-btn"
+              onClick={handleSaveChecks}
+              disabled={savingChecks || !allChecksReviewed}
+            >
+              {savingChecks ? 'Guardando...' : 'Continuar'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="company-form-card">
+          <p className="company-form-hint">
             Para completar el proceso de creación, agrega todos los documentos requeridos y finaliza para subirlos juntos.
           </p>
 
@@ -365,7 +528,7 @@ export default function CompanyNew() {
                     className="company-form-queue-remove-btn"
                     onClick={() => handleRemoveFromQueue(doc.id)}
                   >
-                    <Trash size={16}/>
+                    <Trash size={16} />
                   </button>
                 </div>
               ))}

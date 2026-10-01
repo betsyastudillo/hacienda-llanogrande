@@ -25,9 +25,9 @@
 }
 
 .company-form-step.is-active {
-  color: #1a1a18;
+  color: var(--text-black);
   font-weight: 600;
-  border-bottom-color: var(--accent);
+  border-bottom-color: var(--red-soft);
 }
 
 .company-form-step.is-done {
@@ -49,20 +49,14 @@
   padding: 1.5rem;
 }
 
-.company-form-hint {
-  font-size: 13px;
-  color: var(--text-footer);
-  margin: 0 0 1.25rem;
+.company-form-row {
+  display: flex;
+  gap: 12px;
 }
 
 .company-form-field {
   margin-bottom: 1rem;
   flex: 1;
-}
-
-.company-form-row {
-  display: flex;
-  gap: 12px;
 }
 
 .company-form-label {
@@ -80,50 +74,27 @@
   border-radius: 8px;
   border: 1px solid var(--border);
   font-size: 14px;
-  background-color: #ffffff;
-  color: #1a1a18;
+  background-color: var(--white-bg);
+  color: var(--text-black);
   box-sizing: border-box;
 }
 
-.company-form-upload-btn {
-  height: 42px;
-  padding: 0 18px;
-  border-radius: 8px;
-  border: none;
-  background-color: var(--accent);
-  color: var(--text-h);
-  font-weight: 600;
-  cursor: pointer;
-  margin-bottom: 1rem;
-}
-
-.company-form-upload-btn:hover:not(:disabled) {
-  background-color: var(--accent-bg);
-}
-
-.company-form-uploaded-list {
-  border-top: 1px solid var(--border);
-  padding-top: 1rem;
-  margin-bottom: 1rem;
-}
-
-.company-form-uploaded-title {
-  font-size: 13px;
-  font-weight: 500;
-  margin: 0 0 8px;
-}
-
-.company-form-uploaded-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  padding: 6px 0;
-  color: var(--text);
-}
-
-.company-form-uploaded-status {
-  color: var(--text-footer);
+.company-form-section-title {
   font-size: 12px;
+  font-weight: 600;
+  color: var(--text-footer);
+  text-transform: uppercase;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.company-form-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  margin: 1rem 0;
+  cursor: pointer;
 }
 
 .company-form-actions {
@@ -153,26 +124,102 @@
   cursor: pointer;
 }
 
-.company-form-submit-btn:hover:not(:disabled) {
-  background-color: var(--red-wine);
-}
-
-.company-form-section-title {
-  font-size: 12px;
-  font-weight: 600;
+.company-form-hint {
+  font-size: 13px;
   color: var(--text-footer);
-  text-transform: uppercase;
-  margin: 1.5rem 0 0.75rem;
+  margin: 0 0 1.25rem;
 }
 
-.company-form-checkbox-row {
+.compliance-checks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 1rem;
+}
+
+.compliance-check-row {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.compliance-check-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.compliance-check-label {
+  font-size: 14px;
+  color: var(--text-black);
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: var(--border);
+  border-radius: 24px;
+  transition: background-color 0.15s ease;
+}
+
+.switch-slider::before {
+  content: "";
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--white-bg);
+  border-radius: 50%;
+  transition: transform 0.15s ease;
+}
+
+.switch input:checked + .switch-slider {
+  background-color: var(--green);
+}
+
+.switch input:checked + .switch-slider::before {
+  transform: translateX(18px);
+}
+
+.compliance-check-details {
+  margin-top: 10px;
+  padding-left: 4px;
+}
+
+.compliance-findings-row {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
   color: var(--text);
-  margin: 1rem 0;
   cursor: pointer;
+}
+
+.compliance-note-textarea {
+  width: 100%;
+  min-height: 60px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  box-sizing: border-box;
+  font-family: inherit;
 }
 
 .company-form-add-queue-btn {
@@ -180,21 +227,28 @@
   padding: 0 16px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background-color: #ffffff;
+  background-color: var(--white-bg);
   color: var(--text);
   font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
   margin-bottom: 1rem;
 }
 
 .company-form-add-queue-btn:hover {
-  background-color: #f4f3ee;
+  background-color: var(--bg);
 }
 
 .company-form-queue-list {
   border-top: 1px solid var(--border);
   padding-top: 1rem;
   margin-bottom: 1rem;
+}
+
+.company-form-uploaded-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 8px;
 }
 
 .company-form-queue-row {
@@ -211,6 +265,10 @@
   color: var(--error);
   font-size: 12px;
   cursor: pointer;
+}
+
+.company-form-submit-btn:hover:not(:disabled) {
+  background-color: var(--red-wine);
 }
 
 .company-form-missing-note {

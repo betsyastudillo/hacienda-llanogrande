@@ -49,7 +49,7 @@ def edit_bank_account(db: Session, bank_account_id: UUID, data: BankAccountCreat
     if not company:
         raise ValueError("Company not found")
     
-    if company.type != "own":
+    if company.company_type != "own":
         raise ValueError("Bank accounts can only be linked to the hacienda's own company")
     
     account.company_id = data.company_id

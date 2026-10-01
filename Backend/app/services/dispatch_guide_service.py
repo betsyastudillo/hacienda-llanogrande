@@ -65,7 +65,7 @@ def create_dispatch_guide(db: Session, order_id: UUID) -> DispatchGuide:
     if not assignment:
         raise ValueError("Order has no transport assignment yet")
 
-    plant = db.query(Company).filter(Company.type == "own").first()
+    plant = db.query(Company).filter(Company.company_type == "own").first()
 
     if not plant or not plant.address:
         raise ValueError("AridosCo company record not found. Create it first with type'own'")

@@ -7,6 +7,7 @@ from app.schemas.company import CompanyBase, CompanyCreate, CompanyResponse
 
 
 VALID_PERSON_TYPES = ("natural", "juridica")
+VALID_NATURAL_DOCUMENT_TYPES = ("CC", "CE", "PP", "PPT", "PEP", "otro")
 VALID_BUSINESS_SECTORS = ("construccion", "agro")
 
 
@@ -23,12 +24,22 @@ def _validate_business_sector(company_type: str, business_sector: Optional[str])
       raise ValueError(f"Invalid business_sector. Allowed values: {VALID_BUSINESS_SECTORS}")
 
 
+def _resolve_document_type(person_type: str, document_type: Optional[str]) -> str:
+  if person_type == "juridica":
+    return "NIT"  # Fijo porque una PJ solo puede tener NIT como documento válido
+
+  if not document_type or document_type not in VALID_NATURAL_DOCUMENT_TYPES:
+    raise ValueError(f"document_type inválido para persona natural. Valores permitidos: {VALID_NATURAL_DOCUMENT_TYPES}")
+
+  return document_type
+
+
 # Trae todas las empresas
 def get_companies(db: Session, company_type: Optional[str] = None) -> list[Company]:
   query = db.query(Company)
 
   if company_type:
-    query = query.filter(Company.type == company_type)
+    query = query.filter(Company.company_type == company_type)
 
   return query.all()
 
@@ -46,7 +57,7 @@ def get_company_by_client_code(db: Session, client_code: str) -> Optional[Compan
 # Generación del código del cliente
 def generate_client_code(db: Session, company_type: str) -> str:
   prefix = "HAC" if company_type == "own" else "CLI"
-  existing_count = db.query(Company).filter(Company.type == company_type).count()
+  existing_count = db.query(Company).filter(Company.company_type == company_type).count()
   next_number = existing_count + 1
   
   return f"{prefix}-{next_number:04d}"
@@ -55,15 +66,16 @@ def generate_client_code(db: Session, company_type: str) -> str:
 # Crea una empresa
 def create_a_company(db: Session, company: CompanyCreate) -> Company:
   _validate_person_type(company.person_type)   
-  _validate_business_sector(company.type, company.business_sector)
+  _validate_business_sector(company.company_type, company.business_sector)
 
 
   # El client_code se genera automáticamente, no se asigna ni se elige.
   new_company = Company(
       legal_name=company.legal_name,
       display_name=company.display_name,
-      nit=company.nit,
-      type=company.type,
+      document_type=_resolve_document_type(company.person_type, company.document_type),
+      document_number=company.document_number,
+      company_type=company.company_type,
       business_sector=company.business_sector,
       person_type=company.person_type,
       address=company.address,
@@ -72,7 +84,7 @@ def create_a_company(db: Session, company: CompanyCreate) -> Company:
       fiscal_address= company.fiscal_address,
       fiscal_phone= company.fiscal_phone,
       fiscal_email= company.fiscal_email,
-      client_code=generate_client_code(db, company.type),
+      client_code=generate_client_code(db, company.company_type),
       verification_status="pending"  # Se crea por defecto, ya que requiere verificación de la documentación para aprobarse
   )
 
@@ -91,13 +103,14 @@ def edit_company(db: Session, company_id: UUID, company_update: CompanyCreate) -
         return None
 
     _validate_person_type(company_update.person_type)
-    _validate_business_sector(company_update.type, company_update.business_sector)
+    _validate_business_sector(company_update.company_type, company_update.business_sector)
 
     # Se agrega campo por campo para evitar asignación masiva
     company.legal_name = company_update.legal_name
     company.display_name = company_update.display_name
-    company.nit = company_update.nit
-    company.type = company_update.type
+    company.document_type = _resolve_document_type(company_update.person_type, company_update.document_type)
+    company.document_number = company_update.document_number
+    company.company_type = company_update.company_type
     company.person_type = company_update.person_type
     company.address = company_update.address
     company.phone = company_update.phone

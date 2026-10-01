@@ -43,6 +43,21 @@
   background-color: var(--red-wine);
 }
 
+.companies-edit-btn {
+  background-color: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.companies-edit-btn:hover {
+  background-color: var(--border);
+}
+
 .companies-empty {
   color: var(--text-footer);
   font-size: 14px;

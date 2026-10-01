@@ -8,8 +8,9 @@ from app.schemas.mixins import AuditResponseMixin
 class CompanyBase (BaseModel):
     legal_name: str
     display_name: Optional[str] = None
-    nit: str
-    type: str
+    document_type: Optional[str] = None
+    document_number: str
+    company_type: str
     business_sector: Optional[Literal["construccion", "agro"]] = None
     person_type: str = "juridica"
     address: str

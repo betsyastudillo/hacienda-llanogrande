@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Download, CircleCheck, CircleX, Clock } from 'lucide-react'
+import { Download, CircleCheck, CircleX, Clock, Check, X } from 'lucide-react'
 import api, { API_BASE_URL } from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
 import { COMPANY_STATUS_LABELS, COMPANY_STATUS_COLORS } from '../../../constants/companyStatus'
+import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES } from '../../../constants/companyDocuments'
 import StatusBadge from '../../../components/StatusBadge/StatusBadge'
 import { formatDate } from '../../../utils/formatDate'
 import './CompanyDetail.css'
@@ -13,6 +14,11 @@ const DOC_STATUS_CONFIG = {
   rejected: { label: 'Rechazado', icon: CircleX, className: 'is-error' },
   pending: { label: 'Pendiente', icon: Clock, className: '' },
 }
+
+const ALL_DOCUMENT_TYPES = [...JURIDICA_DOCUMENT_TYPES, ...NATURAL_DOCUMENT_TYPES]
+
+const documentTypeLabel = (value) =>
+  ALL_DOCUMENT_TYPES.find((t) => t.value === value)?.label || value
 
 export default function CompanyDetail() {
   const { companyId } = useParams()
@@ -48,7 +54,7 @@ export default function CompanyDetail() {
   const handleDocumentStatus = async (documentId, status) => {
     setError('')
     try {
-      await api.patch(`/documents/documents/${documentId}/status`, { status })
+      await api.patch(`/documents/${documentId}/status`, { status })
       await loadData()
     } catch (err) {
       setError(err.response?.data?.detail || 'No se pudo actualizar el documento')
@@ -109,7 +115,7 @@ export default function CompanyDetail() {
           <p className="company-detail-eyebrow">{company.client_code}</p>
           <h1 className="company-detail-title">{company.display_name || company.legal_name}</h1>
           <p className="company-detail-subtitle">
-            {company.person_type === 'natural' ? 'Persona natural' : 'Persona jurídica'} · {company.nit}
+            {company.person_type === 'natural' ? 'Persona natural' : 'Persona jurídica'} · {company.document_number}
           </p>
         </div>
         <StatusBadge
@@ -158,7 +164,7 @@ export default function CompanyDetail() {
                 return (
                   <div key={doc.id} className="company-detail-doc-row">
                     <div className="company-detail-doc-info">
-                      <span className="company-detail-doc-type">{doc.document_type}</span>
+                      <span className="company-detail-doc-type">{documentTypeLabel(doc.document_type)}</span>
                       <span className={`company-detail-doc-badge ${config.className}`}>
                         <Icon size={12} />
                         {config.label}
@@ -182,14 +188,14 @@ export default function CompanyDetail() {
                             className="company-detail-doc-approve-btn"
                             onClick={() => handleDocumentStatus(doc.id, 'approved')}
                           >
-                            Aprobar
+                            <Check size={16}/>
                           </button>
                           <button
                             type="button"
                             className="company-detail-doc-reject-btn"
                             onClick={() => handleDocumentStatus(doc.id, 'rejected')}
                           >
-                            Rechazar
+                            <X size={16}/>
                           </button>
                         </>
                       )}
@@ -224,7 +230,7 @@ export default function CompanyDetail() {
                 onClick={handleApproveCompany}
                 disabled={submitting}
               >
-                {submitting ? 'Procesando...' : 'Aprobar empresa'}
+                {submitting ? 'Procesando...' : 'Aprobar'}
               </button>
             </div>
           ) : (
