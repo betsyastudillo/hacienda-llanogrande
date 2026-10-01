@@ -39,9 +39,10 @@ export default function CompanyDetail() {
 
   const loadData = async () => {
     const [companyRes, docsRes] = await Promise.all([
-      api.get(`/companies/id/${companyId}`),
+      api.get(`/companies/${companyId}`),
       api.get(`/documents/?company_id=${companyId}`),
     ])
+    console.log('companyRes', companyRes.data)
     setCompany(companyRes.data)
     setDocuments(docsRes.data)
     setLoading(false)
@@ -84,10 +85,11 @@ export default function CompanyDetail() {
 
     setSubmitting(true)
     try {
-      await api.patch(`/companies/${companyId}/verify`, {
+      const response = await api.patch(`/companies/${companyId}/verify`, {
         decision: 'rejected',
         rejection_reason: rejectionReason,
       })
+      console.log('Rechazo de empresa:', response.data)
       setShowRejectBox(false)
       setRejectionReason('')
       await loadData()
@@ -140,13 +142,6 @@ export default function CompanyDetail() {
               {company.fiscal_address && <div className="company-detail-info-row"><span>Dirección</span><span>{company.fiscal_address}</span></div>}
               {company.fiscal_phone && <div className="company-detail-info-row"><span>Teléfono</span><span>{company.fiscal_phone}</span></div>}
               {company.fiscal_email && <div className="company-detail-info-row"><span>Correo</span><span>{company.fiscal_email}</span></div>}
-            </>
-          )}
-
-          {company.verification_status === 'rejected' && company.rejection_reason && (
-            <>
-              <p className="company-detail-card-title company-detail-card-title-spaced">Motivo del rechazo</p>
-              <p className="company-detail-rejection-text">{company.rejection_reason}</p>
             </>
           )}
         </div>
@@ -208,32 +203,36 @@ export default function CompanyDetail() {
         </div>
       </div>
 
-      {canApproveCompany && isPending && (
+      {canApproveCompany && (
         <div className="company-detail-approve-card">
           <p className="company-detail-card-title">Decisión final</p>
-          <p className="company-detail-approve-hint">
-            Revisa los documentos antes de aprobar o rechazar esta empresa.
-          </p>
 
-          {!showRejectBox ? (
-            <div className="company-detail-approve-actions">
-              <button
-                type="button"
-                className="company-detail-reject-trigger-btn"
-                onClick={() => setShowRejectBox(true)}
-              >
-                Rechazar
-              </button>
-              <button
-                type="button"
-                className="company-detail-approve-btn"
-                onClick={handleApproveCompany}
-                disabled={submitting}
-              >
-                {submitting ? 'Procesando...' : 'Aprobar'}
-              </button>
-            </div>
-          ) : (
+          {company.verification_status === 'pending' && !showRejectBox && (
+            <>
+              <p className="company-detail-approve-hint">
+                Revisa los documentos antes de aprobar o rechazar esta empresa.
+              </p>
+              <div className="company-detail-approve-actions">
+                <button
+                  type="button"
+                  className="company-detail-reject-trigger-btn"
+                  onClick={() => setShowRejectBox(true)}
+                >
+                  Rechazar
+                </button>
+                <button
+                  type="button"
+                  className="company-detail-approve-btn"
+                  onClick={handleApproveCompany}
+                  disabled={submitting}
+                >
+                  {submitting ? 'Procesando...' : 'Aprobar'}
+                </button>
+              </div>
+            </>
+          )}
+
+          {company.verification_status === 'pending' && showRejectBox && (
             <div className="company-detail-reject-box">
               <textarea
                 className="company-detail-reject-textarea"
@@ -258,7 +257,24 @@ export default function CompanyDetail() {
                   {submitting ? 'Procesando...' : 'Confirmar rechazo'}
                 </button>
               </div>
-            </div>
+            </div> 
+          )}
+
+          {company.verification_status === 'approved' && (
+            <p className="company-detail-approve-hint">
+              Empresa aprobada{company.verified_at && ` el ${formatDate(company.verified_at)}`}.
+            </p>
+          )}
+
+          {company.verification_status === 'rejected' && (
+            <>
+              <p className="company-detail-approve-hint">
+                Empresa rechazada{company.verified_at && ` el ${formatDate(company.verified_at)}`}.
+              </p>
+              <p className="company-detail-rejection-text">
+                <strong>Motivo:</strong> {company.rejection_reason}
+              </p>
+            </>
           )}
         </div>
       )}

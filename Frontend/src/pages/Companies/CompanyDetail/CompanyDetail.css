@@ -107,20 +107,24 @@
   align-items: center;
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 12px;
 }
 
 .company-detail-doc-info {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
 }
 
 .company-detail-doc-type {
   font-size: 13px;
   font-weight: 500;
   text-transform: capitalize;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .company-detail-doc-badge {
@@ -146,6 +150,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .company-detail-download-btn {

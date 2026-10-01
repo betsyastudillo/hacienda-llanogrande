@@ -18,7 +18,7 @@ def list_companies(
   return get_companies(db, company_type)
 
 
-@router.get("/id/{company_id}", response_model=CompanyResponse, summary="Busca una empresa por ID")
+@router.get("/{company_id}", response_model=CompanyResponse, summary="Busca una empresa por ID")
 def get_a_company_by_id(
   company_id: UUID, 
   current_user: CompanyViewer,

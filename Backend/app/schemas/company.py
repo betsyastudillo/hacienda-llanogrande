@@ -31,6 +31,10 @@ class CompanyResponse(CompanyBase, AuditResponseMixin):
     id: UUID
     client_code: str
     verification_status: str
+    verified_at: Optional[datetime] = None
+    verified_by_user_id: Optional[UUID] = None
+    rejection_reason: Optional[str] = None
+
 
     class Config:
         from_attributes = True

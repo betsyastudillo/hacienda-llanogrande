@@ -1,5 +1,5 @@
 .companies-main {
-  max-width: 960px;
+  max-width: 980px;
   margin: 0 auto;
   padding: 2rem 2rem;
 }
@@ -44,7 +44,7 @@
 }
 
 .companies-edit-btn {
-  background-color: var(--border);
+  background-color: var(--code-bg);
   border: 1px solid var(--border);
   border-radius: 50%;
   width: 32px;
@@ -76,24 +76,44 @@
 }
 
 .companies-table-wrapper {
-  background-color: var(--code-bg);
+  background-color: var(--white-bg);
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .companies-table {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
   font-size: 14px;
 }
 
 .companies-table thead th {
-  text-align: center;
+  text-align: left;
   font-size: 16px;
   font-weight: 500;
   color: var(--text-footer);
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
+}
+
+.companies-table td{
+  text-align: left;
+}
+
+.companies-name-cell{
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.companies-address-cell,
+.companies-email-cell {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .companies-row {

@@ -140,7 +140,7 @@ export default function Inventory() {
                 <th>Producto</th>
                 <th>Unidad</th>
                 <th>Stock disponible</th>
-                <th></th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>

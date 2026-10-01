@@ -2,11 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
-import { STATUS_LABELS } from '../../constants/orderStatus'
 import SearchInput from '../../components/SearchInput/SearchInput'
-import { formatDate } from '../../utils/formatDate'
 import StatusBadge from '../../components/StatusBadge/StatusBadge'
-import { COMPANY_STATUS_LABELS, COMPANY_STATUS_COLORS } from '../../constants/companyStatus'
+import { COMPANY_STATUS_LABELS, COMPANY_STATUS_COLORS, COMPANY_STATUS_ICONS } from '../../constants/companyStatus'
 import { CirclePlus, Eye } from 'lucide-react'
 import './Companies.css'
 
@@ -19,8 +17,6 @@ export default function Companies() {
 
   const { hasPermission } = useAuth()
   const canCreate = hasPermission('company:gestionar')
-
-  const { user, logout } = useAuth()
 
   const navigate = useNavigate()
 
@@ -40,6 +36,11 @@ export default function Companies() {
     fetchCompanies()
   }, [])
 
+  const filteredCompanies = companies.filter((c) => {
+    const term = searchTerm.toLowerCase()
+    const name = c.display_name || c.legal_name
+    return name.toLowerCase().includes(term) || c.client_code.toLowerCase().includes(term)
+  })
 
   return (
       <main className="companies-main">
@@ -64,11 +65,11 @@ export default function Companies() {
         {loading && <p className="companies-empty">Cargando empresas...</p>}
         {error && <p className="companies-empty companies-error-text">{error}</p>}
 
-        {!loading && !error && companies.length === 0 && (
+        {!loading && !error && !filteredCompanies.length === 0 && (
           <p className="companies-empty">Todavía no hay empresas registradas.</p>
         )}
-          
-        {!loading && !error && companies.length > 0 && (
+
+        {!loading && !error && filteredCompanies.length > 0 && (
           <div className="companies-table-wrapper">
             <table className="companies-table">
               <thead>
@@ -83,8 +84,9 @@ export default function Companies() {
                 </tr>
               </thead>
               <tbody>
-                {companies.map((company) => {
+                {filteredCompanies.map((company) => {
                   const colors = COMPANY_STATUS_COLORS[company.verification_status] || { bg: '#ece9e2', text: '#5f5e5a' }
+                  const Icon = COMPANY_STATUS_ICONS[company.verification_status]
 
                   return (
                   <tr
@@ -92,26 +94,32 @@ export default function Companies() {
                     className="companies-row"
                     onClick={() => navigate(`/companies/${company.id}`)}
                   >
-                    {company.display_name ? (
-                      <td>{company.display_name}</td>
-                    ) : (
-                      <td>{company.legal_name}</td>
-                    )}
+                    <td className="companies-name-cell" title={company.display_name || company.legal_name}>
+                      {company.display_name || company.legal_name}
+                    </td>
                     <td>{company.client_code}</td>
-                    <td>{company.address}</td>
+                    <td className="companies-address-cell" title={company.address}>
+                      {company.address}
+                    </td>
                     <td>{company.phone}</td>
-                    <td>{company.email}</td>
+                    <td className="companies-email-cell" title={company.email}>
+                      {company.email}
+                    </td>
                     <td>
                       <StatusBadge
                         label={COMPANY_STATUS_LABELS[company.verification_status]}
                         bgColor={colors.bg}
                         textColor={colors.text}
+                        icon={Icon}
                       />
                     </td>
                     <td className="companies-id-cell">
                       <button 
                         className='companies-edit-btn' 
-                        onClick={() => navigate(`/companies/id/${company.id}`)}
+                        onClick={(e) => {
+                          e.stopPropagation() //Porque la fila completa ya tiene un onClick, entonces que no haga doble carga
+                          navigate(`/companies/${company.id}`)
+                        }}
                       >
                         <Eye size={18}/>
                       </button>
