@@ -9,10 +9,11 @@ class Company(Base, AuditMixin):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     client_code = Column(String, unique=True, nullable=False) # Código de cliente para facilitar memorización y agilización en procesos futuros.
-    legal_name = Column(String, nullable=False)
-    display_name = Column(String, nullable=True)  # nombre corto para mostrar en la UI; si es null, se usa legal_name
+    legal_name = Column(String, nullable=False) # Nombre tal cual aparece en el RUT o C y Cio.
+    display_name = Column(String, nullable=True)  # Nombre corto para mostrar en la UI; si es null, se usa legal_name
     nit = Column(String, nullable=False)
     type = Column(String, nullable=False) # El 1 registro es "own" para identificarse, los siguientes son "client"
+    business_sector = Column(String, nullable=True)  # Construccion | Agro 
     person_type = Column(String, nullable=False, default="juridica") # natural | juridica
 
     # Datos operativos | Contacto del día a día
@@ -25,10 +26,10 @@ class Company(Base, AuditMixin):
     fiscal_phone = Column(String, nullable=True)
     fiscal_email = Column(String, nullable=True)
     
-    verification_status = Column(String, nullable=False) # La empresa pasa a un estado de " en revisión" al crearse, y pasa a "verificado / aprobado" cuando se revisa la documentación
+    verification_status = Column(String, nullable=False) # La empresa pasa a un estado de " en revisión" al crearse, y pasa a "verificado / aprobado" o cuando el admin da la aprobación
     is_active = Column(Boolean, default=True, nullable=False) # Si es cliente activo o por algún motivo ya no lo es, no se elimina, solo cambia de estado, para que conserve el historial de clientes.
 
-    # Campos para la verificación de la empresa
+    # Campos para la verificación de la empresa (historial)
     verified_at = Column(DateTime(timezone=True), nullable=True)
     verified_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     rejection_reason = Column(String, nullable=True)

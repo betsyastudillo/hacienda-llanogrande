@@ -10,6 +10,7 @@ class CompanyBase (BaseModel):
     display_name: Optional[str] = None
     nit: str
     type: str
+    business_sector: Optional[Literal["construccion", "agro"]] = None
     person_type: str = "juridica"
     address: str
     phone: str

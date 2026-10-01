@@ -7,11 +7,20 @@ from app.schemas.company import CompanyBase, CompanyCreate, CompanyResponse
 
 
 VALID_PERSON_TYPES = ("natural", "juridica")
+VALID_BUSINESS_SECTORS = ("construccion", "agro")
 
 
 def _validate_person_type(person_type: str):
   if person_type not in VALID_PERSON_TYPES:
     raise ValueError(f"Invalid person_type. Allowed values: {VALID_PERSON_TYPES}")
+
+
+def _validate_business_sector(company_type: str, business_sector: Optional[str]):
+  if company_type == "client":
+    if not business_sector:
+      raise ValueError("business_sector es obligatorio para empresas cliente")
+    if business_sector not in VALID_BUSINESS_SECTORS:
+      raise ValueError(f"Invalid business_sector. Allowed values: {VALID_BUSINESS_SECTORS}")
 
 
 # Trae todas las empresas
@@ -45,7 +54,9 @@ def generate_client_code(db: Session, company_type: str) -> str:
 
 # Crea una empresa
 def create_a_company(db: Session, company: CompanyCreate) -> Company:
-  _validate_person_type(company.person_type)
+  _validate_person_type(company.person_type)   
+  _validate_business_sector(company.type, company.business_sector)
+
 
   # El client_code se genera automáticamente, no se asigna ni se elige.
   new_company = Company(
@@ -53,6 +64,7 @@ def create_a_company(db: Session, company: CompanyCreate) -> Company:
       display_name=company.display_name,
       nit=company.nit,
       type=company.type,
+      business_sector=company.business_sector,
       person_type=company.person_type,
       address=company.address,
       phone=company.phone,
@@ -77,6 +89,9 @@ def edit_company(db: Session, company_id: UUID, company_update: CompanyCreate) -
 
     if not company:
         return None
+
+    _validate_person_type(company_update.person_type)
+    _validate_business_sector(company_update.type, company_update.business_sector)
 
     # Se agrega campo por campo para evitar asignación masiva
     company.legal_name = company_update.legal_name
