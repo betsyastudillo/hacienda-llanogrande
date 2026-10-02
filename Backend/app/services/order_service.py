@@ -97,8 +97,8 @@ def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
         
         if item_data.quantity_m3 > sellable:
             raise ValueError(
-                f"Insufficient stock for {product.name}: requested {item_data.quantity_m3}, "
-                f"available {sellable}"
+                f"No hay la cantidad suficiente de: {product.name}: {item_data.quantity_m3}, "
+                f"disponible {sellable}"
             )
         
         item_subtotal = product.price * item_data.quantity_m3

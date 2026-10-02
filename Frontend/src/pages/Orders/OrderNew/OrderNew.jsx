@@ -52,7 +52,7 @@ export default function OrderNew() {
   useEffect(() => {
     if (!isAdmin) return
     api.get('/companies/').then((res) => {
-      setCompanies(res.data.filter((c) => c.type === 'client'))
+      setCompanies(res.data.filter((c) => c.company_type === 'client'))
     })
   }, [isAdmin])
 
@@ -72,27 +72,59 @@ export default function OrderNew() {
 
     const product = products.find((m) => m.id === selectedProductId)
 
-    const newItem = {
-      product_id: selectedProductId,
-      product_name: product?.name,
-      product_unit: product?.unit,
-      approx_weight_kg: product?.approx_weight_kg,
-      unit_price: product?.price,
-      quantity_m3: Number(quantity),
-    }
+    // Validación para que no agreguen más de lo que hay en stock
+    const availableStock = stockByProduct[selectedProductId] || 0
 
     if (editingIndex !== null) {
-      // Editamos una fila existente, la reemplazamos en la misma posición en que está
+      // Editamos una fila existente, como esa es la única de ese producto en la lista, se compara directamente con el stock disponible
+      if (qty > availableStock) {
+        setError(`Solo hay ${availableStock} ${product?.unit} disponibles de ${product?.name}`)
+        return
+      }
+
       const updatedItems = [...items]
-      updatedItems[editingIndex] = newItem
+      updatedItems[editingIndex] = {
+        product_id: selectedProductId,
+        product_name: product?.name,
+        product_unit: product?.unit,
+        approx_weight_kg: product?.approx_weight_kg,
+        unit_price: product?.price,
+        quantity_m3: qty,
+      }
       setItems(updatedItems)
       setEditingIndex(null)
     } else {
-      setItems([...items, newItem])
+      // Si ya agregaron el producto antes, y vuelven a agregar el mismo, se sume y no coloque 2 filas sobre el mismo producto.
+      const existingIndex = items.findIndex((i) => i.product_id === selectedProductId)
+      const alreadyInCart = existingIndex >= 0 ? items[existingIndex].quantity_m3 : 0
+      if (alreadyInCart + qty > availableStock) {
+        setError(`Solo hay ${availableStock - alreadyInCart} ${product?.unit} disponibles de ${product?.name}`)
+        return
+      }
+      if (existingIndex >= 0) {
+        // Si ya existe, actualizamos la cantidad en lugar de agregar un nuevo item
+        const updatedItems = [...items]
+        updatedItems[existingIndex] = {
+          ...updatedItems[existingIndex],
+          quantity_m3: updatedItems[existingIndex].quantity_m3 + qty,
+        }
+        setItems(updatedItems)
+      } else {
+        // Producto nuevo: agrega una fila
+        setItems([...items, {
+          product_id: selectedProductId,
+          product_name: product?.name,
+          product_unit: product?.unit,
+          approx_weight_kg: product?.approx_weight_kg,
+          unit_price: product?.price,
+          quantity_m3: qty,
+        }])
+      }
+      
+      // Reiniciamos los campos de selección
+      setSelectedProductId('')
+      setQuantity('')
     }
-    
-    setSelectedProductId('')
-    setQuantity('')
   }
 
   const handleEditItem = (index) => {
