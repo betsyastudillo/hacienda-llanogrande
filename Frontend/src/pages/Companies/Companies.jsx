@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import SearchInput from '../../components/SearchInput/SearchInput'
-import StatusBadge from '../../components/StatusBadge/StatusBadge'
+import StatusIconBadge from '../../components/StatusIconBadge/StatusIconBadge'
+import StatusHelpPopover from '../../components/StatusHelpPopover/StatusHelpPopover'
 import { COMPANY_STATUS_LABELS, COMPANY_STATUS_COLORS, COMPANY_STATUS_ICONS } from '../../constants/companyStatus'
 import { CirclePlus, Eye } from 'lucide-react'
 import './Companies.css'
@@ -42,6 +43,13 @@ export default function Companies() {
     return name.toLowerCase().includes(term) || c.client_code.toLowerCase().includes(term)
   })
 
+  const companyStatusHelpItems = Object.keys(COMPANY_STATUS_LABELS).map((key) => ({
+    key,
+    icon: COMPANY_STATUS_ICONS[key],
+    textColor: COMPANY_STATUS_COLORS[key]?.text,
+    label: COMPANY_STATUS_LABELS[key],
+  }))
+
   return (
       <main className="companies-main">
         <div className="companies-main-header">
@@ -79,7 +87,13 @@ export default function Companies() {
                   <th>Dirección</th>
                   <th>Teléfono</th>
                   <th>Email</th>
-                  <th>Estado</th>
+                  <th>
+                    <StatusHelpPopover
+                      triggerLabel="Estado ⓘ"
+                      title="Estados de la empresa"
+                      items={companyStatusHelpItems}
+                    />
+                  </th>
                   <th>Acciones</th>
                 </tr>
               </thead>
@@ -106,11 +120,11 @@ export default function Companies() {
                       {company.email}
                     </td>
                     <td>
-                      <StatusBadge
-                        label={COMPANY_STATUS_LABELS[company.verification_status]}
+                      <StatusIconBadge
+                        icon={Icon}
                         bgColor={colors.bg}
                         textColor={colors.text}
-                        icon={Icon}
+                        title={COMPANY_STATUS_LABELS[company.verification_status]}
                       />
                     </td>
                     <td className="companies-id-cell">

@@ -56,6 +56,12 @@
   flex-shrink: 0;
 }
 
+.status-help-icon {
+  margin-top: 2px;
+  flex-shrink: 0;
+  color: var(--text);
+}
+
 .status-help {
     display: flex;
 }

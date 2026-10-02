@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import SearchInput from '../../components/SearchInput/SearchInput'
 import { formatDate } from '../../utils/formatDate'
 import StatusBadge from '../../components/StatusBadge/StatusBadge'
-import { STATUS_LABELS, STATUS_COLORS, STATUS_ICONS } from '../../constants/orderStatus'
+import { STATUS_LABELS, STATUS_COLORS, STATUS_ICONS, ORDER_STATUS_STEPS } from '../../constants/orderStatus'
 import StatusHelpPopover from '../../components/StatusHelpPopover/StatusHelpPopover'
 import { CirclePlus, Eye } from 'lucide-react'
 import { formatCurrency } from '../../utils/formatCurrency'
@@ -52,7 +52,13 @@ export default function Orders() {
     )
   })
 
-  
+  const orderStatusHelpItems = ORDER_STATUS_STEPS.map((step) => ({
+    key: step.key,
+    abrev: step.abrev,
+    label: step.label,
+    color: STATUS_COLORS[step.key]?.bg
+  }))
+
   return (
       <main className="orders-main">
         <div className="orders-main-header">
@@ -86,7 +92,13 @@ export default function Orders() {
                   <th>Empresa</th>
                   <th>Fecha</th>
                   <th>Q.</th>
-                  <th><StatusHelpPopover /></th>
+                  <th>
+                    <StatusHelpPopover
+                      triggerLabel="Estado ⓘ"
+                      title="Estados del pedido"
+                      items={orderStatusHelpItems}
+                    />
+                  </th>
                   <th className="orders-align-right">Total</th>
                   <th>Detalle</th>
                 </tr>
