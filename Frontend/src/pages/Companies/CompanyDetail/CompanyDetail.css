@@ -95,6 +95,64 @@
   color: var(--text-footer);
 }
 
+.company-detail-checks-card {
+  margin-top: 1.5rem;
+}
+
+.company-detail-checks-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.company-detail-check-row {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.company-detail-check-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.company-detail-check-label {
+  font-size: 13px;
+  color: var(--text-black);
+  flex: 1;
+  text-align: left;
+}
+
+.company-detail-check-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.company-detail-check-badge.is-clear {
+  background-color: var(--green-bg);
+  color: var(--green);
+}
+
+.company-detail-check-badge.is-findings {
+  background-color: var(--error-bg);
+  color: var(--red-wine);
+}
+
+.company-detail-check-note {
+  font-size: 12px;
+  text-align: left;
+  color: var(--text-footer);
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  background-color: #f4f3ee;
+  border-radius: 6px;
+}
+
 .company-detail-docs-list {
   display: flex;
   flex-direction: column;

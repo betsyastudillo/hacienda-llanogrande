@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Download, CircleCheck, CircleX, Clock, Check, X } from 'lucide-react'
+import { Download, CircleCheck, CircleX, Clock, Check, X, TriangleAlert } from 'lucide-react'
 import api, { API_BASE_URL } from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
 import { COMPANY_STATUS_LABELS, COMPANY_STATUS_COLORS } from '../../../constants/companyStatus'
 import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES } from '../../../constants/companyDocuments'
+import { getComplianceLabel } from '../../../constants/complianceChecks'
 import StatusBadge from '../../../components/StatusBadge/StatusBadge'
 import { formatDate } from '../../../utils/formatDate'
 import './CompanyDetail.css'
@@ -27,6 +28,7 @@ export default function CompanyDetail() {
 
   const [company, setCompany] = useState(null)
   const [documents, setDocuments] = useState([])
+  const [checks, setChecks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -38,13 +40,14 @@ export default function CompanyDetail() {
   const canApproveCompany = hasPermission('company:aprobar')
 
   const loadData = async () => {
-    const [companyRes, docsRes] = await Promise.all([
+    const [companyRes, docsRes, checksRes] = await Promise.all([
       api.get(`/companies/${companyId}`),
       api.get(`/documents/?company_id=${companyId}`),
+      api.get(`/compliance-checks/company/${companyId}`),
     ])
-    console.log('companyRes', companyRes.data)
     setCompany(companyRes.data)
     setDocuments(docsRes.data)
+    setChecks(checksRes.data)
     setLoading(false)
   }
 
@@ -145,7 +148,7 @@ export default function CompanyDetail() {
             </>
           )}
         </div>
-
+        
         <div className="company-detail-card">
           <p className="company-detail-card-title">Documentos</p>
 
@@ -201,6 +204,40 @@ export default function CompanyDetail() {
             </div>
           )}
         </div>
+      </div>
+      
+
+      <div className="company-detail-card company-detail-checks-card">
+        <p className="company-detail-card-title">Verificación en listas</p>
+
+        {checks.length === 0 ? (
+          <p className="company-detail-empty">No hay revisiones registradas.</p>
+        ) : (
+          <div className="company-detail-checks-list">
+            {checks.map((check) => (
+              <div key={check.id} className="company-detail-check-row">
+                <div className="company-detail-check-main">
+                  <span className="company-detail-check-label">{getComplianceLabel(check.check_key)}</span>
+                  {check.has_findings ? (
+                    <span className="company-detail-check-badge is-findings">
+                      <TriangleAlert size={12} />
+                      Con hallazgos
+                    </span>
+                  ) : (
+                    <span className="company-detail-check-badge is-clear">
+                      <CircleCheck size={12} />
+                      Sin hallazgos
+                    </span>
+                  )}
+                </div>
+
+                {check.has_findings && check.note && (
+                  <p className="company-detail-check-note">{check.note}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {canApproveCompany && (

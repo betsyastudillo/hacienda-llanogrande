@@ -4,6 +4,7 @@ export const COMPLIANCE_CHECKS_COMMON = [
   { key: 'antecedentes_judiciales', label: 'Antecedentes judiciales (Policía Nacional)' },
 ]
 
+// Por sector: construcción o agro, se pueden agregar más listas vinculantes según el sector de la empresa.
 export const COMPLIANCE_CHECKS_BY_SECTOR = {
   construccion: [
     { key: 'dian_proveedores_ficticios', label: 'Boletín de Proveedores Ficticios (DIAN)' },
@@ -11,6 +12,14 @@ export const COMPLIANCE_CHECKS_BY_SECTOR = {
   agro: [
     { key: 'contrabando', label: 'Listados de control de contrabando' },
   ],
+}
+
+export function getComplianceLabel(key) {
+  const all = [
+    ...COMPLIANCE_CHECKS_COMMON,
+    ...Object.values(COMPLIANCE_CHECKS_BY_SECTOR).flat(),
+  ]
+  return all.find((c) => c.key === key)?.label || key
 }
 
 export function getComplianceChecks(sector) {
