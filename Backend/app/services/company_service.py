@@ -75,21 +75,21 @@ def create_a_company(db: Session, company: CompanyCreate) -> Company:
 
   # El client_code se genera automáticamente, no se asigna ni se elige.
   new_company = Company(
-      legal_name=company.legal_name,
-      display_name=company.display_name,
-      document_type=_resolve_document_type(company.person_type, company.document_type),
-      document_number=company.document_number,
-      company_type=company.company_type,
-      business_sector=company.business_sector,
-      person_type=company.person_type,
-      address=company.address,
-      phone=company.phone,
-      email=company.email,
-      fiscal_address= company.fiscal_address,
-      fiscal_phone= company.fiscal_phone,
-      fiscal_email= company.fiscal_email,
-      client_code=generate_client_code(db, company.company_type),
-      verification_status="pending"  # Se crea por defecto, ya que requiere verificación de la documentación para aprobarse
+    legal_name=company.legal_name,
+    display_name=company.display_name,
+    document_type=_resolve_document_type(company.person_type, company.document_type),
+    document_number=company.document_number,
+    company_type=company.company_type,
+    business_sector=company.business_sector,
+    person_type=company.person_type,
+    address=company.address,
+    phone=company.phone,
+    email=company.email,
+    fiscal_address= company.fiscal_address,
+    fiscal_phone= company.fiscal_phone,
+    fiscal_email= company.fiscal_email,
+    client_code=generate_client_code(db, company.company_type),
+    verification_status="pending"  # Se crea por defecto, ya que requiere verificación de la documentación para aprobarse
   )
 
   db.add(new_company)
@@ -101,32 +101,48 @@ def create_a_company(db: Session, company: CompanyCreate) -> Company:
 
 # Editar 
 def edit_company(db: Session, company_id: UUID, company_update: CompanyCreate) -> Optional[Company]:
-    company = get_company_by_id(db, company_id)
+  company = get_company_by_id(db, company_id)
 
-    if not company:
-        return None
+  if not company:
+    return None
 
-    _validate_person_type(company_update.person_type)
-    _validate_business_sector(company_update.company_type, company_update.business_sector)
+  _validate_person_type(company_update.person_type)
+  _validate_business_sector(company_update.company_type, company_update.business_sector)
 
-    # Se agrega campo por campo para evitar asignación masiva
-    company.legal_name = company_update.legal_name
-    company.display_name = company_update.display_name
-    company.document_type = _resolve_document_type(company_update.person_type, company_update.document_type)
-    company.document_number = company_update.document_number
-    company.company_type = company_update.company_type
-    company.person_type = company_update.person_type
-    company.address = company_update.address
-    company.phone = company_update.phone
-    company.email = company_update.email
-    company.fiscal_address = company_update.fiscal_address
-    company.fiscal_phone = company_update.fiscal_phone
-    company.fiscal_email = company_update.fiscal_email
+  # Se agrega campo por campo para evitar asignación masiva
+  company.legal_name = company_update.legal_name
+  company.display_name = company_update.display_name
+  company.document_type = _resolve_document_type(company_update.person_type, company_update.document_type)
+  company.document_number = company_update.document_number
+  company.company_type = company_update.company_type
+  company.person_type = company_update.person_type
+  company.address = company_update.address
+  company.phone = company_update.phone
+  company.email = company_update.email
+  company.fiscal_address = company_update.fiscal_address
+  company.fiscal_phone = company_update.fiscal_phone
+  company.fiscal_email = company_update.fiscal_email
 
-    db.commit()
-    db.refresh(company)
+  db.commit()
+  db.refresh(company)
 
-    return company
+  return company
+
+
+def reactivate_company(db: Session, company_id: UUID) -> Optional[Company]:
+  company = get_company_by_id(db, company_id)
+
+  if not company:
+    return None
+
+  if company.is_active:
+    raise ValueError("La empresa ya está activa")
+
+  company.is_active = True
+  db.commit()
+  db.refresh(company)
+
+  return company
 
 
 def deactivate_company(db: Session, company_id: UUID) -> Optional[Company]:
@@ -178,20 +194,20 @@ def resubmit_company(db: Session, company_id: UUID, current_user) -> Optional[Co
   company = get_company_by_id(db, company_id)
 
   if not company:
-      return None
+    return None
 
   if company.verification_status != "rejected":
-      raise ValueError("Solo se puede reenviar una empresa rechazada")
+    raise ValueError("Solo se puede reenviar una empresa rechazada")
 
   if company.rejection_type != "documents":
-      raise ValueError("Este rechazo es definitivo y no se puede reenviar")
+    raise ValueError("Este rechazo es definitivo y no se puede reenviar")
 
   still_rejected = db.query(Document).filter(
-      Document.company_id == company_id, Document.status == "rejected"
+    Document.company_id == company_id, Document.status == "rejected"
   ).count()
 
   if still_rejected > 0:
-      raise ValueError("Aún hay documentos rechazados sin reemplazar")
+    raise ValueError("Aún hay documentos rechazados sin reemplazar")
 
   # Se conserva rejection_reason para que admin vea el contexto; se limpia al aprobar
   company.verification_status = "pending"

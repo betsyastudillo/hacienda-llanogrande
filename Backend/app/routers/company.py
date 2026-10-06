@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.auth_dependencies import CompanyApprover, CompanyViewer, CompanyManager
 from app.schemas.company import CompanyCreate, CompanyResponse, CompanyVerifyRequest
-from app.services.company_service import create_a_company, get_companies, edit_company, deactivate_company, get_company_by_client_code, get_company_by_id, resubmit_company, verify_company
+from app.services.company_service import create_a_company, get_companies, edit_company, deactivate_company, get_company_by_client_code, get_company_by_id, reactivate_company, resubmit_company, verify_company
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
 
@@ -64,6 +64,23 @@ def update_company(
 
   if not company:
     raise HTTPException(status_code=404, detail="Company not found")
+  return company
+
+
+@router.patch("/{company_id}/reactivate", response_model=CompanyResponse, summary="Reactiva una empresa desactivada")
+def reactivate_company_endpoint(
+  company_id: UUID,
+  current_user: CompanyManager,
+  db: Session = Depends(get_db),
+):
+  try:
+    company = reactivate_company(db, company_id)
+  except ValueError as e:
+    raise HTTPException(status_code=400, detail=str(e))
+
+  if not company:
+    raise HTTPException(status_code=404, detail="Company not found")
+  
   return company
 
 

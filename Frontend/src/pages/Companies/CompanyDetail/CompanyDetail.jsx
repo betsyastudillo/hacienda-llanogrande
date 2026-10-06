@@ -37,7 +37,7 @@ export default function CompanyDetail() {
   const [showRejectBox, setShowRejectBox] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
   const [rejectionType, setRejectionType] = useState('')
-  const [showDeactivateModal, setShowDeactivateModal] = useState(false)
+  const [confirmAction, setConfirmAction] = useState(null) // Estados de la empresa 'desactivada' | 'reactivada' | null  
   const [submitting, setSubmitting] = useState(false)
 
   const canReviewDocs = hasPermission('document:revisar')
@@ -152,7 +152,22 @@ export default function CompanyDetail() {
       navigate('/companies')
     } catch (err) {
       setError(getErrorMessage(err, 'No se pudo desactivar la empresa'))
-      setShowDeactivateModal(false)
+      setConfirmAction(false)
+      setSubmitting(false)
+    }
+  }
+
+  const handleReactivate = async () => {
+    setError('')
+    setSubmitting(true)
+    try {
+      await api.patch(`/companies/${companyId}/reactivate`)
+      setConfirmAction(null)
+      await loadData()
+    } catch (err) {
+      setError(getErrorMessage(err, 'No se pudo reactivar la empresa'))
+      setConfirmAction(null)
+    } finally {
       setSubmitting(false)
     }
   }
@@ -191,11 +206,18 @@ export default function CompanyDetail() {
             bgColor={statusColors.bg}
             textColor={statusColors.text}
           />
-          {canManageCompany && company.is_active && company.company_type !== "own" &&(
-            <button type='button' className='company-detail-deactivate-btn' onClick={() => setShowDeactivateModal(true)}>
+          {canManageCompany && company.is_active && company.company_type !== "own" && (
+            <button type='button' className='company-detail-deactivate-btn' onClick={() => setConfirmAction('deactivate')}>
               Desactivar
             </button>
           )}
+
+          {canManageCompany && !company.is_active && (
+            <button type="button" className="company-detail-reactivate-btn" onClick={() => setConfirmAction('reactivate')} disabled={submitting}>
+              Reactivar
+            </button>
+          )}
+          
         </div>
       </div>
 
@@ -433,17 +455,36 @@ export default function CompanyDetail() {
         </div>
       )}
 
-      {showDeactivateModal && (
-        <Modal title="Desactivar empresa" onClose={() => setShowDeactivateModal(false)}>
+      {confirmAction && (
+        <Modal 
+          title={confirmAction === 'deactivate' ? "Desactivar empresa" : "Reactivar empresa"} 
+          onClose={() => setConfirmAction(null)}
+        >
+
           <p className="company-detail-modal-text">
-            ¿Seguro que quieres desactivar a <strong>{company.display_name || company.legal_name}</strong>?
-            Dejará de aparecer en el listado, no podrá crear pedidos y sus usuarios no podrán iniciar sesión.
+            {confirmAction === 'deactivate' ? (
+              <>
+                ¿Seguro que quieres desactivar a <strong>{company.display_name || company.legal_name}</strong>?
+                Dejará de aparecer en el listado, no podrá crear pedidos y sus usuarios no podrán iniciar sesión.
+              </>
+            ) : (
+              <>
+                ¿Quieres reactivar a <strong>{company.display_name || company.legal_name}</strong>?
+                Volverá a aparecer en el listado, podrá crear pedidos y sus usuarios podrán iniciar sesión.
+              </>
+            )}
           </p>
+
           <div className="company-detail-approve-actions">
-            <button type="button" className="company-detail-cancel-reject-btn" onClick={() => setShowDeactivateModal(false)}>
+            <button type="button" className="company-detail-cancel-reject-btn" onClick={() => setConfirmAction(false)}>
               Cancelar
             </button>
-            <button type="button" className="company-detail-reject-confirm-btn" onClick={handleDeactivate} disabled={submitting}>
+
+            <button 
+              type="button" 
+              className={confirmAction === 'deactivate' ? "company-detail-reject-confirm-btn" : "company-detail-approve-btn"}
+              onClick={confirmAction === 'deactivate' ? handleDeactivate : handleReactivate}
+              disabled={submitting}>
               {submitting ? 'Procesando...' : 'Confirmar'}
             </button>
           </div>

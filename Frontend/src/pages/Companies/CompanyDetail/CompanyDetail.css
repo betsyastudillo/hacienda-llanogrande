@@ -367,12 +367,17 @@
   height: 34px;
   padding: 0 14px;
   border-radius: 8px;
-  border: 1px solid var(--red-soft);
-  background-color: var(--red-soft);
-  color: var(--white-bg);
+  border: 1px solid var(--border);
+  background-color: var(--error-bg);
+  color: var(--text);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+}
+
+.company-detail-deactivate-btn:hover {
+  background-color: var(--red-soft);
+  color: var(--white-bg);
 }
 
 .company-detail-modal-text {
@@ -380,4 +385,21 @@
   color: var(--text);
   line-height: 1.5;
   margin: 0 0 1.25rem;
+}
+
+.company-detail-reactivate-btn {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background:var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.company-detail-reactivate-btn:hover {
+  background-color: var(--red-soft);
+  color: var(--white-bg);
 }

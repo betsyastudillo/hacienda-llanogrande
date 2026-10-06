@@ -332,6 +332,7 @@ export default function CompanyNew() {
             <div className="company-form-field">
               <label className="company-form-label">Teléfono</label>
               <input
+                type='number'
                 className="company-form-input"
                 value={form.phone}
                 onChange={handleChange('phone')}
