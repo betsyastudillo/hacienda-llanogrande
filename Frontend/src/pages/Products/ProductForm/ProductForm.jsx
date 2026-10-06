@@ -99,7 +99,7 @@ export default function ProductForm() {
       }
       navigate('/products')
     } catch (err) {
-      setError(err.response?.data?.detail || 'No se pudo guardar el producto')
+      setError(getErrorMessage(err, 'No se pudo guardar el producto'))
     } finally {
       setSubmitting(false)
     }

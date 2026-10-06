@@ -22,7 +22,7 @@ export default function MagicLogin() {
         navigate('/orders/new')
       })
       .catch((err) => {
-        setError(err.response?.data?.detail || 'Este enlace ya no es válido')
+        setError(getErrorMessage(err, 'Este enlace ya no es válido'))
       })
   }, [searchParams])
 

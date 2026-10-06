@@ -79,7 +79,7 @@ export default function CompanyNew() {
       setCompanyId(response.data.id)
       setStep(2)
     } catch (err) {
-      setError(err.response?.data?.detail || 'No se pudo crear la empresa')
+      setError(getErrorMessage(err, 'No se pudo crear la empresa'))
     } finally {
       setSubmitting(false)
     }
@@ -140,7 +140,7 @@ export default function CompanyNew() {
       }
       setStep(3)
     } catch (err) {
-      setError(err.response?.data?.detail || 'No se pudieron guardar los checks de cumplimiento')
+      setError(getErrorMessage(err, 'No se pudieron guardar los checks de cumplimiento'))
     } finally {
       setSavingChecks(false)
     }

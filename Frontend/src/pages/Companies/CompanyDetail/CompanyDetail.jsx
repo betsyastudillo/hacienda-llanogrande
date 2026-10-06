@@ -9,6 +9,7 @@ import { getComplianceLabel } from '../../../constants/complianceChecks'
 import StatusBadge from '../../../components/StatusBadge/StatusBadge'
 import Modal from '../../../components/Modal/Modal'
 import { formatDate } from '../../../utils/formatDate'
+import { getErrorMessage } from '../../../utils/getErrorMessage'
 import './CompanyDetail.css'
 
 const DOC_STATUS_CONFIG = {
@@ -65,7 +66,7 @@ export default function CompanyDetail() {
       await api.patch(`/documents/${documentId}/status`, { status })
       await loadData()
     } catch (err) {
-      setError(err.response?.data?.detail || 'No se pudo actualizar el documento')
+      setError(getErrorMessage(err, 'No se pudo actualizar el documento'))
     }
   }
 
@@ -76,7 +77,7 @@ export default function CompanyDetail() {
       await api.patch(`/companies/${companyId}/verify`, { decision: 'approved' })
       await loadData()
     } catch (err) {
-      setError(err.response?.data?.detail || 'No se pudo aprobar la empresa')
+      setError(getErrorMessage(err, 'No se pudo aprobar la empresa'))
     } finally {
       setSubmitting(false)
     }
@@ -108,7 +109,7 @@ export default function CompanyDetail() {
       setRejectionType('')
       await loadData()
     } catch (err) {
-      setError(err.response?.data?.detail || 'No se pudo rechazar la empresa')
+      setError(getErrorMessage(err, 'No se pudo rechazar la empresa'))
     } finally {
       setSubmitting(false)
     }
@@ -126,7 +127,7 @@ export default function CompanyDetail() {
       console.log(response)
       await loadData()
     } catch (err) {
-      setError(err.response?.data?.detail || 'No se pudo reemplazar el documento')
+      setError(getErrorMessage(err, 'No se pudo reemplazar el documento'))
     }
   }
 
@@ -137,7 +138,7 @@ export default function CompanyDetail() {
       await api.patch(`/companies/${companyId}/resubmit`)
       await loadData()
     } catch (err) {
-      setError(err.response?.data?.detail || 'No se pudo reenviar a revisión')
+      setError(getErrorMessage(err, 'No se pudo reenviar a revisión'))
     } finally {
       setSubmitting(false)
     }
@@ -149,7 +150,7 @@ export default function CompanyDetail() {
       await api.delete(`/companies/${companyId}`)
       navigate('/companies')
     } catch (err) {
-      setError(err.response?.data?.detail || 'No se pudo desactivar la empresa')
+      setError(getErrorMessage(err, 'No se pudo desactivar la empresa'))
       setShowDeactivateModal(false)
       setSubmitting(false)
     }

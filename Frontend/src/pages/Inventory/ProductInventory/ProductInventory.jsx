@@ -84,7 +84,7 @@ export default function ProductInventory() {
       console.log("data", res.data)
       setKardex(res.data)
     } catch (err) {
-      setKardexError(err.response?.data?.detail || 'No se pudo consultar el kardex')
+      setKardexError(getErrorMessage(err, 'No se pudo consultar el kardex'))
       setKardex(null)
     } finally {
       setKardexLoading(false)
@@ -136,7 +136,8 @@ export default function ProductInventory() {
       await loadData()
       await loadKardex()
     } catch (err) {
-      setError(err.response?.data?.detail || 'No se pudo registrar el movimiento')
+      setError(getErrorMessage(err, 'No se pudo registrar el movimiento'))
+
     } finally {
       setSubmitting(false)
     }

@@ -96,7 +96,7 @@ export default function Inventory() {
       handleClose()
       await loadData()
     } catch (err) {
-      setError(err.response?.data?.detail || 'No se pudo registrar el movimiento')
+      setError(getErrorMessage(err, 'No se pudo registrar el movimiento'))
     } finally {
       setSubmitting(false)
     }

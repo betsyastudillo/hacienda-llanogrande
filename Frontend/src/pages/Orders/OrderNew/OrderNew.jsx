@@ -172,8 +172,7 @@ export default function OrderNew() {
       navigate(`/orders/${response.data.id}`)
 
     } catch (err) {
-
-      setError(err.response?.data?.detail || 'No se pudo crear el pedido')
+      setError(getErrorMessage(err, 'No se pudo crear el pedido'))
     } finally {
       setSubmitting(false)
     }
