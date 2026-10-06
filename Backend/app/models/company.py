@@ -33,4 +33,5 @@ class Company(Base, AuditMixin):
     # Campos para la verificación de la empresa (historial)
     verified_at = Column(DateTime(timezone=True), nullable=True)
     verified_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    rejection_type = Column(String, nullable=True) # Si es documents es corregible si es por comlistas vinculantes es rechazo definitivo
     rejection_reason = Column(String, nullable=True)

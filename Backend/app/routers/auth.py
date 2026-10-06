@@ -5,6 +5,7 @@ from app.schemas.user import UserCreate, UserResponse, LoginRequest, TokenRespon
 from app.auth_dependencies import UserManager
 from app.services.user_service import create_user, authenticate_user
 from app.services.auth_service import create_access_token
+from app.models.company import Company
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -21,15 +22,23 @@ def register_user(
 
 @router.post("/login", response_model=TokenResponse, summary="Inicio de sesión")
 def login_user(login_request: LoginRequest, db: Session = Depends(get_db)):
-    user = authenticate_user(db, login_request.document_id, login_request.password)
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid document ID or password")
+  user = authenticate_user(db, login_request.document_id, login_request.password)
+  
+  if not user:
+    raise HTTPException(status_code=401, detail="Invalid document ID or password")
+  
+  if user.company_id:
+    company = db.query(Company).filter(Company.id == user.company_id).first()
 
-    access_token = create_access_token({
-        "sub": user.document_id,
-        "role": user.role,
-        "company_id": str(user.company_id)
-    })
-    
-    return TokenResponse(access_token=access_token)
+    if company and not company.is_active:
+      raise HTTPException(
+        status_code=403,
+        detail="Tu empresa está desactivada. Conecta al administrador"
+      )
+  access_token = create_access_token({
+    "sub": user.document_id,
+    "role": user.role,
+    "company_id": str(user.company_id)
+  })
+  
+  return TokenResponse(access_token=access_token)

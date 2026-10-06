@@ -62,69 +62,72 @@ def _resolve_company_id(order: OrderCreate, current_user: User) -> UUID:
 
 def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
 
-    company_id = _resolve_company_id(order, current_user)
+  company_id = _resolve_company_id(order, current_user)
 
-    company = db.query(Company).filter(Company.id == company_id).first()
+  company = db.query(Company).filter(Company.id == company_id).first()
 
-    if not company:
-        raise ValueError("Company not found")
-    
-    if company.verification_status != "approved":
-        raise ValueError("Company is not approved")
+  if not company:
+      raise ValueError("Company not found")
+  
+  if not company.is_active:
+    raise ValueError("La empresa está desactivada y no puede crear pedidos")
 
-    new_order = Order(
-        company_id=company_id, 
-        created_by_user_id=current_user.id,
-        status="created"
-    )
+  if company.verification_status != "approved":
+      raise ValueError("Company is not approved")
 
-    db.add(new_order)
-    db.flush()  # Asigna el id al pedido sin cerrar la transacción todavía
+  new_order = Order(
+      company_id=company_id, 
+      created_by_user_id=current_user.id,
+      status="created"
+  )
 
-    subtotal = Decimal("0")
-    tax = Decimal("0")
-    
-    for item_data in order.items:
-        product = db.query(Product).filter(Product.id == item_data.product_id).first()
+  db.add(new_order)
+  db.flush()  # Asigna el id al pedido sin cerrar la transacción todavía
 
-        if not product:
-            raise ValueError(f"Product with id {item_data.product_id} not found")
-        
-        if not product.is_active:
-            raise ValueError(f"Product with id {item_data.product_id} is not active")
+  subtotal = Decimal("0")
+  tax = Decimal("0")
+  
+  for item_data in order.items:
+      product = db.query(Product).filter(Product.id == item_data.product_id).first()
 
-        sellable = get_sellable_stock(db, product)
-        
-        if item_data.quantity_m3 > sellable:
-            raise ValueError(
-                f"No hay la cantidad suficiente de: {product.name}: {item_data.quantity_m3}, "
-                f"disponible {sellable}"
-            )
-        
-        item_subtotal = product.price * item_data.quantity_m3
-        item_tax = item_subtotal * product.tax_rate
-        subtotal += item_subtotal
-        tax += item_tax
+      if not product:
+          raise ValueError(f"Product with id {item_data.product_id} not found")
+      
+      if not product.is_active:
+          raise ValueError(f"Product with id {item_data.product_id} is not active")
 
-        order_item = OrderItem(
-            order_id=new_order.id,
-            product_id=item_data.product_id,
-            quantity_m3=item_data.quantity_m3,
-            unit_price=product.price,
-            subtotal=item_subtotal
-        )
+      sellable = get_sellable_stock(db, product)
+      
+      if item_data.quantity_m3 > sellable:
+          raise ValueError(
+              f"No hay la cantidad suficiente de: {product.name}: {item_data.quantity_m3}, "
+              f"disponible {sellable}"
+          )
+      
+      item_subtotal = product.price * item_data.quantity_m3
+      item_tax = item_subtotal * product.tax_rate
+      subtotal += item_subtotal
+      tax += item_tax
 
-        register_order_deduction(db, product, new_order.id, item_data.quantity_m3, current_user)
+      order_item = OrderItem(
+          order_id=new_order.id,
+          product_id=item_data.product_id,
+          quantity_m3=item_data.quantity_m3,
+          unit_price=product.price,
+          subtotal=item_subtotal
+      )
 
-        db.add(order_item)
+      register_order_deduction(db, product, new_order.id, item_data.quantity_m3, current_user)
 
-    new_order.subtotal = subtotal
-    new_order.tax = tax
-    new_order.total = subtotal + tax
-    db.commit()
-    db.refresh(new_order)
-    
-    return new_order
+      db.add(order_item)
+
+  new_order.subtotal = subtotal
+  new_order.tax = tax
+  new_order.total = subtotal + tax
+  db.commit()
+  db.refresh(new_order)
+  
+  return new_order
 
 
 def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_user: User) -> Optional[Order]:

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.auth_dependencies import CompanyApprover, CompanyViewer, CompanyManager
 from app.schemas.company import CompanyCreate, CompanyResponse, CompanyVerifyRequest
-from app.services.company_service import create_a_company, get_companies, edit_company, deactivate_company, get_company_by_client_code, get_company_by_id, verify_company
+from app.services.company_service import create_a_company, get_companies, edit_company, deactivate_company, get_company_by_client_code, get_company_by_id, resubmit_company, verify_company
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
 
@@ -14,8 +14,9 @@ def list_companies(
   current_user: CompanyViewer,
   db: Session = Depends(get_db),
   company_type: Optional[str] = None,
+  include_inactive: bool = False
 ):
-  return get_companies(db, company_type)
+  return get_companies(db, company_type, include_inactive)
 
 
 @router.get("/{company_id}", response_model=CompanyResponse, summary="Busca una empresa por ID")
@@ -72,11 +73,35 @@ def remove_company(
   current_user: CompanyManager,
   db: Session = Depends(get_db),
 ):
-  company = deactivate_company(db, company_id)
+  try:
+    company = deactivate_company(db, company_id)
+  
+  except ValueError as e:
+    raise HTTPException(status_code=400, detail=str(e))
+  
   if not company:
     raise HTTPException(status_code=404, detail="Company not found")
+  
   return {"detail": "Company deactivated successfully"}
     
+
+@router.patch("/{company_id}/resubmit", response_model=CompanyResponse, summary="Reenvía a revisión una empresa rechazada por documentos")
+def resubmit_company_endpoint(
+  company_id: UUID,
+  current_user: CompanyManager,
+  db: Session = Depends(get_db),
+):
+  try:
+    company = resubmit_company(db, company_id, current_user)
+  
+  except ValueError as e:
+    raise HTTPException(status_code=400, detail=str(e))
+
+  if not company:
+    raise HTTPException(status_code=404, detail="Company not found")
+  
+  return company
+
 
 @router.patch("/{company_id}/verify", response_model=CompanyResponse, summary="Verifica y aprueba o rechaza una empresa")
 def verify_company_endpoint(
@@ -86,7 +111,8 @@ def verify_company_endpoint(
   db: Session = Depends(get_db),
 ):
   try:
-    company = verify_company(db, company_id, data.decision, data.rejection_reason, current_user)
+    company = verify_company(db, company_id, data.decision, data.rejection_reason, data.rejection_type, current_user)
+  
   except ValueError as e:
     raise HTTPException(status_code=400, detail=str(e))
 

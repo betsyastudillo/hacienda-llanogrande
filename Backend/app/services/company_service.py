@@ -3,6 +3,7 @@ from uuid import UUID
 from datetime import datetime
 from sqlalchemy.orm import Session
 from app.models.company import Company
+from app.models.document import Document
 from app.schemas.company import CompanyBase, CompanyCreate, CompanyResponse
 
 
@@ -35,11 +36,14 @@ def _resolve_document_type(person_type: str, document_type: Optional[str]) -> st
 
 
 # Trae todas las empresas
-def get_companies(db: Session, company_type: Optional[str] = None) -> list[Company]:
+def get_companies(db: Session, company_type: Optional[str] = None, include_inactive: bool = False) -> list[Company]:
   query = db.query(Company)
 
   if company_type:
     query = query.filter(Company.company_type == company_type)
+
+  if not include_inactive:
+    query = query.filter(Company.is_active == True)
 
   return query.all()
 
@@ -131,6 +135,9 @@ def deactivate_company(db: Session, company_id: UUID) -> Optional[Company]:
   if not company:
     return None
 
+  if company.company_type == "own":
+    raise ValueError("No se puede desactivar la empresa propia.")
+  
   company.is_active = False
   
   db.commit()
@@ -139,7 +146,7 @@ def deactivate_company(db: Session, company_id: UUID) -> Optional[Company]:
 
 
 # Verificación (admin) de la empresa creada.
-def verify_company(db: Session, company_id: UUID, decision: str, rejection_reason: Optional[str], current_user) -> Optional[Company]:
+def verify_company(db: Session, company_id: UUID, decision: str, rejection_reason: Optional[str], rejection_type: Optional[str], current_user) -> Optional[Company]:
   company = get_company_by_id(db, company_id)
 
   if not company:
@@ -148,13 +155,46 @@ def verify_company(db: Session, company_id: UUID, decision: str, rejection_reaso
   if company.verification_status != "pending":
     raise ValueError(f"Esta empresa ya fue {company.verification_status}")
 
-  if decision == "rejected" and not rejection_reason:
-    raise ValueError("Rechazar requiere un motivo")
+  if decision == "rejected":
+    if not rejection_reason:
+      raise ValueError("Rechazar requiere un motivo")
+    
+    if not rejection_type:
+      raise ValueError("Rechazar requiere un tipo de rechazo")
 
   company.verification_status = decision
   company.rejection_reason = rejection_reason if decision == "rejected" else None
+  company.rejection_type = rejection_type if decision == "rejected" else None
   company.verified_at = datetime.utcnow()
   company.verified_by_user_id = current_user.id
+
+  db.commit()
+  db.refresh(company)
+
+  return company
+
+
+def resubmit_company(db: Session, company_id: UUID, current_user) -> Optional[Company]:
+  company = get_company_by_id(db, company_id)
+
+  if not company:
+      return None
+
+  if company.verification_status != "rejected":
+      raise ValueError("Solo se puede reenviar una empresa rechazada")
+
+  if company.rejection_type != "documents":
+      raise ValueError("Este rechazo es definitivo y no se puede reenviar")
+
+  still_rejected = db.query(Document).filter(
+      Document.company_id == company_id, Document.status == "rejected"
+  ).count()
+
+  if still_rejected > 0:
+      raise ValueError("Aún hay documentos rechazados sin reemplazar")
+
+  # Se conserva rejection_reason para que admin vea el contexto; se limpia al aprobar
+  company.verification_status = "pending"
 
   db.commit()
   db.refresh(company)
