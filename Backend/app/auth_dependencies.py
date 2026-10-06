@@ -23,6 +23,7 @@ BankAccountViewer = Annotated[User, Depends(require_permission("bank_account:ver
 # Company
 CompanyManager = Annotated[User, Depends(require_permission("company:gestionar"))]
 CompanyViewer = Annotated[User, Depends(require_permission("company:ver"))]
+CompanyApprover = Annotated[User, Depends(require_permission("company:aprobar"))]
 
 # Vehicle / Carrier
 VehicleManager = Annotated[User, Depends(require_permission("vehicle:gestionar"))]
@@ -52,6 +53,7 @@ ProductManager = Annotated[User, Depends(require_permission("product:gestionar")
 # Document 
 DocumentReviewer = Annotated[User, Depends(require_permission("document:revisar"))]
 DocumentViewer = Annotated[User, Depends(require_permission("document:ver"))]
+DocumentUploader = Annotated[User, Depends(require_permission("document:subir"))]
 
 # Order 
 OrderCreator = Annotated[User, Depends(require_permission("order:crear"))]
@@ -71,4 +73,3 @@ BlacklistManager = Annotated[User, Depends(require_permission("blacklist:gestion
 InventoryManager = Annotated[User, Depends(require_permission("inventory:gestionar"))]
 InventoryViewer = Annotated[User, Depends(require_permission("inventory:ver"))]
 StockViewerAny = Annotated[User, Depends(require_any_permission("inventory:ver", "order:crear"))]
-CompanyApprover = Annotated[User, Depends(require_permission("company:aprobar"))]

@@ -118,13 +118,14 @@ export default function CompanyDetail() {
   const handleReplaceDocument = async (documentId, file) => {
     if (!file) return
     setError('')
+    
     try {
       const formData = new FormData()
-      formData.append('file', file)
-      const response = await api.put(`/documents/${documentId}`, formData, {
+      formData.append('new_file', file)
+      await api.put(`/documents/${documentId}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      console.log(response)
+      
       await loadData()
     } catch (err) {
       setError(getErrorMessage(err, 'No se pudo reemplazar el documento'))
@@ -160,7 +161,7 @@ export default function CompanyDetail() {
   if (!company) return null
 
   const canReplaceDocs =
-    canManageCompany &&
+    hasPermission('document:subir') &&
     company.verification_status === 'rejected' &&
     company.rejection_type === 'documents'
 

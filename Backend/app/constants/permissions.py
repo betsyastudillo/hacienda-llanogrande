@@ -17,7 +17,7 @@ ROLES_PERMISSIONS = {
     },
     "operaciones": {
         "product:gestionar",
-        "document:revisar", "document:ver",
+        "document:subir", "document:ver",
         "vehicle:ver", "carrier:ver",
         "order:ver_todos",
         "inventory:gestionar", "inventory:ver",

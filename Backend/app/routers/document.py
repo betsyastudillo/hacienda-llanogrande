@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from uuid import UUID
 from app.database import get_db
-from app.auth_dependencies import DocumentReviewer, DocumentViewer
+from app.auth_dependencies import DocumentReviewer, DocumentUploader, DocumentViewer
 from app.schemas.document import DocumentBase, DocumentStatusUpdate
 from app.services.document_service import create_document, get_documents_by_company, replace_document_file, update_document_status
 
@@ -23,7 +23,7 @@ def list_documents(
 @router.post("/{company_id}", response_model=DocumentBase, summary="Sube los documentos de una empresa (sujeto a revisión).")
 def upload_document(
     company_id: UUID,
-    current_user: DocumentReviewer,
+    current_user: DocumentUploader,
     document_type: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -48,7 +48,7 @@ def change_document_status(
 @router.put("/{document_id}", response_model=DocumentBase, summary="Actualiza un documento subido.")
 def update_document_file(
     document_id: UUID,
-    current_user: DocumentReviewer,
+    current_user: DocumentUploader,
     new_file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
