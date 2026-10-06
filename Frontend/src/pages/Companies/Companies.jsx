@@ -15,6 +15,7 @@ export default function Companies() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [showInactive, setShowInactive] = useState(false)
 
   const { hasPermission } = useAuth()
   const canCreate = hasPermission('company:gestionar')
@@ -25,7 +26,9 @@ export default function Companies() {
   useEffect(() => {
     async function fetchCompanies() {
       try {
-        const response = await api.get('/companies/?company_type=client')
+        const response = await api.get('/companies/', {
+          params: { company_type: 'client', include_inactive: showInactive },
+        })
 
         setCompanies(response.data)
       } catch (err) {
@@ -35,7 +38,7 @@ export default function Companies() {
       }
     }
     fetchCompanies()
-  }, [])
+  }, [showInactive])
 
   const filteredCompanies = companies.filter((c) => {
     const term = searchTerm.toLowerCase()
@@ -64,11 +67,16 @@ export default function Companies() {
             </button>
           )}
           </div>
-            <SearchInput
-              value={searchTerm}
-              onChange={setSearchTerm}
-              placeholder="Buscar por nombre..."
-            />
+          <SearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Buscar por nombre..."
+          />
+
+          <label className="companies-show-inactive">
+            <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
+            Mostrar inactivas
+          </label>
 
         {loading && <p className="companies-empty">Cargando empresas...</p>}
         {error && <p className="companies-empty companies-error-text">{error}</p>}
@@ -105,7 +113,7 @@ export default function Companies() {
                   return (
                   <tr
                     key={company.id}
-                    className="companies-row"
+                    className={`companies-row ${!company.is_active ? 'companies-row-inactive' : ''}`}
                     onClick={() => navigate(`/companies/${company.id}`)}
                   >
                     <td className="companies-name-cell" title={company.display_name || company.legal_name}>

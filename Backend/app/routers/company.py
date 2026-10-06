@@ -112,7 +112,7 @@ def verify_company_endpoint(
 ):
   try:
     company = verify_company(db, company_id, data.decision, data.rejection_reason, data.rejection_type, current_user)
-  
+    print(company)
   except ValueError as e:
     raise HTTPException(status_code=400, detail=str(e))
 

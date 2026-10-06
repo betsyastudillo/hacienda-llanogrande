@@ -155,6 +155,20 @@
   overflow-x: auto;
 }
 
+.companies-row-inactive {
+  opacity: 0.55;
+}
+
+.companies-show-inactive {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-footer);
+  margin: 0 0 12px;
+  cursor: pointer;
+}
+
 @media (max-width: 600px) {
   .companies-main {
     padding: 1.25rem 1rem;

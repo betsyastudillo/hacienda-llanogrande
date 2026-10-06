@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Download, CircleCheck, CircleX, Clock, Check, X, TriangleAlert } from 'lucide-react'
+import { Download, CircleCheck, CircleX, Clock, Check, X, TriangleAlert, Upload } from 'lucide-react'
 import api, { API_BASE_URL } from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
 import { COMPANY_STATUS_LABELS, COMPANY_STATUS_COLORS } from '../../../constants/companyStatus'
 import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES } from '../../../constants/companyDocuments'
 import { getComplianceLabel } from '../../../constants/complianceChecks'
 import StatusBadge from '../../../components/StatusBadge/StatusBadge'
+import Modal from '../../../components/Modal/Modal'
 import { formatDate } from '../../../utils/formatDate'
 import './CompanyDetail.css'
 
@@ -34,10 +35,13 @@ export default function CompanyDetail() {
 
   const [showRejectBox, setShowRejectBox] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
+  const [rejectionType, setRejectionType] = useState('')
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const canReviewDocs = hasPermission('document:revisar')
   const canApproveCompany = hasPermission('company:aprobar')
+  const canManageCompany = hasPermission('company:gestionar')
 
   const loadData = async () => {
     const [companyRes, docsRes, checksRes] = await Promise.all([
@@ -81,6 +85,11 @@ export default function CompanyDetail() {
   const handleRejectCompany = async () => {
     setError('')
 
+    if (!rejectionType) {
+      setError('Selecciona el tipo de rechazo')
+      return
+    }
+
     if (!rejectionReason.trim()) {
       setError('Escribe el motivo del rechazo')
       return
@@ -91,10 +100,12 @@ export default function CompanyDetail() {
       const response = await api.patch(`/companies/${companyId}/verify`, {
         decision: 'rejected',
         rejection_reason: rejectionReason,
+        rejection_type: rejectionType,
       })
-      console.log('Rechazo de empresa:', response.data)
+
       setShowRejectBox(false)
       setRejectionReason('')
+      setRejectionType('')
       await loadData()
     } catch (err) {
       setError(err.response?.data?.detail || 'No se pudo rechazar la empresa')
@@ -103,8 +114,54 @@ export default function CompanyDetail() {
     }
   }
 
+  const handleReplaceDocument = async (documentId, file) => {
+    if (!file) return
+    setError('')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const response = await api.put(`/documents/${documentId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      console.log(response)
+      await loadData()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'No se pudo reemplazar el documento')
+    }
+  }
+
+  const handleResubmit = async () => {
+    setError('')
+    setSubmitting(true)
+    try {
+      await api.patch(`/companies/${companyId}/resubmit`)
+      await loadData()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'No se pudo reenviar a revisión')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDeactivate = async () => {
+    setSubmitting(true)
+    try {
+      await api.delete(`/companies/${companyId}`)
+      navigate('/companies')
+    } catch (err) {
+      setError(err.response?.data?.detail || 'No se pudo desactivar la empresa')
+      setShowDeactivateModal(false)
+      setSubmitting(false)
+    }
+  }
+
   if (loading) return <main className="company-detail-main"><p>Cargando...</p></main>
   if (!company) return null
+
+  const canReplaceDocs =
+    canManageCompany &&
+    company.verification_status === 'rejected' &&
+    company.rejection_type === 'documents'
 
   const statusColors = COMPANY_STATUS_COLORS[company.verification_status] || { bg: '#ece9e2', text: '#5f5e5a' }
   const isPending = company.verification_status === 'pending'
@@ -123,12 +180,28 @@ export default function CompanyDetail() {
             {company.person_type === 'natural' ? 'Persona natural' : 'Persona jurídica'} · {company.document_number}
           </p>
         </div>
-        <StatusBadge
-          label={COMPANY_STATUS_LABELS[company.verification_status]}
-          bgColor={statusColors.bg}
-          textColor={statusColors.text}
-        />
+        <div className='company-detail-header-actions'>
+          {!company.is_active && (
+            <StatusBadge label="Desactivada" bgColor="#E5E3DB" textColor="#5F5E5A" />
+          )}
+          <StatusBadge
+            label={COMPANY_STATUS_LABELS[company.verification_status]}
+            bgColor={statusColors.bg}
+            textColor={statusColors.text}
+          />
+          {canManageCompany && company.is_active && company.company_type !== "own" &&(
+            <button type='button' className='company-detail-deactivate-btn' onClick={() => setShowDeactivateModal(true)}>
+              Desactivar
+            </button>
+          )}
+        </div>
       </div>
+
+      {company.verification_status === 'pending' && company.rejection_reason && (
+        <p className="company-detail-prev-rejection">
+          Reenviada tras un rechazo anterior: {company.rejection_reason}
+        </p>
+      )}
 
       {error && <div className="company-detail-error">{error}</div>}
 
@@ -154,7 +227,7 @@ export default function CompanyDetail() {
 
           {documents.length === 0 ? (
             <p className="company-detail-empty">No se han subido documentos.</p>
-          ) : (
+            ) : (
             <div className="company-detail-docs-list">
               {documents.map((doc) => {
                 const config = DOC_STATUS_CONFIG[doc.status] || DOC_STATUS_CONFIG.pending
@@ -178,6 +251,17 @@ export default function CompanyDetail() {
                       >
                         <Download size={16} />
                       </a>
+
+                      {canReplaceDocs && (
+                        <label className="company-detail-replace-btn" title="Reemplazar archivo">
+                          <Upload size={16} />
+                          <input
+                            type="file"
+                            hidden
+                            onChange={(e) => handleReplaceDocument(doc.id, e.target.files[0])}
+                          />
+                        </label>
+                      )}
 
                       {canReviewDocs && doc.status === 'pending' && (
                         <>
@@ -240,6 +324,21 @@ export default function CompanyDetail() {
         )}
       </div>
 
+      {canReplaceDocs && (
+        <div className="company-detail-approve-card">
+          <p className="company-detail-card-title">Corrección de documentos</p>
+          <p className="company-detail-rejection-text"><strong>Motivo:</strong> {company.rejection_reason}</p>
+          <p className="company-detail-approve-hint">
+            Reemplaza los documentos indicados y reenvía la empresa a revisión.
+          </p>
+          <div className="company-detail-approve-actions">
+            <button type="button" className="company-detail-approve-btn" onClick={handleResubmit} disabled={submitting}>
+              {submitting ? 'Procesando...' : 'Reenviar a revisión'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {canApproveCompany && (
         <div className="company-detail-approve-card">
           <p className="company-detail-card-title">Decisión final</p>
@@ -271,6 +370,17 @@ export default function CompanyDetail() {
 
           {company.verification_status === 'pending' && showRejectBox && (
             <div className="company-detail-reject-box">
+
+              <select
+                className="company-detail-reject-select"
+                value={rejectionType}
+                onChange={(e) => setRejectionType(e.target.value)}
+              >
+                <option value="">Tipo de rechazo</option>
+                <option value="documents">Problema en documentos (se puede corregir y reenviar)</option>
+                <option value="compliance">Hallazgo en listas vinculantes (definitivo)</option>
+              </select>
+
               <textarea
                 className="company-detail-reject-textarea"
                 placeholder="Motivo del rechazo"
@@ -291,7 +401,7 @@ export default function CompanyDetail() {
                   onClick={handleRejectCompany}
                   disabled={submitting}
                 >
-                  {submitting ? 'Procesando...' : 'Confirmar rechazo'}
+                  {submitting ? 'Procesando...' : 'Confirmar'}
                 </button>
               </div>
             </div> 
@@ -308,12 +418,34 @@ export default function CompanyDetail() {
               <p className="company-detail-approve-hint">
                 Empresa rechazada{company.verified_at && ` el ${formatDate(company.verified_at)}`}.
               </p>
+
+              <p className="company-detail-approve-hint">
+                Tipo: {company.rejection_type === 'documents' ? 'Documentos (corregible)' : 'Listas vinculantes (definitivo)'}
+              </p>
+              
               <p className="company-detail-rejection-text">
                 <strong>Motivo:</strong> {company.rejection_reason}
               </p>
             </>
           )}
         </div>
+      )}
+
+      {showDeactivateModal && (
+        <Modal title="Desactivar empresa" onClose={() => setShowDeactivateModal(false)}>
+          <p className="company-detail-modal-text">
+            ¿Seguro que quieres desactivar a <strong>{company.display_name || company.legal_name}</strong>?
+            Dejará de aparecer en el listado, no podrá crear pedidos y sus usuarios no podrán iniciar sesión.
+          </p>
+          <div className="company-detail-approve-actions">
+            <button type="button" className="company-detail-cancel-reject-btn" onClick={() => setShowDeactivateModal(false)}>
+              Cancelar
+            </button>
+            <button type="button" className="company-detail-reject-confirm-btn" onClick={handleDeactivate} disabled={submitting}>
+              {submitting ? 'Procesando...' : 'Confirmar'}
+            </button>
+          </div>
+        </Modal>
       )}
     </main>
   )
