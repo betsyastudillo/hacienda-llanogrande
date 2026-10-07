@@ -14,6 +14,7 @@ import CompanyNew from "./pages/Companies/CompanyNew/CompanyNew"
 import CompanyDetail from "./pages/Companies/CompanyDetail/CompanyDetail"
 import Inventory from './pages/Inventory/Inventory'
 import ProductInventory from './pages/Inventory/ProductInventory/ProductInventory'
+import BankAccounts from "./pages/BankAccounts/BankAccounts"
 
 function App() {
   return (
@@ -44,6 +45,8 @@ function App() {
 
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/inventory/:productId" element={<ProductInventory />} />
+
+            <Route path="banks-accounts" element={<BankAccounts />} />
           </Route> 
           <Route path="*" element={<Navigate to="/orders" replace />} />
         </Routes>

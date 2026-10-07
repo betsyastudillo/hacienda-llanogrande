@@ -35,8 +35,12 @@
 }
 
 .confirm-modal-confirm.is-danger {
-  background-color: var(--error);
+  background-color: var(--red-soft);
   color: var(--white-bg);
+}
+
+.confirm-modal-confirm.is-danger:hover {
+  background-color: var(--red-wine);
 }
 
 .confirm-modal-confirm:disabled {
