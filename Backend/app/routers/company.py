@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from uuid import UUID
 from sqlalchemy.orm import Session
 from app.database import get_db
+from app.dependencies import user_has_permission
 from app.auth_dependencies import CompanyApprover, CompanyViewer, CompanyManager
 from app.schemas.company import CompanyCreate, CompanyResponse, CompanyVerifyRequest
 from app.services.company_service import create_a_company, get_companies, edit_company, deactivate_company, get_company_by_client_code, get_company_by_id, reactivate_company, resubmit_company, submit_company, verify_company
@@ -91,8 +92,14 @@ def reactivate_company_endpoint(
   current_user: CompanyManager,
   db: Session = Depends(get_db),
 ):
+  only_drafts = not user_has_permission(current_user, "company:desactivar")
+
   try:
     company = reactivate_company(db, company_id)
+  
+  except PermissionError as e:
+    raise HTTPException(status_code=403, detail=str(e))
+  
   except ValueError as e:
     raise HTTPException(status_code=400, detail=str(e))
 
@@ -108,8 +115,13 @@ def remove_company(
   current_user: CompanyManager,
   db: Session = Depends(get_db),
 ):
+  only_drafts = not user_has_permission(current_user, "company:desactivar")
+
   try:
     company = deactivate_company(db, company_id)
+  
+  except PermissionError as e:
+    raise HTTPException(status_code=403, detail=str(e))
   
   except ValueError as e:
     raise HTTPException(status_code=400, detail=str(e))

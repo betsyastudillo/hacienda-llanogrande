@@ -169,12 +169,20 @@ def edit_company(db: Session, company_id: UUID, company_update: CompanyCreate) -
   return company
 
 
-def reactivate_company(db: Session, company_id: UUID) -> Optional[Company]:
+# Permite cambiar el estado de la empresa
+def _check_can_toggle(company: Company, only_drafts: bool):
+  if only_drafts and company.verification_status != "draft":
+    raise PermissionError("Solo un administrador puede desactivar o reactivar una empresa que ya salió de borrador")
+
+
+def reactivate_company(db: Session, company_id: UUID, only_drafts: bool = False) -> Optional[Company]:
   company = get_company_by_id(db, company_id)
 
   if not company:
     return None
 
+  _check_can_toggle(company, only_drafts)
+  
   if company.is_active:
     raise ValueError("La empresa ya está activa")
 
@@ -185,11 +193,13 @@ def reactivate_company(db: Session, company_id: UUID) -> Optional[Company]:
   return company
 
 
-def deactivate_company(db: Session, company_id: UUID) -> Optional[Company]:
+def deactivate_company(db: Session, company_id: UUID, only_drafts: bool = False) -> Optional[Company]:
   company = get_company_by_id(db, company_id)
   
   if not company:
     return None
+
+  _check_can_toggle(company, only_drafts)
 
   if company.company_type == "own":
     raise ValueError("No se puede desactivar la empresa propia.")

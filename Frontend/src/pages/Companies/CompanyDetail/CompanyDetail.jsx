@@ -173,7 +173,12 @@ export default function CompanyDetail() {
   }
 
   if (loading) return <main className="company-detail-main"><p>Cargando...</p></main>
+
   if (!company) return null
+
+  const canToggleActive =
+  canManageCompany &&
+  (hasPermission('company:desactivar') || company.verification_status === 'draft')
 
   const canReplaceDocs =
     hasPermission('document:subir') &&
@@ -206,13 +211,14 @@ export default function CompanyDetail() {
             bgColor={statusColors.bg}
             textColor={statusColors.text}
           />
-          {canManageCompany && company.is_active && company.company_type !== "own" && (
+
+          {canToggleActive && company.is_active && company.company_type !== "own" && (
             <button type='button' className='company-detail-deactivate-btn' onClick={() => setConfirmAction('deactivate')}>
               Desactivar
             </button>
           )}
 
-          {canManageCompany && !company.is_active && (
+          {canToggleActive && !company.is_active && (
             <button type="button" className="company-detail-reactivate-btn" onClick={() => setConfirmAction('reactivate')} disabled={submitting}>
               Reactivar
             </button>
