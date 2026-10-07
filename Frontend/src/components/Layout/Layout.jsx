@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import Header from '../Header/Header'
 import Sidebar from '../Sidebar/Sidebar'
 import './Layout.css'
+import SessionGuard from '../SessionGuard/SessionGuard'
 
 export default function Layout() {
   // Responsividad, no abre el sidebar si está en vista mobile
@@ -13,7 +14,7 @@ export default function Layout() {
   return (
     <div className="layout">
       <Header onToggleSidebar={() => setSidebarOpen((prev) => !prev)} />
-
+      <SessionGuard />
       <div className="layout-body">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="layout-content">

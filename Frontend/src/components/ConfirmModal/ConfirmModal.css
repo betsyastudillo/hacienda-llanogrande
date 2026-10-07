@@ -1,0 +1,45 @@
+.confirm-modal-text {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+  margin: 0 0 1.25rem;
+}
+
+.confirm-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.confirm-modal-cancel {
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--white-bg);
+  cursor: pointer;
+}
+
+.confirm-modal-confirm {
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm-modal-confirm.is-primary {
+  background-color: var(--red-soft);
+  color: var(--white-bg);
+}
+
+.confirm-modal-confirm.is-danger {
+  background-color: var(--error);
+  color: var(--white-bg);
+}
+
+.confirm-modal-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Button, Form } from 'react-bootstrap'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
@@ -7,9 +7,11 @@ import logo from '../../assets/llano_grande_logo_color.png'
 import './Login.css'
 
 export default function Login() {
+  const location = useLocation()
+  
   const [documentId, setDocumentId] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(location.state?.message || '')
   const [loading, setLoading] = useState(false)
 
   const { login } = useAuth()

@@ -38,13 +38,18 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  const renewToken = (newToken) => {
+    localStorage.setItem('access_token', newToken)
+    setToken(newToken)
+  }
+
   const hasPermission = (permission) => {
     if (!user) return false
     return user.permissions.includes('*') || user.permissions.includes(permission)
   }
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, hasPermission, loading }}>
+    <AuthContext.Provider value={{ token, user, login, logout, renewToken, hasPermission, loading }}>
       {children}
     </AuthContext.Provider>
   )

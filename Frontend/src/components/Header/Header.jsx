@@ -1,11 +1,14 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import ConfirmModal from '../ConfirmModal/ConfirmModal'
 import logo from '../../assets/logo-blaco.png'
 import { X } from 'lucide-react'
 import './Header.css'
 
 export default function Header({ onToggleSidebar }) {
   const { user, logout } = useAuth()
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -29,10 +32,23 @@ export default function Header({ onToggleSidebar }) {
       </div>
 
       <div className="app-header-right">
-        <button className="app-header-logout-btn" onClick={handleLogout}>
+        <button 
+          className="app-header-logout-btn" 
+          onClick={() => setShowLogoutModal(true)}>
           <X size={22} />
         </button>
       </div>
+
+      {showLogoutModal && (
+        <ConfirmModal
+          title="Cerrar sesión"
+          confirmLabel="Confirmar "
+          onConfirm={handleLogout}
+          onCancel={() => setShowLogoutModal(false)}
+        >
+          ¿Seguro que quieres salir de la sesión?
+        </ConfirmModal>
+      )}
     </header>
   )
 }
