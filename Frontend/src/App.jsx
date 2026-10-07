@@ -39,6 +39,7 @@ function App() {
 
             <Route path="/companies" element={<Companies />} />    
             <Route path="/companies/new" element={<CompanyNew />} />    
+            <Route path="/companies/:companyId/continue" element={<CompanyNew />} />    
             <Route path="/companies/:companyId" element={<CompanyDetail />} />
 
             <Route path="/inventory" element={<Inventory />} />

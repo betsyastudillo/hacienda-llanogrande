@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.auth_dependencies import CompanyApprover, CompanyViewer, CompanyManager
 from app.schemas.company import CompanyCreate, CompanyResponse, CompanyVerifyRequest
-from app.services.company_service import create_a_company, get_companies, edit_company, deactivate_company, get_company_by_client_code, get_company_by_id, reactivate_company, resubmit_company, verify_company
+from app.services.company_service import create_a_company, get_companies, edit_company, deactivate_company, get_company_by_client_code, get_company_by_id, reactivate_company, resubmit_company, submit_company, verify_company
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
 
@@ -51,6 +51,24 @@ def create_company(
   db: Session = Depends(get_db),
 ):
   return create_a_company(db=db, company=company)
+
+
+@router.patch("/{company_id}/submit", response_model=CompanyResponse, summary="Envía a revisión una empresa en borrador, mientras se termina el proceso de listas y documentos")
+def submit_company_endpoint(
+  company_id: UUID,
+  current_user: CompanyManager,
+  db: Session = Depends(get_db),
+):
+  try:
+    company = submit_company(db, company_id, current_user)
+  
+  except ValueError as e:
+    raise HTTPException(status_code=400, detail=str(e))
+
+  if not company:
+    raise HTTPException(status_code=404, detail="Company not found")
+  
+  return company
 
 
 @router.put("/{company_id}", response_model=CompanyResponse, summary="Edita los datos de una empresa")

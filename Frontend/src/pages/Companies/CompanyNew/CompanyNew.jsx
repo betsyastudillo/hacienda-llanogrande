@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Trash } from 'lucide-react'
 import api from '../../../services/api'
 import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES, REQUIRED_JURIDICA_DOCS, REQUIRED_NATURAL_DOCS } from '../../../constants/companyDocuments'
@@ -47,8 +47,57 @@ export default function CompanyNew() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  const { companyId: resumeId } = useParams()
+  const [loadingResume, setLoadingResume] = useState(Boolean(resumeId))
+  const [uploadedDocs, setUploadedDocs] = useState([])
+
   const documentTypes = form.person_type === 'natural' ? NATURAL_DOCUMENT_TYPES : JURIDICA_DOCUMENT_TYPES
   const complianceChecks = getComplianceChecks(form.business_sector)
+
+  // Este se utiliza en caso que haya quedado la empresa en borrador, es decir se creó pero no se agregaron documentos ni la verificación en listas vinculantes.
+  useEffect(() => {
+    if (!resumeId) return
+
+    async function loadDraft() {
+      try {
+        const [companyRes, checksRes, docsRes] = await Promise.all([
+          api.get(`/companies/${resumeId}`),
+          api.get(`/compliance-checks/company/${resumeId}`),
+          api.get(`/documents/?company_id=${resumeId}`),
+        ])
+        const c = companyRes.data
+
+        if (c.verification_status !== 'draft') {
+          navigate(`/companies/${resumeId}`)
+          return
+        }
+
+        setCompanyId(resumeId)
+        setForm((prev) => ({
+          ...prev,
+          legal_name: c.legal_name,
+          person_type: c.person_type,
+          business_sector: c.business_sector || '',
+        }))
+
+        const loadedChecks = {}
+        checksRes.data.forEach((ch) => {
+          loadedChecks[ch.check_key] = { reviewed: true, has_findings: ch.has_findings, note: ch.note || '' }
+        })
+        setChecks(loadedChecks)
+        setUploadedDocs(docsRes.data)
+
+        const checksDone = getComplianceChecks(c.business_sector).every((x) => loadedChecks[x.key])
+        setStep(checksDone ? 3 : 2)
+      } catch (err) {
+        setError(getErrorMessage(err, 'No se pudo cargar el borrador'))
+      } finally {
+        setLoadingResume(false)
+      }
+    }
+
+    loadDraft()
+  }, [resumeId])
 
   const handleChange = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value })
@@ -173,13 +222,14 @@ export default function CompanyNew() {
     }
   }
 
-  // Paso 3: Subida de documentos
+  // Paso 3: Subida de documentos  
   const requiredTypes = form.person_type === 'natural' ? REQUIRED_NATURAL_DOCS : REQUIRED_JURIDICA_DOCS
+  const uploadedTypes = new Set(uploadedDocs.map((d) => d.document_type)) // Si ya tenía docs guardados antes
   const queuedTypes = new Set(pendingDocs.map((d) => d.documentType)) // Documentos en cola
-  const missingRequiredDocs = requiredTypes.filter((t) => !queuedTypes.has(t))
+  const missingRequiredDocs = requiredTypes.filter((t) => !queuedTypes.has(t) && !uploadedTypes.has(t))
 
   // Para que cuando seleccione un documento, deje de aparecer en el select
-  const usedTypes = new Set(pendingDocs.map((d) => d.documentType))
+  const usedTypes = new Set([...queuedTypes, ...uploadedTypes])
   
   // La opción de "otro" documento siempre queda disponible, porque puede haber más de un documento "personalizado"
   const availableDocumentTypes = documentTypes.filter(
@@ -237,17 +287,30 @@ export default function CompanyNew() {
         failed.push(doc)
       }
     }
-
+  
+    setUploadedDocs((prev) => [...prev, ...succeeded])
     setPendingDocs(failed)
-    setUploading(false)
 
     if (failed.length > 0) {
       setError(`No se pudieron subir: ${failed.map((d) => documentTypeLabel(d.documentType)).join(', ')}. Revisa la lista e intenta de nuevo.`)
+      setUploading(false)
+
       return
     }
 
-    navigate('/companies')
+    try {
+      await api.patch(`/companies/${companyId}/submit`)
+      navigate('/companies')
+    } catch (err) {
+      setError(getErrorMessage(err, 'No se pudo enviar la empresa a revisión'))
+    } finally {
+      setUploading(false)
+    }
   }
+
+
+  if (loadingResume) return <main className="company-form-main"><p>Cargando...</p></main>
+
 
 
   return (
@@ -507,6 +570,17 @@ export default function CompanyNew() {
           <p className="company-form-hint">
             Para completar el proceso de creación, agrega todos los documentos requeridos y finaliza para subirlos juntos.
           </p>
+
+          {uploadedDocs.length > 0 && (
+            <div className="company-form-queue-list">
+              <p className="company-form-uploaded-title">Documentos ya cargados</p>
+              {uploadedDocs.map((doc) => (
+                <div key={doc.id} className="company-form-queue-row">
+                  <span>{documentTypeLabel(doc.document_type)}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="company-form-row">
             <div className="company-form-field">

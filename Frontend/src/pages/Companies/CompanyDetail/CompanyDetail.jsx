@@ -348,6 +348,24 @@ export default function CompanyDetail() {
         )}
       </div>
 
+      {canManageCompany && company.verification_status === 'draft' && company.is_active && (
+        <div className="company-detail-approve-card">
+          <p className="company-detail-card-title">Proceso incompleto</p>
+          <p className="company-detail-approve-hint">
+            La empresa se creó, pero aún falta completar la verificación en listas y la carga de documentos.
+          </p>
+          <div className="company-detail-approve-actions">
+            <button
+              type="button"
+              className="company-detail-approve-btn"
+              onClick={() => navigate(`/companies/${companyId}/continue`)}
+            >
+              Continuar proceso
+            </button>
+          </div>
+        </div>
+      )}
+
       {canReplaceDocs && (
         <div className="company-detail-approve-card">
           <p className="company-detail-card-title">Corrección de documentos</p>
@@ -363,9 +381,16 @@ export default function CompanyDetail() {
         </div>
       )}
 
+
       {canApproveCompany && (
         <div className="company-detail-approve-card">
           <p className="company-detail-card-title">Decisión final</p>
+
+          {company.verification_status === 'draft' && (
+            <p className="company-detail-approve-hint">
+              Borrador: la empresa aún no se ha enviado a revisión.
+            </p>
+          )}
 
           {company.verification_status === 'pending' && !showRejectBox && (
             <>

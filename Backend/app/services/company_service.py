@@ -2,10 +2,11 @@ from typing import Optional
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy.orm import Session
+from app.constants.company_requirements import REQUIRED_DOCUMENTS, get_required_checks
+from app.schemas.company import CompanyBase, CompanyCreate, CompanyResponse
 from app.models.company import Company
 from app.models.document import Document
-from app.schemas.company import CompanyBase, CompanyCreate, CompanyResponse
-
+from app.models.compliance_check import ComplianceCheck
 
 VALID_PERSON_TYPES = ("natural", "juridica")
 VALID_NATURAL_DOCUMENT_TYPES = ("CC", "CE", "PP", "PPT", "PEP", "otro")
@@ -89,7 +90,7 @@ def create_a_company(db: Session, company: CompanyCreate) -> Company:
     fiscal_phone= company.fiscal_phone,
     fiscal_email= company.fiscal_email,
     client_code=generate_client_code(db, company.company_type),
-    verification_status="pending"  # Se crea por defecto, ya que requiere verificación de la documentación para aprobarse
+    verification_status="draft"  # La empresa se crea como borrador, mientras se termina el proceso de listas vinculantes y documentación. Para que sea obligatorio todo el proceso.
   )
 
   db.add(new_company)
@@ -97,6 +98,45 @@ def create_a_company(db: Session, company: CompanyCreate) -> Company:
   db.refresh(new_company)
   
   return new_company
+
+
+def submit_company(db: Session, company_id: UUID, current_user) -> Optional[Company]:
+  company = get_company_by_id(db, company_id)
+
+  if not company:
+    return None
+
+  if company.verification_status != "draft":
+    raise ValueError("Solo se puede enviar a revisión una empresa en borrador")
+
+  if not company.is_active:
+    raise ValueError("La empresa está desactivada")
+
+  uploaded_types = {
+    d.document_type for d in db.query(Document).filter(Document.company_id == company_id).all()
+  }
+  missing_docs = [t for t in REQUIRED_DOCUMENTS.get(company.person_type, ()) if t not in uploaded_types]
+  
+  if missing_docs:
+    raise ValueError(f"Faltan documentos obligatorios: {', '.join(missing_docs)}")
+
+  checks = db.query(ComplianceCheck).filter(ComplianceCheck.company_id == company_id).all()
+  saved_keys = {c.check_key for c in checks}
+  missing_checks = [k for k in get_required_checks(company.business_sector) if k not in saved_keys]
+  
+  if missing_checks:
+    raise ValueError(f"Falta completar la verificación en listas: {', '.join(missing_checks)}")
+
+  for c in checks:
+    if c.has_findings and not (c.note and c.note.strip()):
+      raise ValueError("Los hallazgos en listas requieren una descripción")
+
+  company.verification_status = "pending"
+
+  db.commit()
+  db.refresh(company)
+
+  return company
 
 
 # Editar 
@@ -168,6 +208,9 @@ def verify_company(db: Session, company_id: UUID, decision: str, rejection_reaso
   if not company:
     return None
 
+  if company.verification_status == "draft":
+    raise ValueError("La empresa aún no se encuentra creada totalmente, falta completar la verificación en listas vinculantes y la documentación.")
+  
   if company.verification_status != "pending":
     raise ValueError(f"Esta empresa ya fue {company.verification_status}")
 
