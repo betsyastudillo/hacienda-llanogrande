@@ -14,6 +14,7 @@ export default function SessionGuard() {
   const [renewing, setRenewing] = useState(false)
 
   const endSession = (message) => {
+    if (message) sessionStorage.setItem('session_message', message)
     setSecondsLeft(null)
     logout()
     navigate('/login', { state: { message } })
@@ -72,7 +73,7 @@ export default function SessionGuard() {
       confirmLabel="Continuar"
       cancelLabel="Cerrar sesión"
       onConfirm={handleContinue}
-      onCancel={() => endSession('Cerraste sesión.')}
+      onCancel={() => endSession()}
       loading={renewing}
       dismissible={false}
     >

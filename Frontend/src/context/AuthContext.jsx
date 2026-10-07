@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { jwtDecode } from 'jwt-decode'
 import api from '../services/api'
 
 
@@ -17,9 +16,21 @@ export function AuthProvider({ children }) {
       return
     }
 
+    // si ya hay un perfil cargado (se renueva el token), no se vuelve a pedir
+    if (user) return
+
     api.get('/users/me')
       .then((res) => setUser(res.data))
       .catch(() => {
+        const status = err.response?.status
+        const detail = String(err.response?.data?.detail || '')
+
+        if (status === 401) {
+          sessionStorage.setItem('session_message', 'Tu sesión expiró. Inicia sesión de nuevo.')
+        } else if (status === 403 && detail.includes('desactivada')){
+          sessionStorage.setItem('session_message', detail)
+        }
+        
         localStorage.removeItem('access_token')
         setToken(null)
       })

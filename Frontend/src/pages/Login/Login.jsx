@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Button, Form } from 'react-bootstrap'
 import api from '../../services/api'
@@ -11,11 +11,15 @@ export default function Login() {
   
   const [documentId, setDocumentId] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState(location.state?.message || '')
+  const [error, setError] = useState(() => sessionStorage.getItem('session_message') || '')
   const [loading, setLoading] = useState(false)
 
   const { login } = useAuth()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    sessionStorage.removeItem('session_message')
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

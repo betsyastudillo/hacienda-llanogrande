@@ -1,8 +1,8 @@
-// Solo lee la fecha de vencimiento; no verifica la firma (eso lo hace el backend)
+import { jwtDecode } from 'jwt-decode'
+
 export function getTokenExpiry(token) {
   try {
-    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    const { exp } = JSON.parse(atob(payload))
+    const { exp } = jwtDecode(token)
     return exp ? exp * 1000 : null
   } catch {
     return null
