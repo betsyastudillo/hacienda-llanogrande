@@ -6,7 +6,7 @@ export function getErrorMessage(err, fallback) {
   // En errores 422 FastAPI devuelve un arreglo de objetos, no un texto. Para más claridad
   if (Array.isArray(detail)) {
     return detail
-      .map((d) => `${(d.loc || []).filter((p) => p !== 'body').join('.')}: ${d.msg}`)
+      .map((d) => `${(d.loc || []).filter((p) => p !== 'body').join('.')}: ${d.msg.replace('Value error, ', '')}`)
       .join(' · ')
   }
 

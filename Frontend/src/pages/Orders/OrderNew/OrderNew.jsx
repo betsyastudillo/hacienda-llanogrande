@@ -6,6 +6,7 @@ import UnitReferenceHelper from '../../../components/UnitReferenceHelper/UnitRef
 import { estimateWeightKg } from '../../../constants/units'
 import { Pencil, Trash } from 'lucide-react'
 import { formatCurrency } from '../../../utils/formatCurrency'
+import { getErrorMessage } from '../../../utils/getErrorMessage'
 import './OrderNew.css'
 
 export default function OrderNew() {

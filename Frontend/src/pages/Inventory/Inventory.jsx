@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 import SearchInput from '../../components/SearchInput/SearchInput'
 import Modal from '../../components/Modal/Modal'
 import { ADJUSTMENT_CATEGORIES } from '../../constants/inventoryReasons'
+import { getErrorMessage } from '../../utils/getErrorMessage'
 import './Inventory.css'
 
 export default function Inventory() {

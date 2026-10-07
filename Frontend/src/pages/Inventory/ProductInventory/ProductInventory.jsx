@@ -7,6 +7,7 @@ import Modal from '../../../components/Modal/Modal'
 import { ADJUSTMENT_CATEGORIES } from '../../../constants/inventoryReasons'
 import { formatCurrency } from '../../../utils/formatCurrency'
 import { formatDate, formatDateOnly } from '../../../utils/formatDate'
+import { getErrorMessage } from '../../../utils/getErrorMessage'
 import './ProductInventory.css'
 
 const MOVEMENT_CONFIG = {

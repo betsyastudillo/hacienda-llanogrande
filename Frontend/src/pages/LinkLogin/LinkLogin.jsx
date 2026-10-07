@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
+import { getErrorMessage } from '../../utils/getErrorMessage'
 
 export default function MagicLogin() {
   const [searchParams] = useSearchParams()

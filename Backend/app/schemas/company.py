@@ -1,8 +1,14 @@
+import re
 from datetime import datetime
 from typing import Optional, Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from uuid import UUID
 from app.schemas.mixins import AuditResponseMixin
+
+
+# Validaciones para teléfono y email, para que no los envíen con un caracter cualquiera
+EMAIL_REGEX = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+PHONE_REGEX = re.compile(r"\d{7,15}")
 
 
 class CompanyBase (BaseModel):
@@ -21,7 +27,32 @@ class CompanyBase (BaseModel):
   fiscal_email : Optional[str] = None
 
 class CompanyCreate(CompanyBase):
-  pass
+
+  # Le dice a Pydantic que después de comprobar que el valor es un texto, ejecute esta función
+  # Si devuelve el valor, se acepta
+  # Si lanza valueError, se corta la petición y responde 422 sin llegar al router
+  @field_validator("phone", "fiscal_phone")
+  @classmethod # Lo exige Pydantic
+  def validate_phone(cls, value):
+    if value is None: # Ya que el fiscal_phone es Opcional
+      return value
+    
+    # El fullmatch exige que todo el texto cumpla el patrón
+    if not PHONE_REGEX.fullmatch(value):
+      raise ValueError("El teléfono debe contener sólo números (entre 7 a 15 digitos)")
+    
+    return value
+
+  @field_validator("email", "fiscal_email")
+  @classmethod
+  def validate_email(cls, value):
+    if value is None:
+      return value
+    
+    if not EMAIL_REGEX.fullmatch(value):
+      raise ValueError("El correo no tiene un formato válido")
+    
+    return value
 
 class CompanyVerifyRequest(BaseModel):
   decision: Literal["approved", "rejected"]

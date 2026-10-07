@@ -4,6 +4,8 @@ import { Trash } from 'lucide-react'
 import api from '../../../services/api'
 import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES, REQUIRED_JURIDICA_DOCS, REQUIRED_NATURAL_DOCS } from '../../../constants/companyDocuments'
 import { getComplianceChecks } from '../../../constants/complianceChecks'
+import { getErrorMessage } from '../../../utils/getErrorMessage'
+import { isValidEmail, isValidPhone } from '../../../utils/validators'
 import './CompanyNew.css'
 
 
@@ -60,6 +62,27 @@ export default function CompanyNew() {
       return
     }
 
+    if (!isValidPhone(form.phone)) {
+      setError('El teléfono debe tener solo números (entre 7 y 15 dígitos)')
+      return
+    }
+
+    if (!isValidEmail(form.email)) {
+      setError('El correo no tiene un formato válido')
+      return
+    }
+
+    if (!sameAsOperational) {
+      if (form.fiscal_phone && !isValidPhone(form.fiscal_phone)) {
+        setError('El teléfono fiscal debe tener solo números (entre 7 y 15 dígitos)')
+        return
+      }
+      if (form.fiscal_email && !isValidEmail(form.fiscal_email)) {
+        setError('El correo fiscal no tiene un formato válido')
+        return
+      }
+    }
+
     if (!form.business_sector) {
       setError('Selecciona el sector del cliente.')
       return
@@ -85,6 +108,10 @@ export default function CompanyNew() {
     }
   }
 
+  const handlePhoneChange = (field) => (e) => {
+    setForm({ ...form, [field]: e.target.value.replace(/\D/g, '') })
+  }
+  
   // Paso 2: Checklist de cumplimiento
   const getCheckState = (key) => checks[key] || { reviewed: false, has_findings: false, note: '' }
 
@@ -335,7 +362,9 @@ export default function CompanyNew() {
                 type='number'
                 className="company-form-input"
                 value={form.phone}
-                onChange={handleChange('phone')}
+                onChange={handlePhoneChange('phone')}
+                inputMode='numeric'
+                maxLength={15}
               />
             </div>
 
