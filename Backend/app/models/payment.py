@@ -7,13 +7,16 @@ from app.models.mixins import AuditMixin
 
 
 class Payment(Base, AuditMixin):
-    __tablename__ = "payments"
+  __tablename__ = "payments"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), unique=True, nullable=False) #unique=True porque un pedido solo debe tener un pago asociado.
-    bank_account_id = Column(UUID(as_uuid=True), ForeignKey("bank_accounts.id"), nullable=False)
-    proforma_number = Column(String, unique=True, nullable=False)
-    status = Column(String, nullable=False, default="pending")  # pending, confirmed, failed
-    amount = Column(Numeric(12, 2), nullable=False)
-    pdf_url = Column(String, nullable=True)
-    confirmed_at = Column(DateTime(timezone=True), nullable=True)
+  id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+  order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), unique=True, nullable=False) #unique=True porque un pedido solo debe tener un pago asociado.
+  bank_account_id = Column(UUID(as_uuid=True), ForeignKey("bank_accounts.id"), nullable=False)
+  proforma_number = Column(String, unique=True, nullable=False)
+  status = Column(String, nullable=False, default="pending")  # pending, confirmed, failed
+  amount = Column(Numeric(12, 2), nullable=False)
+  pdf_url = Column(String, nullable=True)
+  confirmed_at = Column(DateTime(timezone=True), nullable=True)
+  receipt_url = Column(String, nullable=True)
+  receipt_uploaded_at = Column(DateTime, nullable=True)
+  rejection_reason = Column(String, nullable=True)

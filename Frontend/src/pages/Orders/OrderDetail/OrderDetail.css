@@ -5,6 +5,10 @@
   padding: 2rem 0;
 }
 
+.detail-empty-inline {
+  font-size: 14px;
+}
+
 .detail-error-text {
   color: var(--error);
 }
@@ -183,51 +187,107 @@
 }
 
 
-/* Pago */
-.detail-side-column .detail-card:last-child {
-  margin-bottom: 0;
+/* Acciones de pago */
+.detail-info-row {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 4px 0;
 }
 
-.detail-info-list {
+.detail-info-row span:first-child {
+  text-align: right;
+  overflow-wrap: anywhere;
+  color: var(--text-footer);
+}
+
+.pay-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.pay-btn {
+  font-size: 13px;
+  padding: 8px 14px;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: 1px solid #d9d5cb;
+  background: var(--white-bg);
+  cursor: pointer;
+}
+
+.pay-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pay-btn.is-primary {
+  background: var(--green-bg);
+  border-color: var(--green);
+  color: var(--text-black);
+}
+
+.pay-btn.is-danger {
+  background: var(--error-bg);
+  border-color: var(--error-bg);
+  color: var(--error);
+}
+
+.pay-hint { margin-top: 12px; }
+
+.pay-error {
+  font-size: 13px;
+  color: var(--error);
+  margin: 10px 0 0;
+}
+
+.pay-reason {
+  max-width: 60%;
+  text-align: right;
+  color: var(--error);
+}
+
+.pay-account-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.detail-info-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-}
-
-.detail-info-row span:first-child {
-  color: var(--text-footer);
-}
-
-.detail-badge {
+.pay-account-option {
   display: flex;
   align-items: center;
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background-color: #ece9e2;
-}
-
-.detail-badge.is-accent {
-  background-color: var(--green-bg);
-  font-weight: 500;
-  color: var(--white-bg);
-}
-
-.detail-badge.is-error {
-  background-color: var(--error-bg);
-  color: var(--error);
-}
-
-.detail-empty-inline {
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #d9d5cb;
+  border-radius: 8px;
   font-size: 13px;
-  color: var(--text-footer);
-  margin: 0;
+  cursor: pointer;
+}
+
+.pay-account-option.is-selected {
+  border-color: var(--green-bg);
+  background: #f1f5ef;
+}
+
+.pay-label {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.pay-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px;
+  border: 1px solid #d9d5cb;
+  border-radius: 8px;
+  resize: vertical;
 }
 
 /* QR */

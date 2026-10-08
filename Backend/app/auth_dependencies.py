@@ -11,10 +11,11 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 # Payment
 PaymentViewerAny = Annotated[User, Depends(require_any_permission("payment:ver", "payment:ver_propio"))]
-PaymentCreator = Annotated[User, Depends(require_permission("payment:crear"))]
 PaymentConfirmer = Annotated[User, Depends(require_permission("payment:confirmar"))]
 PaymentViewer = Annotated[User, Depends(require_permission("payment:ver"))]
 PaymentViewerOwn = Annotated[User, Depends(require_permission("payment:ver_propio"))]
+PaymentCreator = Annotated[User, Depends(require_any_permission("payment:crear", "payment:crear_propio"))]
+PaymentReceiptUploader = Annotated[User, Depends(require_permission("payment:subir_comprobante"))]
 
 # BankAccount
 BankAccountManager = Annotated[User, Depends(require_permission("bank_account:gestionar"))]

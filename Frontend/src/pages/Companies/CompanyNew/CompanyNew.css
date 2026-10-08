@@ -278,7 +278,7 @@
 }
 
 .company-form-submit-btn:disabled {
-  background-color: #d3d1c7;
-  color: #8a8a85;
+  background-color: var(--red-wine);
+  color: var(--white-bg);
   cursor: not-allowed;
 }

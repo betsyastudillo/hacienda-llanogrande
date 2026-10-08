@@ -5,13 +5,14 @@ import { ORDER_STATUS_STEPS } from '../../../constants/orderStatus'
 import { CircleCheck, CircleX, Clock } from 'lucide-react'
 import { formatCurrency } from '../../../utils/formatCurrency'
 import { formatDate } from '../../../utils/formatDate'
+import PaymentCard from './PaymentCard'
 import './OrderDetail.css'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = api.defaults.baseURL
 
 function StatusStepper({ currentStatus }) {
-    const currentIndex = ORDER_STATUS_STEPS.findIndex((s) => s.key === currentStatus)
-    const progressPercent = currentIndex <= 0 ? 0 : (currentIndex / (ORDER_STATUS_STEPS.length - 1)) * 100
+  const currentIndex = ORDER_STATUS_STEPS.findIndex((s) => s.key === currentStatus)
+  const progressPercent = currentIndex <= 0 ? 0 : (currentIndex / (ORDER_STATUS_STEPS.length - 1)) * 100
 
 
   return (
@@ -24,7 +25,7 @@ function StatusStepper({ currentStatus }) {
         const isDone = index < currentIndex
         const isCurrent = index === currentIndex
         return (
-          <div className="detail-stepper-step">
+          <div className="detail-stepper-step" key={step.key}>
             <div className="detail-stepper-line-wrapper">
               <div
                 className={`detail-stepper-circle ${isDone ? 'is-done' : ''} ${isCurrent ? 'is-current' : ''}`}
@@ -52,6 +53,28 @@ export default function OrderDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  async function fetchPayment() {
+    try {
+      const res = await api.get(`/payments/order/${orderId}`)
+      setPayment(res.data)
+      try {
+        const bankRes = await api.get(`/bank-accounts/${res.data.bank_account_id}`)
+        setBankAccount(bankRes.data)
+      } catch {
+        setBankAccount(null)
+      }
+    } catch {
+      setPayment(null)
+      setBankAccount(null)
+    }
+  }
+  
+  async function reloadPayment() {
+    const orderRes = await api.get(`/orders/${orderId}`)
+    setOrder(orderRes.data) // el estado del pedido cambia al confirmar el pago
+    await fetchPayment()
+  }
+
   useEffect(() => {
     async function fetchAll() {
       try {
@@ -69,14 +92,7 @@ export default function OrderDetail() {
 
       // Estas secciones son opcionales según el estado del pedido —
       try {
-        const res = await api.get(`/payments/order/${orderId}`)
-        setPayment(res.data)
-        try {
-          const bankRes = await api.get(`/bank-accounts/${res.data.bank_account_id}`)
-          setBankAccount(bankRes.data)
-        } catch {
-          // sin acceso o no encontrada, se omite
-        }
+        await fetchPayment()
       } catch {
         setPayment(null)
       }
@@ -99,6 +115,7 @@ export default function OrderDetail() {
     }
 
     fetchAll()
+
   }, [orderId])
 
   const getProduct = (productId) => products.find((m) => m.id === productId)
@@ -106,12 +123,6 @@ export default function OrderDetail() {
   if (loading) return <main className="detail-main"><p className="detail-empty">Cargando pedido...</p></main>
   if (error) return <main className="detail-main"><p className="detail-empty detail-error-text">{error}</p></main>
   if (!order) return null
-
-  const PAYMENT_STATUS_CONFIG = {
-    confirmed: { label: 'Confirmado', icon: CircleCheck, className: 'is-accent' },
-    failed: { label: 'Fallido', icon: CircleX, className: 'is-error' },
-    pending: { label: 'Pendiente', icon: Clock, className: '' },
-  }
 
   const ASSIGNMENT_STATUS_CONFIG = {
     approved: { label: 'Aprobado', icon: CircleCheck, className: 'is-accent' },
@@ -180,45 +191,12 @@ export default function OrderDetail() {
         </div>
 
         <div className="detail-side-column">
-          <div className="detail-card">
-            <p className="detail-card-title">Pago</p>
-            {payment ? (
-              <div className="detail-info-list">
-                <div className="detail-info-row">
-                  <span>Referencia</span>
-                  <span>{payment.proforma_number}</span>
-                </div>
-                {(() => {
-                  const config = PAYMENT_STATUS_CONFIG[payment.status] || PAYMENT_STATUS_CONFIG.pending
-                  const Icon = config.icon
-                  return (
-                    <div className="detail-info-row">
-                      <span>Estado</span>
-                      <span className={`detail-badge ${config.className}`}>
-                        <Icon size={14} style={{ marginRight: 4, verticalAlign: -2 }} />
-                        {config.label}
-                      </span>
-                    </div>
-                  )
-                })()}
-
-              {bankAccount && (
-                <>
-                  <div className="detail-info-row">
-                    <span>Banco</span>
-                    <span>{bankAccount.bank_name}</span>
-                  </div>
-                  <div className="detail-info-row">
-                    <span>Cuenta</span>
-                    <span>{bankAccount.account_number}</span>
-                  </div>
-                </>
-              )}
-            </div>
-            ) : (
-            <p className="detail-empty-inline">Aún no se ha generado la proforma de pago.</p>
-            )}
-          </div>
+          <PaymentCard
+            order={order}
+            payment={payment}
+            bankAccount={bankAccount}
+            onChanged={reloadPayment}
+          />
 
           <div className="detail-card">
             <p className="detail-card-title">Transporte</p>
