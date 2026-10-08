@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../../services/api'
 import { ORDER_STATUS_STEPS } from '../../../constants/orderStatus'
 import { CircleCheck, CircleX, Clock } from 'lucide-react'
@@ -43,6 +43,7 @@ function StatusStepper({ currentStatus }) {
 
 export default function OrderDetail() {
   const { orderId } = useParams()
+  const navigate = useNavigate()
 
   const [order, setOrder] = useState(null)
   const [products, setProducts] = useState([])
@@ -131,6 +132,9 @@ export default function OrderDetail() {
   }
   return (
     <main className="detail-main">
+      <button className="company-detail-back-btn" onClick={() => navigate('/orders')}>
+        ← Volver a pedidos
+      </button>
       <div className="detail-header">
         <div>
           <p className="detail-eyebrow">Empresa:</p>

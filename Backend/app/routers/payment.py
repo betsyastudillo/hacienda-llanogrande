@@ -1,4 +1,6 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from uuid import UUID
 from app.database import get_db
@@ -104,3 +106,32 @@ def upload_payment_receipt(
 
   except ValueError as e:
     raise HTTPException(status_code=400, detail=str(e))
+  
+
+@router.get("/{payment_id}/proforma", summary="Descarga la proforma en PDF")
+def download_proforma(
+  payment_id: UUID,
+  current_user: PaymentViewerAny,
+  db: Session = Depends(get_db),
+):
+  payment = get_payment_by_id(db, payment_id)
+
+  if not payment:
+    raise HTTPException(status_code=404, detail="Payment not found")
+
+  order = get_order_by_id(db, payment.order_id)
+
+  if not order or (
+    not user_has_permission(current_user, "payment:ver") and not can_access_order(order, current_user)
+  ):
+    raise HTTPException(status_code=404, detail="Payment not found")
+
+  if not payment.pdf_url:
+    raise HTTPException(status_code=404, detail="Proforma PDF not available for this payment")
+
+  path = payment.pdf_url.lstrip("/")
+
+  if not os.path.exists(path):
+    raise HTTPException(status_code=404, detail="Proforma file not found")
+
+  return FileResponse(path, media_type="application/pdf", filename=f"{payment.proforma_number}.pdf")

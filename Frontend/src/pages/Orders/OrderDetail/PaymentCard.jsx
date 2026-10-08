@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { CircleCheck, CircleX, Clock } from 'lucide-react'
+import { CircleCheck, CircleX, Clock, Download, Eye } from 'lucide-react'
 import api from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
 import Modal from '../../../components/Modal/Modal'
@@ -109,6 +109,23 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
     }
   }
 
+  async function handleDownloadProforma() {
+    setError('')
+    try {
+      const res = await api.get(`/payments/${payment.id}/proforma`, { responseType: 'blob' })
+      const url = URL.createObjectURL(res.data)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${payment.proforma_number}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 10000)
+    } catch {
+      setError('No se pudo descargar la proforma.')
+    }
+  }
+
   // Sin proforma
   if (!payment) {
     return (
@@ -173,6 +190,7 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
           <span>Referencia</span>
           <span>{payment.proforma_number}</span>
         </div>
+
         <div className="detail-info-row">
           <span>Valor</span>
           <span>{formatCurrency(payment.amount)}</span>
@@ -199,6 +217,18 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
           </>
         )}
 
+        {payment.pdf_url && (
+          <div className='detail-info-row'>
+            <span>Proforma</span>
+            <button 
+              className='pay-link' 
+              onClick={handleDownloadProforma}
+            >
+              <Download size={14}/>
+              Descargar PDF</button>
+          </div>
+        )}
+
         {payment.status === 'failed' && payment.rejection_reason && (
           <div className="detail-info-row">
             <span>Motivo</span>
@@ -216,7 +246,8 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
         {receiptHref && (
           <div className="detail-info-row">
             <span>Comprobante</span>
-            <a href={receiptHref} target="_blank" rel="noreferrer">Ver archivo</a>
+            <a href={receiptHref} target="_blank" rel="noreferrer">
+              Ver archivo</a>
           </div>
         )}
       </div>
@@ -243,7 +274,7 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
               onChange={handleFileChange}
             />
             <button
-              className={`pay-btn ${!payment.receipt_url || payment.status === 'failed' ? 'is-primary' : ''}`}
+              className={'pay-btn is-primary'}
               onClick={() => fileInputRef.current?.click()}
               disabled={busy}
             >
@@ -257,7 +288,7 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
             <button className="pay-btn is-danger" onClick={() => setShowReject(true)} disabled={busy}>
               Rechazar
             </button>
-            <button className="pay-btn is-primary" onClick={() => setShowConfirm(true)} disabled={busy}>
+            <button className="pay-btn is-confirm" onClick={() => setShowConfirm(true)} disabled={busy}>
               Confirmar
             </button>
           </>
@@ -279,7 +310,7 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
       {showReject && (
         <Modal title="Rechazar pago" onClose={() => setShowReject(false)}>
           <label className="pay-label" htmlFor="reject-reason">
-            Motivo (lo verá el cliente)
+            Motivo (visible para el cliente)
           </label>
           <textarea
             id="reject-reason"

@@ -211,12 +211,24 @@
 }
 
 .pay-btn {
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
   padding: 8px 14px;
   margin-top: 10px;
   border-radius: 8px;
   border: 1px solid #d9d5cb;
   background: var(--white-bg);
+  cursor: pointer;
+}
+
+.pay-link {
+  background: var(--border);
+  border: 1px solid var(--text-footer);
+  padding: 6px 10px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   cursor: pointer;
 }
 
@@ -226,15 +238,21 @@
 }
 
 .pay-btn.is-primary {
-  background: var(--green-bg);
-  border-color: var(--green);
-  color: var(--text-black);
+  background: var(--red-soft);
+  border-color: var(--red-soft);
+  color: var(--white-bg);
 }
 
 .pay-btn.is-danger {
   background: var(--error-bg);
-  border-color: var(--error-bg);
+  border-color: var(--error);
   color: var(--error);
+}
+
+.pay-btn.is-confirm {
+  background: var(--green-bg);
+  border-color: var(--green);
+  color: var(--green);
 }
 
 .pay-hint { margin-top: 12px; }

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.bank_account import BankAccount
 from app.models.payment import Payment
 from app.models.order import Order
+from app.services.proforma_pdf import generate_proforma_pdf, PROFORMAS_DIR
 
 
 RECEIPTS_DIR = "uploads/receipts"
@@ -131,9 +132,22 @@ def create_payment(db: Session, order_id: UUID, bank_account_id: UUID) -> Paymen
   )
 
   db.add(new_payment)
-  db.commit()
-  db.refresh(new_payment)
+  db.flush()  # asigna el id sin confirmar todavía
+  payment_id = new_payment.id
 
+  try:
+    new_payment.pdf_url = generate_proforma_pdf(db, new_payment, order, bank_account)
+    db.commit()
+  
+  except Exception:
+    # Si falla el PDF no queda pago a medias ni archivo suelto
+    db.rollback()
+    shutil.rmtree(os.path.join(PROFORMAS_DIR, str(payment_id)), ignore_errors=True)
+  
+    raise
+
+  db.refresh(new_payment)
+  
   return new_payment
 
 
