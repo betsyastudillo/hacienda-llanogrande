@@ -11,6 +11,7 @@ class Order(Base, AuditMixin):
     __tablename__ = "orders"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_number = Column(String, nullable=False, unique=True, index=True)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False)
     status = Column(String, nullable=False, default="created")
     subtotal = Column(Numeric(12, 2), nullable=False, default=0)

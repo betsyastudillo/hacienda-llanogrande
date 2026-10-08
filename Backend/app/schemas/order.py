@@ -34,6 +34,8 @@ class OrderResponse(AuditResponseMixin):
     tax: Decimal
     total: Decimal
     items: List[OrderItemResponse]
+    order_number: str
+    needs_action: bool = False
 
     # Se declara el objeto para que computed_field lo pueda leer
     company: Any  = Field(default=None, exclude=True)  # solo uso interno, nunca se serializa directo

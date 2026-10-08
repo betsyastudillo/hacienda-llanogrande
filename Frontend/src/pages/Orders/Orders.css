@@ -120,6 +120,47 @@
   overflow-x: auto;
 }
 
+.orders-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+  font-size: 13px;
+}
+
+.orders-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.orders-action-count {
+  color: var(--error);
+  font-weight: 500;
+}
+
+.orders-code {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.orders-attention {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.orders-row.is-attention {
+  box-shadow: inset 3px 0 0 var(--error);
+}
+
 @media (max-width: 600px) {
   .orders-main {
     padding: 1.25rem 1rem;

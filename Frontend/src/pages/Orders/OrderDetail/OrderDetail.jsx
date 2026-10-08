@@ -137,6 +137,7 @@ export default function OrderDetail() {
       </button>
       <div className="detail-header">
         <div>
+          <p className="detail-eyebrow">Pedido {order.order_number}</p>
           <p className="detail-eyebrow">Empresa:</p>
           <p className="detail-order-id">{order.company_display_name}</p>
           <p className="detail-order-date">Creado el {formatDate(order.created_at)}</p>

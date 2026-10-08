@@ -1,12 +1,17 @@
 from typing import List, Optional
 from uuid import UUID
 from decimal import Decimal
+from datetime import datetime, timedelta
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, joinedload
+from app.models.assignment import Assignment
+from app.models.company import Company
 from app.models.inventory_movement import InventoryMovement
 from app.models.order import Order
 from app.models.order_item import OrderItem
+from app.models.order_counter import OrderCounter
+from app.models.payment import Payment
 from app.models.product import Product
-from app.models.company import Company
 from app.models.user import User
 from app.schemas.order import OrderCreate
 from app.services.inventory_service import get_sellable_stock, register_order_deduction
@@ -16,48 +21,68 @@ CLIENT_ROLES = ("cliente_operativo", "cliente_admin")
 STAFF_VIEW_ALL_ROLES = ("admin", "soporte")
 
 
+# Genera los números de orden PED-2026-0000. Para facilitar las búsquedas.
+def generate_order_number(db: Session) -> str:
+  # Año en hora de Colombia (UTC-5)
+  year = (datetime.utcnow() - timedelta(hours=5)).year
+
+  stmt = (
+    insert(OrderCounter)
+    .values(year=year, last_number=1)
+    .on_conflict_do_update(
+        index_elements=[OrderCounter.year],
+        set_={"last_number": OrderCounter.last_number + 1},
+    )
+    .returning(OrderCounter.last_number)
+  )
+  number = db.execute(stmt).scalar_one()
+
+  return f"PED-{year}-{number:04d}"
+
+
 def get_orders(db: Session, current_user: User) -> List[Order]:
-    query = db.query(Order).options(joinedload(Order.company))
+  query = (
+    db.query(Order)
+    .options(joinedload(Order.company))
+    .order_by(Order.created_at.desc())
+  )
 
-    if current_user.role in STAFF_VIEW_ALL_ROLES:
-        return query.all()
+  if current_user.role == "cliente_admin":
+    query = query.filter(Order.company_id == current_user.company_id)
+  
+  elif current_user.role == "cliente_operativo":
+    query = query.filter(Order.created_by_user_id == current_user.id)
 
-    if current_user.role == "cliente_admin":
-        return query.filter(Order.company_id == current_user.company_id).all()
-
-    if current_user.role == "cliente_operativo":
-        return query.filter(Order.created_by_user_id == current_user.id).all()
-
-    return query.all()
+  return attach_needs_action(db, query.all(), current_user)
 
 
 def get_order_by_id(db: Session, order_id: UUID) -> Optional[Order]:
-    return db.query(Order).options(joinedload(Order.company)).filter(Order.id == order_id).first()
+  return db.query(Order).options(joinedload(Order.company)).filter(Order.id == order_id).first()
 
 
 def can_access_order(order: Order, current_user: User) -> bool:
-    if current_user.role in STAFF_VIEW_ALL_ROLES:
-        return True
-    
-    if current_user.role == "cliente_admin":
-        return order.company_id == current_user.company_id
-    
-    if current_user.role == "cliente_operativo":
-        return order.created_by_user_id == current_user.id
-    
+  if current_user.role in STAFF_VIEW_ALL_ROLES:
     return True
+  
+  if current_user.role == "cliente_admin":
+    return order.company_id == current_user.company_id
+  
+  if current_user.role == "cliente_operativo":
+    return order.created_by_user_id == current_user.id
+  
+  return True
 
 
 def _resolve_company_id(order: OrderCreate, current_user: User) -> UUID:
-    if current_user.role in CLIENT_ROLES:
-        return current_user.company_id  # se ignora cualquier company_id que venga en el payload
+  if current_user.role in CLIENT_ROLES:
+    return current_user.company_id  # se ignora cualquier company_id que venga en el payload
 
-    if current_user.role == "admin":
-        if not order.company_id:
-            raise ValueError("company_id is required when an admin creates an order on behalf of a client")
-        return order.company_id
+  if current_user.role == "admin":
+    if not order.company_id:
+      raise ValueError("company_id is required when an admin creates an order on behalf of a client")
+    return order.company_id
 
-    raise ValueError("This role is not allowed to create orders")
+  raise ValueError("This role is not allowed to create orders")
 
 
 def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
@@ -76,9 +101,10 @@ def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
       raise ValueError("Company is not approved")
 
   new_order = Order(
-      company_id=company_id, 
-      created_by_user_id=current_user.id,
-      status="created"
+    order_number=generate_order_number(db),
+    company_id=company_id, 
+    created_by_user_id=current_user.id,
+    status="created"
   )
 
   db.add(new_order)
@@ -131,68 +157,123 @@ def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
 
 
 def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_user: User) -> Optional[Order]:
-    order = get_order_by_id(db, order_id)
+  order = get_order_by_id(db, order_id)
 
-    if not order:
-        return None
+  if not order:
+    return None
+  
+  if not can_access_order(order, current_user):
+    raise PermissionError("You do not have permission to edit this order")
+  
+  if order.status != "created":
+    raise ValueError("Only orders with status 'created' can be edited")
+  
+  # Se borran los items existentes antes de agregar los nuevos
+  db.query(OrderItem).filter(OrderItem.order_id == order.id).delete()
+
+  # Revierte las salidas del inventario que este pedido haya generado para poder recalcular el stock disponible correctamente con los nuevos items
+  db.query(InventoryMovement).filter(
+    InventoryMovement.order_id == order.id, InventoryMovement.movement_type == "salida"
+  ).delete()
+
+  db.flush()  # Asegura que los cambios se reflejen antes de agregar nuevos items
+
+  subtotal = Decimal("0")
+  tax = Decimal("0")
+
+  for item_data in order_data.items:
+    product = db.query(Product).filter(Product.id == item_data.product_id).first()
+
+    if not product:
+      raise ValueError(f"Product with id {item_data.product_id} not found")
     
-    if not can_access_order(order, current_user):
-        raise PermissionError("You do not have permission to edit this order")
+    if not product.is_active:
+      raise ValueError(f"Product with id {item_data.product_id} is not active")
+
+    sellable = get_sellable_stock(db, product)
+
+    if item_data.quantity_m3 > sellable:
+      raise ValueError(
+        f"Insufficient stock for {product.name}: requested {item_data.quantity_m3}, available {sellable}"
+      )
     
-    if order.status != "created":
-        raise ValueError("Only orders with status 'created' can be edited")
+    item_subtotal = product.price * item_data.quantity_m3
+    item_tax = item_subtotal * product.tax_rate
+    subtotal += item_subtotal
+    tax += item_tax
     
-    # Se borran los items existentes antes de agregar los nuevos
-    db.query(OrderItem).filter(OrderItem.order_id == order.id).delete()
+    order_item = OrderItem(
+      order_id=order.id,
+      product_id=item_data.product_id,
+      quantity_m3=item_data.quantity_m3,
+      unit_price=product.price,
+      subtotal=item_subtotal
+    )
+    
+    db.add(order_item)
 
-    # Revierte las salidas del inventario que este pedido haya generado para poder recalcular el stock disponible correctamente con los nuevos items
-    db.query(InventoryMovement).filter(
-        InventoryMovement.order_id == order.id, InventoryMovement.movement_type == "salida"
-    ).delete()
+    register_order_deduction(db, product.id, order.id, item_data.quantity_m3, current_user)
 
-    db.flush()  # Asegura que los cambios se reflejen antes de agregar nuevos items
+  order.subtotal = subtotal
+  order.tax = tax
+  order.total = subtotal + tax
+  
+  db.commit()
+  db.refresh(order)
+  
+  return order
 
-    subtotal = Decimal("0")
-    tax = Decimal("0")
 
-    for item_data in order_data.items:
-        product = db.query(Product).filter(Product.id == item_data.product_id).first()
+# Calcula para cada pedido, si la persona que lo mira tiene algo que hacer y le añade el resultado al pedido como un campo needs_action (V o F).
+# Esto es lo que alimenta la marca "Acción", el contador "N requiere atención" y el botón "Pendientes primero".
+# Sirve cuando requiere acción para el pago o el transporte
+def attach_needs_action(db: Session, orders: List[Order], current_user: User) -> List[Order]:
+  role = current_user.role
+  ids = [o.id for o in orders]
 
-        if not product:
-            raise ValueError(f"Product with id {item_data.product_id} not found")
-        
-        if not product.is_active:
-            raise ValueError(f"Product with id {item_data.product_id} is not active")
+  payments, assignments = {}, {}
+  if ids:
 
-        sellable = get_sellable_stock(db, product)
+    # Trae todos los pagos de la lista en una sola consulta y los guarda en un dict cuya llave es el id del pedido. Igual en transporte.
+    payments = {p.order_id: p for p in db.query(Payment).filter(Payment.order_id.in_(ids)).all()}
 
-        if item_data.quantity_m3 > sellable:
-            raise ValueError(
-                f"Insufficient stock for {product.name}: requested {item_data.quantity_m3}, available {sellable}"
-            )
-        
-        item_subtotal = product.price * item_data.quantity_m3
-        item_tax = item_subtotal * product.tax_rate
-        subtotal += item_subtotal
-        tax += item_tax
-        
-        order_item = OrderItem(
-            order_id=order.id,
-            product_id=item_data.product_id,
-            quantity_m3=item_data.quantity_m3,
-            unit_price=product.price,
-            subtotal=item_subtotal
+    # Ordenados por fecha: si hay varios por pedido, queda el más reciente
+    assignments = {
+      a.order_id: a
+      for a in db.query(Assignment).filter(Assignment.order_id.in_(ids)).order_by(Assignment.created_at).all()
+    }
+
+  # Recorre cada pedido y toma su pago y su transporte del diccionario (None si no existen)
+  for order in orders:
+    payment = payments.get(order.id)
+    assignment = assignments.get(order.id)
+    needs = False
+
+    # Decide según el rol de quien consulta:
+
+    # Si es cartera, hay un pago pendiente que ya tiene comprobante, o sea que toca revisarlo.
+    if role == "cartera":
+      needs = bool(payment and payment.status == "pending" and payment.receipt_url)
+
+    # Si es logistica, hay un transporte pendiente por validar, o el pedido ya tiene el transporte validado y falta generar la guía.
+    elif role == "logistica":
+      needs = bool(
+        (assignment and assignment.validation_status == "pending")
+        or order.status == "transport_validated"   # falta generar la guía
+      )
+
+    # Si es cliente, faltaría generar la proforma, el pago fue rechazado, falta subir el comprobante, o falta enviar el transporte o lo rechazaron.
+    elif role in CLIENT_ROLES:
+      if order.status == "created":
+        needs = (
+          payment is None
+          or payment.status == "failed"
+          or (payment.status == "pending" and not payment.receipt_url)
         )
-        
-        db.add(order_item)
+      elif order.status == "payment_confirmed":
+        needs = assignment is None or assignment.validation_status == "rejected"
 
-        register_order_deduction(db, product.id, order.id, item_data.quantity_m3, current_user)
+    # Le asigna el resultado al objeto del pedido, needs_action no es una columna en la BD, sino un atributo temporal que existe solo durante esa petición
+    order.needs_action = needs
 
-    order.subtotal = subtotal
-    order.tax = tax
-    order.total = subtotal + tax
-    
-    db.commit()
-    db.refresh(order)
-    
-    return order
+  return orders
