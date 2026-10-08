@@ -111,7 +111,8 @@ def _period_bounds(start_date: date, end_date: date):
   return start_dt, end_dt
 
 
-def _sum_movements(db: Session, product_id: UUID, movement_type: str, start_dt=None, end_dt=None, only_damage=None) -> int:
+def _sum_movements(db, product_id, movement_type, start_dt=None, end_dt=None, only_damage=None, order_linked=None) -> int:
+
   query = db.query(func.coalesce(func.sum(InventoryMovement.quantity), 0)).filter(
     InventoryMovement.product_id == product_id,
     InventoryMovement.movement_type == movement_type,
@@ -128,6 +129,12 @@ def _sum_movements(db: Session, product_id: UUID, movement_type: str, start_dt=N
 
   elif only_damage is False:
     query = query.filter(or_(InventoryMovement.category.is_(None), InventoryMovement.category != "damage"))
+
+  if order_linked is True:
+    query = query.filter(InventoryMovement.order_id.isnot(None))
+
+  elif order_linked is False:
+    query = query.filter(InventoryMovement.order_id.is_(None))
 
   return int(query.scalar())
 
@@ -153,8 +160,9 @@ def _get_kardex(db: Session, product_id: UUID, start_date: date, end_date: date)
     +_sum_movements(db, product_id, "ajuste", end_dt=start_dt)
   )
 
-  entries = _sum_movements(db, product_id, "entrada", start_dt, end_dt)
-  exits = _sum_movements(db, product_id, "salida", start_dt, end_dt)
+  entries = _sum_movements(db, product_id, "entrada", start_dt, end_dt, order_linked=False)
+  reversals = _sum_movements(db, product_id, "entrada", start_dt, end_dt, order_linked=True)
+  exits = _sum_movements(db, product_id, "salida", start_dt, end_dt) - reversals
   adjustments_damage = _sum_movements(db, product_id, "ajuste", start_dt, end_dt, only_damage=True)
   adjustments_other = _sum_movements(db, product_id, "ajuste", start_dt, end_dt, only_damage=False)
 

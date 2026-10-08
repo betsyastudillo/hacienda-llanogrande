@@ -39,28 +39,6 @@ def list_movements(
   return get_movements_by_product(db, product_id)
 
 
-@router.post("/movements", response_model=InventoryMovementResponse)
-def register_movement(
-  data: InventoryMovementCreate,
-  current_user: InventoryManager,
-  db: Session = Depends(get_db),
-):
-
-  try:
-    return create_manual_movement(
-      db=db, 
-      product_id=data.product_id, 
-      movement_type=data.movement_type, 
-      quantity=data.quantity, 
-      reason=data.reason, 
-      category=data.category, 
-      current_user=current_user
-    )
-  
-  except ValueError as e:
-    raise HTTPException(status_code=400, detail=str(e))
-  
-
 @router.get("/products/{product_id}/kardex", response_model=KardexResponse)
 def product_kardex(
   product_id: UUID,

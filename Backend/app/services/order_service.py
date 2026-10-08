@@ -85,6 +85,28 @@ def _resolve_company_id(order: OrderCreate, current_user: User) -> UUID:
   raise ValueError("This role is not allowed to create orders")
 
 
+def _reverse_order_deductions(db: Session, order: Order, current_user: User) -> None:
+  movements = db.query(InventoryMovement).filter(InventoryMovement.order_id == order.id).all()
+
+  # Neto por producto: salidas menos entradas ya registradas para este pedido,
+  # así una segunda edición no revierte dos veces lo mismo
+  net = {}
+  for m in movements:
+    sign = 1 if m.movement_type == "salida" else -1 if m.movement_type == "entrada" else 0
+    net[m.product_id] = net.get(m.product_id, 0) + sign * m.quantity
+
+  for product_id, quantity in net.items():
+    if quantity > 0:
+      db.add(InventoryMovement(
+        product_id=product_id,
+        order_id=order.id,
+        movement_type="entrada",
+        quantity=quantity,
+        reason=f"Reversión por edición del pedido {order.order_number}",
+        created_by_user_id=current_user.id,
+      ))
+
+
 def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
 
   company_id = _resolve_company_id(order, current_user)
@@ -157,6 +179,7 @@ def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
 
 
 def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_user: User) -> Optional[Order]:
+
   order = get_order_by_id(db, order_id)
 
   if not order:
@@ -168,15 +191,16 @@ def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_use
   if order.status != "created":
     raise ValueError("Only orders with status 'created' can be edited")
   
-  # Se borran los items existentes antes de agregar los nuevos
+  if db.query(Payment).filter(Payment.order_id == order.id).first():
+    raise ValueError("No se puede editar un pedido que ya tiene proforma de pago")
+  
+  # Se borran los items existentes (el pedido sigue en 'created', no hay documentos que dependan de ellos)
   db.query(OrderItem).filter(OrderItem.order_id == order.id).delete()
 
-  # Revierte las salidas del inventario que este pedido haya generado para poder recalcular el stock disponible correctamente con los nuevos items
-  db.query(InventoryMovement).filter(
-    InventoryMovement.order_id == order.id, InventoryMovement.movement_type == "salida"
-  ).delete()
+  # Revierte el inventario con movimientos nuevos, sin borrar el historial
+  _reverse_order_deductions(db, order, current_user)
 
-  db.flush()  # Asegura que los cambios se reflejen antes de agregar nuevos items
+  db.flush()
 
   subtotal = Decimal("0")
   tax = Decimal("0")
@@ -212,7 +236,7 @@ def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_use
     
     db.add(order_item)
 
-    register_order_deduction(db, product.id, order.id, item_data.quantity_m3, current_user)
+    register_order_deduction(db, product, order.id, item_data.quantity_m3, current_user)
 
   order.subtotal = subtotal
   order.tax = tax
