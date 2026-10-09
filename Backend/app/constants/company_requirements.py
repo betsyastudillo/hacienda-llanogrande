@@ -15,6 +15,8 @@ LEGAL_REP_FIELDS = (
   "legal_rep_email", "legal_rep_city",
 )
 
+VALID_DOCUMENT_TYPES = ("NIT", "CC", "CE", "PP", "PPT", "PEP")
+
 def get_required_checks(business_sector):
   return COMMON_CHECKS + CHECKS_BY_SECTOR.get(business_sector, ())
 

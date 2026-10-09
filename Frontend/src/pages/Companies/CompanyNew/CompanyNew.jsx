@@ -44,7 +44,6 @@ export default function CompanyNew() {
   // Paso 2: Checklist de cumplimiento
   const [companyChecks, setCompanyChecks] = useState({})
   const [repChecks, setRepChecks] = useState({})
-  const [checks, setChecks] = useState({}) 
   const [savingChecks, setSavingChecks] = useState(false)
 
   // Paso 3: Subida de documentos
@@ -63,7 +62,6 @@ export default function CompanyNew() {
   const [uploadedDocs, setUploadedDocs] = useState([])
 
   const documentTypes = form.person_type === 'natural' ? NATURAL_DOCUMENT_TYPES : JURIDICA_DOCUMENT_TYPES
-  const complianceChecks = getComplianceChecks(form.business_sector)
 
   // Este se utiliza en caso que haya quedado la empresa en borrador, es decir se creó pero no se agregaron documentos ni la verificación en listas vinculantes.
   useEffect(() => {
@@ -91,15 +89,28 @@ export default function CompanyNew() {
           business_sector: c.business_sector || '',
         }))
 
-        const loadedChecks = {}
+        // Se reparten las verificaciones guardadas según el sujeto
+        const loadedCompany = {}
+        const loadedRep = {}
         checksRes.data.forEach((ch) => {
-          loadedChecks[ch.check_key] = { reviewed: true, has_findings: ch.has_findings, note: ch.note || '' }
+          const value = { has_findings: ch.has_findings, note: ch.note || '' }
+          if ((ch.subject || 'company') === 'legal_representative') {
+            loadedRep[ch.check_key] = value
+          } else {
+            loadedCompany[ch.check_key] = value
+          }
         })
-        setChecks(loadedChecks)
+
+        setCompanyChecks(loadedCompany)
+        setRepChecks(loadedRep)
         setUploadedDocs(docsRes.data)
 
-        const checksDone = getComplianceChecks(c.business_sector).every((x) => loadedChecks[x.key])
-        setStep(checksDone ? 3 : 2)
+        const juridica = c.person_type === 'juridica'
+        const companyDone = getComplianceChecks(c.business_sector).every((x) => loadedCompany[x.key])
+        const repDone = !juridica || getRepComplianceChecks().every((x) => loadedRep[x.key])
+
+        setStep(companyDone && repDone ? 3 : 2)
+
       } catch (err) {
         setError(getErrorMessage(err, 'No se pudo cargar el borrador'))
       } finally {
@@ -235,32 +246,6 @@ export default function CompanyNew() {
   }
   
   // Paso 2: Checklist de cumplimiento
-  const getCheckState = (key) => checks[key] || { reviewed: false, has_findings: false, note: '' }
-
-  const toggleReviewed = (key) => {
-    const current = getCheckState(key)
-    setChecks({
-      ...checks,
-      [key]: { ...current, reviewed: !current.reviewed },
-    })
-  }
-
-  const toggleFindings = (key) => {
-    const current = getCheckState(key)
-    setChecks({ 
-      ...checks,
-      [key]: { ...current, has_findings: !current.has_findings },
-    })
-  }
-
-  const setNote = (key, note) => {
-    const current = getCheckState(key)
-    setChecks({
-      ...checks,
-      [key]: { ...current, note },
-    })
-  }
-
   const handleSaveChecks = async () => {
     setError('')
     setSavingChecks(true)
@@ -457,7 +442,6 @@ export default function CompanyNew() {
                 <option value="PP">Pasaporte</option>
                 <option value="PPT">Permiso por Protección Temporal</option>
                 <option value="PEP">Permiso Especial de Permanencia</option>
-                <option value="otro">Otro</option>
               </select>
             </div>
           )}
@@ -678,51 +662,6 @@ export default function CompanyNew() {
             />
           )}
 
-          {error && <p className="company-form-error">{error}</p>}
-
-          {/* <div className="compliance-checks-list">
-            {complianceChecks.map((c) => {
-              const state = getCheckState(c.key)
-              return (
-                <div key={c.key} className="compliance-check-row">
-                  <div className="compliance-check-main">
-                    <span className="compliance-check-label">{c.label}</span>
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={state.reviewed}
-                        onChange={() => toggleReviewed(c.key)}
-                      />
-                      <span className="switch-slider"></span>
-                    </label>
-                  </div>
-
-                  {state.reviewed && (
-                    <div className="compliance-check-details">
-                      <label className="compliance-findings-row">
-                        <input
-                          type="checkbox"
-                          checked={state.has_findings}
-                          onChange={() => toggleFindings(c.key)}
-                        />
-                        ¿Se encontró algo?
-                      </label>
-
-                      {state.has_findings && (
-                        <textarea
-                          className="compliance-note-textarea"
-                          placeholder="Describe qué se encontró"
-                          value={state.note}
-                          onChange={(e) => setNote(c.key, e.target.value)}
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div> */}
-
           <div className="company-form-actions">
             <button
               type="button"
@@ -778,15 +717,6 @@ export default function CompanyNew() {
             </div>
           </div>
 
-          {documentType === 'otro' && (
-            <input
-              type="text"
-              className="company-form-input"
-              placeholder="Especifica qué documento es"
-              value={customDocumentLabel}
-              onChange={(e) => setCustomDocumentLabel(e.target.value)}
-            />
-          )}
 
           <button type="button" className="company-form-add-queue-btn" onClick={handleAddToQueue}>
             + Agregar

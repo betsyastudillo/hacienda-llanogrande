@@ -169,6 +169,16 @@ def generate_proforma_pdf(db: Session, payment, order, bank_account) -> str:
   story += [Paragraph("Datos para consignar", section), Spacer(1, 0.2 * cm), bank_table, Spacer(1, 0.2 * cm)]
   story.append(p(f"Consigna el valor exacto y sube el comprobante en la plataforma, indicando la referencia {payment.proforma_number}.", small))
 
+  fiscal_mail = customer.fiscal_email or customer.email
+  story += [
+    Spacer(1, 0.4 * cm),
+    p(
+      f"Una vez confirmado el pago, se emitirá la factura electrónica de venta "
+      f"y se enviará al correo {fiscal_mail}.",
+      small,
+    ),
+  ]
+
   story += [
     Spacer(1, 0.8 * cm),
     p("Este documento es una proforma y no constituye factura de venta.", small),
