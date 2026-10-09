@@ -276,11 +276,11 @@ def attach_needs_action(db: Session, orders: List[Order], current_user: User) ->
     # Decide según el rol de quien consulta:
 
     # Si es cartera, hay un pago pendiente que ya tiene comprobante, o sea que toca revisarlo.
-    if role == "cartera":
+    if role in ("cartera", "admin"):
       needs = bool(payment and payment.status == "pending" and payment.receipt_url)
 
     # Si es logistica, hay un transporte pendiente por validar, o el pedido ya tiene el transporte validado y falta generar la guía.
-    elif role == "logistica":
+    elif role in ("logistica", "admin"):
       needs = bool(
         (assignment and assignment.validation_status == "pending")
         or order.status == "transport_validated"   # falta generar la guía

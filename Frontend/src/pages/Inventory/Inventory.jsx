@@ -162,7 +162,9 @@ export default function Inventory() {
                       </span>
                     </td>
                     <td className="inventory-list-icon-cell">
-                      <Eye size={16} />
+                      <button className='inventory-details-btn'>
+                        <Eye size={16} />
+                      </button>
                     </td>
                   </tr>
                 )

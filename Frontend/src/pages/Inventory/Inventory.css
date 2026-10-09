@@ -80,6 +80,17 @@
   color: var(--text-footer);
 }
 
+.inventory-details-btn {
+  background-color: var(--white-bg);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+}
+
 @media (max-width: 600px) {
   .search-input-wrapper {
     width: 100%;

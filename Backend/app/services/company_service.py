@@ -37,7 +37,8 @@ def _resolve_document_type(person_type: str, document_type: Optional[str]) -> st
 
 
 # Trae todas las empresas
-def get_companies(db: Session, company_type: Optional[str] = None, include_inactive: bool = False) -> list[Company]:
+def get_companies(db: Session, current_user, company_type: Optional[str] = None, include_inactive: bool = False) -> list[Company]:
+
   query = db.query(Company)
 
   if company_type:
@@ -46,7 +47,7 @@ def get_companies(db: Session, company_type: Optional[str] = None, include_inact
   if not include_inactive:
     query = query.filter(Company.is_active == True)
 
-  return query.all()
+  return attach_needs_action(db, query.all(), current_user)
 
 
 # Buscador de empresas por id (UUID)
@@ -244,6 +245,7 @@ def verify_company(db: Session, company_id: UUID, decision: str, rejection_reaso
 
 
 def resubmit_company(db: Session, company_id: UUID, current_user) -> Optional[Company]:
+
   company = get_company_by_id(db, company_id)
 
   if not company:
@@ -269,3 +271,37 @@ def resubmit_company(db: Session, company_id: UUID, current_user) -> Optional[Co
   db.refresh(company)
 
   return company
+
+
+def attach_needs_action(db: Session, companies: list[Company], current_user) -> list[Company]:
+  role = current_user.role
+  ids = [c.id for c in companies]
+
+  # Empresas que tienen al menos un documento rechazado (una sola consulta)
+  with_rejected_docs = set()
+  if ids:
+    rows = (
+      db.query(Document.company_id)
+      .filter(Document.company_id.in_(ids), Document.status == "rejected")
+      .distinct()
+      .all()
+    )
+    with_rejected_docs = {r[0] for r in rows}
+
+  for company in companies:
+    needs = False
+
+    if company.is_active:
+      if role == "admin":
+        needs = company.verification_status == "pending"
+
+      elif role == "operaciones":
+        needs = (
+          company.verification_status == "draft"
+          or (company.verification_status == "rejected" and company.rejection_type == "documents")
+          or (company.verification_status != "approved" and company.id in with_rejected_docs)
+        )
+
+    company.needs_action = needs
+
+  return companies

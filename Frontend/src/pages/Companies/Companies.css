@@ -169,6 +169,40 @@
   cursor: pointer;
 }
 
+.companies-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.companies-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.companies-action-count {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--error);
+}
+
+.companies-attention {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.companies-row.is-attention {
+  box-shadow: inset 3px 0 0 var(--error);
+}
+
 @media (max-width: 600px) {
   .companies-main {
     padding: 1.25rem 1rem;

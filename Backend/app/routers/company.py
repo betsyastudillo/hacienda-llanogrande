@@ -17,7 +17,7 @@ def list_companies(
   company_type: Optional[str] = None,
   include_inactive: bool = False
 ):
-  return get_companies(db, company_type, include_inactive)
+  return get_companies(db, current_user, company_type, include_inactive)
 
 
 @router.get("/{company_id}", response_model=CompanyResponse, summary="Busca una empresa por ID")

@@ -15,6 +15,8 @@ export default function Companies() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [pendingFirst, setPendingFirst] = useState(false)
+
   const [showInactive, setShowInactive] = useState(false)
 
   const { hasPermission } = useAuth()
@@ -46,6 +48,12 @@ export default function Companies() {
     return name.toLowerCase().includes(term) || c.client_code.toLowerCase().includes(term)
   })
 
+  const visibleCompanies = pendingFirst
+    ? [...filteredCompanies].sort((a, b) => Number(b.needs_action) - Number(a.needs_action))
+    : filteredCompanies
+
+  const actionCount = companies.filter((c) => c.needs_action).length
+
   const companyStatusHelpItems = Object.keys(COMPANY_STATUS_LABELS).map((key) => ({
     key,
     icon: COMPANY_STATUS_ICONS[key],
@@ -73,15 +81,28 @@ export default function Companies() {
             placeholder="Buscar por nombre..."
           />
 
-          <label className="companies-show-inactive">
-            <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
-            Mostrar inactivas
-          </label>
+          <div className="companies-toolbar">
+            <div className="companies-toggles">
+              <label className="companies-show-inactive">
+                <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
+                Mostrar inactivas
+              </label>
+              <label className="companies-show-inactive">
+                <input type="checkbox" checked={pendingFirst} onChange={(e) => setPendingFirst(e.target.checked)} />
+                Pendientes primero
+              </label>
+            </div>
+            {actionCount > 0 && (
+              <span className="companies-action-count">
+                {actionCount} {actionCount === 1 ? 'requiere' : 'requieren'} tu atención
+              </span>
+            )}
+          </div>
 
         {loading && <p className="companies-empty">Cargando empresas...</p>}
         {error && <p className="companies-empty companies-error-text">{error}</p>}
 
-        {!loading && !error && !filteredCompanies.length === 0 && (
+        {!loading && !error && filteredCompanies.length === 0 && (
           <p className="companies-empty">Todavía no hay empresas registradas.</p>
         )}
 
@@ -106,18 +127,19 @@ export default function Companies() {
                 </tr>
               </thead>
               <tbody>
-                {filteredCompanies.map((company) => {
+                {visibleCompanies.map((company) => {
                   const colors = COMPANY_STATUS_COLORS[company.verification_status] || { bg: '#ece9e2', text: '#5f5e5a' }
                   const Icon = COMPANY_STATUS_ICONS[company.verification_status]
 
                   return (
                   <tr
                     key={company.id}
-                    className={`companies-row ${!company.is_active ? 'companies-row-inactive' : ''}`}
+                    className={`companies-row ${!company.is_active ? 'companies-row-inactive' : ''} ${company.needs_action ? 'is-attention' : ''}`}
                     onClick={() => navigate(`/companies/${company.id}`)}
                   >
                     <td className="companies-name-cell" title={company.display_name || company.legal_name}>
                       {company.display_name || company.legal_name}
+                      {company.needs_action && <span className="companies-attention">Acción</span>}
                     </td>
                     <td>{company.client_code}</td>
                     <td className="companies-address-cell" title={company.address}>

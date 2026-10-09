@@ -68,6 +68,7 @@ class CompanyResponse(CompanyBase, AuditResponseMixin):
   rejection_reason: Optional[str] = None
   rejection_type: Optional[str] = None
   is_active: bool
+  needs_action: bool = False
 
   class Config:
     from_attributes = True
