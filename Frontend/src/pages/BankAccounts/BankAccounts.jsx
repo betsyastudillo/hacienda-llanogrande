@@ -8,6 +8,7 @@ import StatusBadge from '../../components/StatusBadge/StatusBadge'
 import { getErrorMessage } from '../../utils/getErrorMessage'
 import { BANKS, OTHER_BANK, ACCOUNT_TYPES, HOLDER_DOCUMENT_TYPES } from '../../constants/banks'
 import './BankAccounts.css'
+import { formatAccountNumber } from '../../utils/formatAccountNumber'
 
 const EMPTY_FORM = {
   bank: '',
@@ -181,6 +182,7 @@ export default function BankAccounts() {
                 <th>Banco</th>
                 <th>Tipo Cuenta</th>
                 <th>Número</th>
+                <th>Convenio</th>
                 <th>Titular</th>
                 <th>Estado</th>
                 {canManage && <th>Acciones</th>}
@@ -191,7 +193,8 @@ export default function BankAccounts() {
                 <tr key={account.id} className={!account.is_active ? 'bank-row-inactive' : ''}>
                   <td>{account.bank_name}</td>
                   <td>{typeLabel(account.account_type)}</td>
-                  <td>{account.account_number}</td>
+                  <td className='bank-number-account-cell'>{formatAccountNumber(account.account_number)}</td>
+                  <td>{account.agreement_number || '-' }</td>
                   <td className="bank-holder-cell" title={account.account_holder_name}>
                     {account.account_holder_name}
                     <span className="bank-holder-doc">

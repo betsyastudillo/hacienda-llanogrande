@@ -9,6 +9,7 @@ import { PAYMENT_STATUS_LABELS, PAYMENT_STATUS_COLORS, PAYMENT_STATUS_ICONS } fr
 import { formatCurrency } from '../../../utils/formatCurrency'
 import { formatDate } from '../../../utils/formatDate'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
+import { formatAccountNumber } from '../../../utils/formatAccountNumber'
 
 const STATUS_CONFIG = {
   confirmed: { label: 'Confirmado', icon: CircleCheck, className: 'is-accent' },
@@ -154,10 +155,18 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
                     checked={selectedAccountId === a.id}
                     onChange={() => setSelectedAccountId(a.id)}
                   />
-                  <span>
-                    <strong>{a.bank_name}</strong>
+                  <span className='pay-account-number'>
+                    <strong>{a.bank_name.toUpperCase()} · CUENTA {a.account_type.toUpperCase()}</strong>
                     <br />
-                    {a.account_type} · {a.account_number}
+                    {a.agreement_number ? (
+                      <p>
+                        Convenio: {a.agreement_number}
+                      </p>
+                      ) : ( 
+                        <p>
+                          Cuenta:                           {formatAccountNumber(a.account_number)}
+                        </p>
+                      )}
                   </span>
                 </label>
               ))}

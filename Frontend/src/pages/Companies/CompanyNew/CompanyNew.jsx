@@ -20,16 +20,24 @@ export default function CompanyNew() {
   const [form, setForm] = useState({
     legal_name: '',
     display_name: '',
-    document_type: 'nit',
+    document_type: '',
     document_number: '',
+    business_sector: '',
     company_type: 'client', // fijo — este formulario siempre crea empresas cliente
     person_type: 'juridica',
     address: '',
     phone: '',
     email: '',
+    economic_activity_code: '',
+    economic_activity_description: '',
     fiscal_address: '',
     fiscal_phone: '',
     fiscal_email: '',
+    legal_rep_name: '',
+    legal_rep_document_type: '',
+    legal_rep_document_number: '',
+    legal_rep_email: '',
+    legal_rep_city: '',
   })
 
   // Paso 2: Checklist de cumplimiento
@@ -106,8 +114,19 @@ export default function CompanyNew() {
   const handleCreateCompany = async () => {
     setError('')
 
-    if (!form.legal_name || !form.document_type || !form.document_number || !form.address || !form.phone || !form.email) {
+    const isJuridica = form.person_type === 'juridica'
+
+    if (
+      !form.legal_name.trim() || !form.document_number.trim() ||
+      !form.address.trim() || !form.phone || !form.email.trim() ||
+      (!isJuridica && !form.document_type)
+    ) {
       setError('Todos los campos son obligatorios.')
+      return
+    }
+
+    if (!form.business_sector) {
+      setError('Selecciona el sector del cliente.')
       return
     }
 
@@ -118,6 +137,11 @@ export default function CompanyNew() {
 
     if (!isValidEmail(form.email)) {
       setError('El correo no tiene un formato válido')
+      return
+    }
+
+    if (form.economic_activity_code && !/^\d{4}$/.test(form.economic_activity_code)) {
+      setError('El código CIIU debe tener 4 dígitos')
       return
     }
 
@@ -132,22 +156,53 @@ export default function CompanyNew() {
       }
     }
 
-    if (!form.business_sector) {
-      setError('Selecciona el sector del cliente.')
-      return
+    if (isJuridica) {
+      if (
+        !form.legal_rep_name.trim() || !form.legal_rep_document_type ||
+        !form.legal_rep_document_number.trim() || !form.legal_rep_email.trim() ||
+        !form.legal_rep_city.trim()
+      ) {
+        setError('Completa todos los datos del representante legal.')
+        return
+      }
+      if (!isValidEmail(form.legal_rep_email)) {
+        setError('El correo del representante legal no tiene un formato válido')
+        return
+      }
     }
+
 
     setSubmitting(true)
     
     try {
+      const clean = (v) => (typeof v === 'string' ? v.trim() : v) || null
+
       const payload = {
         ...form,
-        fiscal_address: sameAsOperational ? null : form.fiscal_address || null,
-        fiscal_phone: sameAsOperational ? null : form.fiscal_phone || null,
-        fiscal_email: sameAsOperational ? null : form.fiscal_email || null,
-      }
+        legal_name: form.legal_name.trim(),
+        document_number: form.document_number.trim(),
+        address: form.address.trim(),
+        email: form.email.trim(),
 
+        document_type: isJuridica ? 'NIT' : form.document_type,
+        display_name: isJuridica ? clean(form.display_name) : null,
+
+        economic_activity_code: clean(form.economic_activity_code),
+        economic_activity_description: clean(form.economic_activity_description),
+
+        fiscal_address: sameAsOperational ? null : clean(form.fiscal_address),
+        fiscal_phone: sameAsOperational ? null : clean(form.fiscal_phone),
+        fiscal_email: sameAsOperational ? null : clean(form.fiscal_email),
+
+        legal_rep_name: isJuridica ? form.legal_rep_name.trim() : null,
+        legal_rep_document_type: isJuridica ? form.legal_rep_document_type : null,
+        legal_rep_document_number: isJuridica ? form.legal_rep_document_number.trim() : null,
+        legal_rep_email: isJuridica ? form.legal_rep_email.trim() : null,
+        legal_rep_city: isJuridica ? form.legal_rep_city.trim() : null,
+      }
+      console.log(payload)
       const response = await api.post('/companies/', payload)
+      console.log(response)
       setCompanyId(response.data.id)
       setStep(2)
     } catch (err) {
@@ -407,6 +462,29 @@ export default function CompanyNew() {
             </div>
           </div>
 
+          <div className="company-form-row">
+            <div className="company-form-field">
+              <label className="company-form-label">Código CIIU</label>
+              <input
+                className="company-form-input"
+                value={form.economic_activity_code}
+                onChange={handleChange('economic_activity_code')}
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="ej. 4752"
+              />
+            </div>
+
+            <div className="company-form-field">
+              <label className="company-form-label">Actividad económica</label>
+              <input
+                className="company-form-input"
+                value={form.economic_activity_description}
+                onChange={handleChange('economic_activity_description')}
+                placeholder="ej. Comercio al por menor"
+              />
+            </div>
+          </div>
           <p className="company-form-section-title">Datos de contacto</p>
 
           <div className="company-form-field">
@@ -486,6 +564,68 @@ export default function CompanyNew() {
               </div>
             </>
           )}
+
+          {form.person_type === 'juridica' && (
+            <>
+            <p className="company-form-section-title">Datos del representante legal</p>
+            <div className="company-form-field">
+              <label className="company-form-label">Nombre completo</label>
+              <input
+                className="company-form-input"
+                value={form.legal_rep_name}
+                onChange={handleChange('legal_rep_name')}
+              />
+            </div>
+            
+            <div className='company-form-row'>
+              <div className="company-form-field">
+                <label className="company-form-label">Tipo de documento</label>
+                <select
+                  className="company-form-input"
+                  value={form.legal_rep_document_type}
+                  onChange={handleChange('legal_rep_document_type')}
+                >
+                  <option value="">Selecciona un tipo</option>
+                  <option value="CC">Cédula de ciudadanía</option>
+                  <option value="CE">Cédula de extranjería</option>
+                  <option value="PP">Pasaporte</option>
+                  <option value="PPT">Permiso por Protección Temporal</option>
+                  <option value="PEP">Permiso Especial de Permanencia</option>
+                </select>
+              </div>
+
+              <div className="company-form-field">
+                <label className="company-form-label">Número de documento</label>
+                <input
+                  className="company-form-input"
+                  value={form.legal_rep_document_number}
+                  onChange={handleChange('legal_rep_document_number')}
+                />
+              </div>
+            </div>
+
+            <div className="company-form-row">
+              <div className="company-form-field">
+                <label className="company-form-label">Correo</label>
+                <input
+                  type="email"
+                  className="company-form-input"
+                  value={form.legal_rep_email}
+                  onChange={handleChange('legal_rep_email')}
+                />
+              </div>
+
+              <div className="company-form-field">
+                <label className="company-form-label">Ciudad</label>
+                <input
+                  className="company-form-input"
+                  value={form.legal_rep_city}
+                  onChange={handleChange('legal_rep_city')}
+                />
+              </div>
+            </div>
+          </>
+        )}
 
           <div className="company-form-actions">
             <button type="button" className="company-form-cancel-btn" onClick={() => navigate('/companies')}>

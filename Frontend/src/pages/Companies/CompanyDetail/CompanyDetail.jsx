@@ -242,12 +242,34 @@ export default function CompanyDetail() {
           <div className="company-detail-info-row"><span>Teléfono</span><span>{company.phone}</span></div>
           <div className="company-detail-info-row"><span>Correo</span><span>{company.email}</span></div>
 
+          {(company.economic_activity_code || company.economic_activity_description) && (
+            <div className="company-detail-info-row">
+              <span>Actividad económica</span>
+              <span>
+                {[company.economic_activity_code, company.economic_activity_description].filter(Boolean).join(' · ')}
+              </span>
+            </div>
+          )}
+
           {(company.fiscal_address || company.fiscal_phone || company.fiscal_email) && (
             <>
               <p className="company-detail-card-title company-detail-card-title-spaced">Datos fiscales (RUT)</p>
               {company.fiscal_address && <div className="company-detail-info-row"><span>Dirección</span><span>{company.fiscal_address}</span></div>}
               {company.fiscal_phone && <div className="company-detail-info-row"><span>Teléfono</span><span>{company.fiscal_phone}</span></div>}
               {company.fiscal_email && <div className="company-detail-info-row"><span>Correo</span><span>{company.fiscal_email}</span></div>}
+            </>
+          )}
+
+          {company.person_type === 'juridica' && (
+            <>
+              <p className="company-detail-card-title company-detail-card-title-spaced">Representante legal</p>
+              <div className="company-detail-info-row"><span>Nombre</span><span>{company.legal_rep_name || '—'}</span></div>
+              <div className="company-detail-info-row">
+                <span>Documento</span>
+                <span>{company.legal_rep_document_type ? `${company.legal_rep_document_type} ${company.legal_rep_document_number}` : '—'}</span>
+              </div>
+              <div className="company-detail-info-row"><span>Correo</span><span>{company.legal_rep_email || '—'}</span></div>
+              <div className="company-detail-info-row"><span>Ciudad</span><span>{company.legal_rep_city || '—'}</span></div>
             </>
           )}
         </div>
@@ -394,7 +416,7 @@ export default function CompanyDetail() {
 
           {company.verification_status === 'draft' && (
             <p className="company-detail-approve-hint">
-              Borrador: la empresa aún no se ha enviado a revisión.
+              La empresa aún no se ha enviado a revisión.
             </p>
           )}
 

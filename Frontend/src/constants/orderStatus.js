@@ -3,10 +3,10 @@ import { Truck, PackageCheck, FileCheck, FileText, BanknoteCheck, ScrollText } f
 export const ORDER_STATUS_STEPS = [
   { key: 'created', abrev: 'C', label: 'Creado' },
   { key: 'payment_confirmed', abrev: 'PC', label: 'Pago confirmado' },
+  { key: 'facturado', abrev: 'F', label: 'Facturado' },
   { key: 'transport_validated', abrev: 'TC', label: 'Transporte confirmado' },
   { key: 'dispatch_guide_generated', abrev: 'GG', label: 'Guía generada' },
   { key: 'dispatched', abrev: 'D', label: 'Despachado' },
-  { key: 'facturado', abrev: 'F', label: 'Facturado' },
 ]
 
 export const STATUS_LABELS = Object.fromEntries(

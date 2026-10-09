@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 from typing import Optional, Literal
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from uuid import UUID
 from app.schemas.mixins import AuditResponseMixin
 
@@ -10,6 +10,15 @@ from app.schemas.mixins import AuditResponseMixin
 EMAIL_REGEX = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 PHONE_REGEX = re.compile(r"\d{7,15}")
 
+# Validación para código de actividad economica
+CIIU_REGEX = re.compile(r"\d{4}")
+
+# Validación para campos de representante legal
+LEGAL_REP_FIELDS = (
+  "legal_rep_name", "legal_rep_document_type", "legal_rep_document_number",
+  "legal_rep_email", "legal_rep_city",
+)
+VALID_LEGAL_REP_DOCUMENT_TYPES = ("CC", "CE", "PP", "PPT", "PEP")
 
 class CompanyBase (BaseModel):
   legal_name: str
@@ -22,9 +31,16 @@ class CompanyBase (BaseModel):
   address: str
   phone: str
   email: str
+  economic_activity_code: Optional[str] = None
+  economic_activity_description: Optional[str] = None
   fiscal_address : Optional[str] = None
   fiscal_phone : Optional[str] = None
-  fiscal_email : Optional[str] = None
+  fiscal_email: Optional[str] = None
+  legal_rep_name: Optional[str] = None
+  legal_rep_document_type: Optional[str] = None
+  legal_rep_document_number: Optional[str] = None
+  legal_rep_email: Optional[str] = None
+  legal_rep_city: Optional[str] = None
 
 class CompanyCreate(CompanyBase):
 
@@ -43,7 +59,7 @@ class CompanyCreate(CompanyBase):
     
     return value
 
-  @field_validator("email", "fiscal_email")
+  @field_validator("email", "fiscal_email", "legal_rep_email")
   @classmethod
   def validate_email(cls, value):
     if value is None:
@@ -52,6 +68,32 @@ class CompanyCreate(CompanyBase):
     if not EMAIL_REGEX.fullmatch(value):
       raise ValueError("El correo no tiene un formato válido")
     
+    return value
+  
+  @model_validator(mode="after")
+  def validate_legal_representative(self):
+    if self.person_type == "juridica":
+      missing = [f for f in LEGAL_REP_FIELDS if not (getattr(self, f, None) or "").strip()]
+      if missing:
+        raise ValueError(f"Faltan datos del representante legal: {', '.join(missing)}")
+
+      if any(not (getattr(self, f) or "").strip() for f in LEGAL_REP_FIELDS):
+        raise ValueError("Los datos del representante legal son obligatorios para persona jurídica")
+      if self.legal_rep_document_type not in VALID_LEGAL_REP_DOCUMENT_TYPES:
+        raise ValueError("Tipo de documento del representante no válido")
+    else:
+      # Una persona natural no tiene representante: se descartan
+      for f in LEGAL_REP_FIELDS:
+        setattr(self, f, None)
+    return self
+  
+  @field_validator("economic_activity_code")
+  @classmethod
+  def validate_ciiu(cls, value):
+    if value is None or value == "":
+      return None
+    if not CIIU_REGEX.fullmatch(value):
+      raise ValueError("El código CIIU debe tener 4 dígitos")
     return value
 
 class CompanyVerifyRequest(BaseModel):

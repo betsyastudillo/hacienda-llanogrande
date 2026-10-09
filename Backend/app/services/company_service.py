@@ -3,7 +3,7 @@ from uuid import UUID
 from datetime import datetime
 from sqlalchemy.orm import Session
 from app.constants.company_requirements import REQUIRED_DOCUMENTS, get_required_checks
-from app.schemas.company import CompanyBase, CompanyCreate, CompanyResponse
+from app.schemas.company import LEGAL_REP_FIELDS, CompanyBase, CompanyCreate, CompanyResponse
 from app.models.company import Company
 from app.models.document import Document
 from app.models.compliance_check import ComplianceCheck
@@ -87,9 +87,16 @@ def create_a_company(db: Session, company: CompanyCreate) -> Company:
     address=company.address,
     phone=company.phone,
     email=company.email,
+    economic_activity_code=company.economic_activity_code,
+    economic_activity_description=company.economic_activity_description,
     fiscal_address= company.fiscal_address,
     fiscal_phone= company.fiscal_phone,
     fiscal_email= company.fiscal_email,
+    legal_rep_name=company.legal_rep_name,
+    legal_rep_document_type=company.legal_rep_document_type,
+    legal_rep_document_number=company.legal_rep_document_number,
+    legal_rep_email=company.legal_rep_email,
+    legal_rep_city=company.legal_rep_city,
     client_code=generate_client_code(db, company.company_type),
     verification_status="draft"  # La empresa se crea como borrador, mientras se termina el proceso de listas vinculantes y documentación. Para que sea obligatorio todo el proceso.
   )
@@ -150,6 +157,9 @@ def edit_company(db: Session, company_id: UUID, company_update: CompanyCreate) -
   _validate_person_type(company_update.person_type)
   _validate_business_sector(company_update.company_type, company_update.business_sector)
 
+  if company.person_type == "juridica" and not all(getattr(company, f) for f in LEGAL_REP_FIELDS):
+    raise ValueError("Faltan los datos del representante legal")
+  
   # Se agrega campo por campo para evitar asignación masiva
   company.legal_name = company_update.legal_name
   company.display_name = company_update.display_name
@@ -160,9 +170,16 @@ def edit_company(db: Session, company_id: UUID, company_update: CompanyCreate) -
   company.address = company_update.address
   company.phone = company_update.phone
   company.email = company_update.email
+  company.economic_activity_code = company_update.economic_activity_code
+  company.economic_activity_description = company_update.economic_activity_description
   company.fiscal_address = company_update.fiscal_address
   company.fiscal_phone = company_update.fiscal_phone
   company.fiscal_email = company_update.fiscal_email
+  company.legal_rep_name=company_update.legal_rep_name,
+  company.legal_rep_document_type=company_update.legal_rep_document_type,
+  company.legal_rep_document_number=company_update.legal_rep_document_number,
+  company.legal_rep_email=company_update.legal_rep_email,
+  company.legal_rep_city=company_update.legal_rep_city,
 
   db.commit()
   db.refresh(company)
