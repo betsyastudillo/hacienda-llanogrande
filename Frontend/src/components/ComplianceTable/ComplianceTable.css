@@ -1,0 +1,44 @@
+.ct-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ct-table th,
+.ct-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid #d9d5cb;
+  text-align: left;
+}
+
+.ct-table th {
+  font-weight: 500;
+  color: var(--text-footer);
+}
+
+.ct-center {
+  text-align: center !important;
+  width: 56px;
+}
+
+.ct-table input[type='radio'] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.ct-note-row td {
+  background: var(--error-bg);
+  border-bottom: 1px solid #d9d5cb;
+}
+
+.ct-note {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px;
+  border: 1px solid #d9d5cb;
+  border-radius: 8px;
+  resize: vertical;
+}

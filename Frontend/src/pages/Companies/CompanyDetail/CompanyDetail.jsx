@@ -23,6 +23,12 @@ const ALL_DOCUMENT_TYPES = [...JURIDICA_DOCUMENT_TYPES, ...NATURAL_DOCUMENT_TYPE
 const documentTypeLabel = (value) =>
   ALL_DOCUMENT_TYPES.find((t) => t.value === value)?.label || value
 
+const CHECK_SUBJECTS = [
+  { subject: 'company', title: 'Empresa' },
+  { subject: 'legal_representative', title: 'Representante legal' },
+]
+
+
 export default function CompanyDetail() {
   const { companyId } = useParams()
   const navigate = useNavigate()
@@ -186,7 +192,15 @@ export default function CompanyDetail() {
     company.rejection_type === 'documents'
 
   const statusColors = COMPANY_STATUS_COLORS[company.verification_status] || { bg: '#ece9e2', text: '#5f5e5a' }
-  const isPending = company.verification_status === 'pending'
+
+  // Verificaciones agrupadas por sujeto
+  const checksBySubject = CHECK_SUBJECTS
+    .map((g) => ({
+      ...g,
+      items: checks.filter((c) => (c.subject || 'company') === g.subject),
+    }))
+    .filter((g) => g.items.length > 0)
+
 
   return (
     <main className="company-detail-main">
@@ -346,33 +360,41 @@ export default function CompanyDetail() {
       <div className="company-detail-card company-detail-checks-card">
         <p className="company-detail-card-title">Verificación en listas</p>
 
-        {checks.length === 0 ? (
+        {checksBySubject.length === 0 ? (
           <p className="company-detail-empty">No hay revisiones registradas.</p>
         ) : (
-          <div className="company-detail-checks-list">
-            {checks.map((check) => (
-              <div key={check.id} className="company-detail-check-row">
-                <div className="company-detail-check-main">
-                  <span className="company-detail-check-label">{getComplianceLabel(check.check_key)}</span>
-                  {check.has_findings ? (
-                    <span className="company-detail-check-badge is-findings">
-                      <TriangleAlert size={12} />
-                      Con hallazgos
-                    </span>
-                  ) : (
-                    <span className="company-detail-check-badge is-clear">
-                      <CircleCheck size={12} />
-                      Sin hallazgos
-                    </span>
-                  )}
-                </div>
+          checksBySubject.map((group) => (
+            <div key={group.subject}>
+              {checksBySubject.length > 1 && (
+                <p className='company-detail-checks-subject'>{group.title}</p>
+              )}
 
-                {check.has_findings && check.note && (
-                  <p className="company-detail-check-note">{check.note}</p>
-                )}
+              <div className="company-detail-checks-list">
+                {group.items.map((check) => (
+                  <div key={check.id} className="company-detail-check-row">
+                    <div className="company-detail-check-main">
+                      <span className="company-detail-check-label">{getComplianceLabel(check.check_key)}</span>
+                      {check.has_findings ? (
+                        <span className="company-detail-check-badge is-findings">
+                          <TriangleAlert size={12} />
+                          Con hallazgos
+                        </span>
+                      ) : (
+                        <span className="company-detail-check-badge is-clear">
+                          <CircleCheck size={12} />
+                          Sin hallazgos
+                        </span>
+                      )}
+                    </div>
+
+                    {check.has_findings && check.note && (
+                      <p className="company-detail-check-note">{check.note}</p>
+                    )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
+          ))
         )}
       </div>
 

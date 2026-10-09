@@ -2,8 +2,8 @@ from typing import Optional
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy.orm import Session
-from app.constants.company_requirements import REQUIRED_DOCUMENTS, get_required_checks
-from app.schemas.company import LEGAL_REP_FIELDS, CompanyBase, CompanyCreate, CompanyResponse
+from app.constants.company_requirements import REQUIRED_DOCUMENTS, get_required_checks_for, LEGAL_REP_FIELDS
+from app.schemas.company import CompanyCreate
 from app.models.company import Company
 from app.models.document import Document
 from app.models.compliance_check import ComplianceCheck
@@ -109,6 +109,7 @@ def create_a_company(db: Session, company: CompanyCreate) -> Company:
 
 
 def submit_company(db: Session, company_id: UUID, current_user) -> Optional[Company]:
+
   company = get_company_by_id(db, company_id)
 
   if not company:
@@ -119,25 +120,42 @@ def submit_company(db: Session, company_id: UUID, current_user) -> Optional[Comp
 
   if not company.is_active:
     raise ValueError("La empresa está desactivada")
+  
+  # Representante legal (solo personas jurídicas)
+  is_juridica = company.person_type == "juridica"
 
+  if is_juridica and not all((getattr(company, f) or "").strip() for f in LEGAL_REP_FIELDS):
+    raise ValueError("Faltan los datos del representante legal")
+
+  # Documentos
   uploaded_types = {
     d.document_type for d in db.query(Document).filter(Document.company_id == company_id).all()
   }
+
   missing_docs = [t for t in REQUIRED_DOCUMENTS.get(company.person_type, ()) if t not in uploaded_types]
   
   if missing_docs:
     raise ValueError(f"Faltan documentos obligatorios: {', '.join(missing_docs)}")
-
-  checks = db.query(ComplianceCheck).filter(ComplianceCheck.company_id == company_id).all()
-  saved_keys = {c.check_key for c in checks}
-  missing_checks = [k for k in get_required_checks(company.business_sector) if k not in saved_keys]
   
-  if missing_checks:
-    raise ValueError(f"Falta completar la verificación en listas: {', '.join(missing_checks)}")
+  # Verificación en listas, por sujeto
+  checks = db.query(ComplianceCheck).filter(ComplianceCheck.company_id == company_id).all()
+  saved = {(c.subject, c.check_key) for c in checks}
 
+  subjects = ["company"] + (["legal_representative"] if is_juridica else [])
+
+  for subject in subjects:
+    missing = [
+      k for k in get_required_checks_for(company.business_sector, subject)
+      if (subject, k) not in saved
+    ]
+
+    if missing:
+      who = "del representante legal" if subject == "legal_representative" else "de la empresa"
+      raise ValueError (f"Falta completar la verificación en listas {who}: {', '.join(missing)}")
+    
   for c in checks:
     if c.has_findings and not (c.note and c.note.strip()):
-      raise ValueError("Los hallazgos en listas requieren una descripción")
+      raise ValueError("Los hallazgos en listas requieren una descripción")  
 
   company.verification_status = "pending"
 

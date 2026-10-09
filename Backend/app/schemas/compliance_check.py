@@ -15,6 +15,7 @@ class ComplianceCheckResponse(AuditResponseMixin):
   check_key: str
   has_findings: bool
   note: Optional[str] = None
+  subject: str
 
   class Config:
     from_attributes = True

@@ -86,14 +86,14 @@ export default function Inventory() {
 
     setSubmitting(true)
     try {
-      const response = await api.post('/inventory/movements', {
+      await api.post('/inventory/movements', {
         product_id: selectedProductId,
         movement_type: movementType,
         quantity: qty,
         reason: reason || null,
         category: movementType === 'ajuste' ? category : null,
       })
-      console.log(response)
+
       handleClose()
       await loadData()
     } catch (err) {

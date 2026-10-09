@@ -2,6 +2,9 @@
 export const COMPLIANCE_CHECKS_COMMON = [
   { key: 'listas_vinculantes', label: 'Listas vinculantes (ONU, OFAC/Lista Clinton)' },
   { key: 'antecedentes_judiciales', label: 'Antecedentes judiciales (Policía Nacional)' },
+  { key: 'inspektor', label: 'Inspektor' },
+  { key: 'datacredito', label: 'Datacrédito' },
+  { key: 'cifin', label: 'Cifin' },
 ]
 
 // Por sector: construcción o agro, se pueden agregar más listas vinculantes según el sector de la empresa.
@@ -24,4 +27,8 @@ export function getComplianceLabel(key) {
 
 export function getComplianceChecks(sector) {
   return [...COMPLIANCE_CHECKS_COMMON, ...(COMPLIANCE_CHECKS_BY_SECTOR[sector] || [])]
+}
+
+export function getRepComplianceChecks() {
+  return COMPLIANCE_CHECKS_COMMON
 }

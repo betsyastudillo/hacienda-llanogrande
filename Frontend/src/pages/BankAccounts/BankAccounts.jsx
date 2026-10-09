@@ -123,8 +123,8 @@ export default function BankAccounts() {
       if (editingId) {
         await api.put(`/bank-accounts/${editingId}`, payload)
       } else {
-        const r = await api.post('/bank-accounts/', payload)
-        console.log('resp', r)
+        await api.post('/bank-accounts/', payload)
+
       }
       closeModal()
       await loadAccounts()

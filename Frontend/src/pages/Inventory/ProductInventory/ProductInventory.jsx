@@ -79,10 +79,10 @@ export default function ProductInventory() {
     setKardexError('')
     setKardexLoading(true)
     try {
-      const res = await api.get(`/inventory/products/${productId}/kardex`, {
+      await api.get(`/inventory/products/${productId}/kardex`, {
         params: { start_date: kardexStart, end_date: kardexEnd },
       })
-      console.log("data", res.data)
+
       setKardex(res.data)
     } catch (err) {
       setKardexError(getErrorMessage(err, 'No se pudo consultar el kardex'))
@@ -132,7 +132,7 @@ export default function ProductInventory() {
         reason: reason || null,
         category: movementType === 'ajuste' ? category : null,
       })
-      console.log(response)
+
       handleClose()
       await loadData()
       await loadKardex()

@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 from app.models.compliance_check import ComplianceCheck
 from app.models.company import Company
-from app.constants.company_requirements import get_required_checks
+from app.constants.company_requirements import get_required_checks, get_required_checks_for
 
 
 def get_checks_by_company(db: Session, company_id: UUID) -> List[ComplianceCheck]:
@@ -11,7 +11,7 @@ def get_checks_by_company(db: Session, company_id: UUID) -> List[ComplianceCheck
 
 
 # Insertar si ya existe, no crea otro
-def upsert_check(db: Session, company_id: UUID, check_key: str, has_findings: bool, note: Optional[str], current_user) -> ComplianceCheck:
+def upsert_check(db: Session, company_id: UUID, check_key: str, has_findings: bool, note: Optional[str], current_user, subject="company"):
   company = db.query(Company).filter(Company.id == company_id).first()
 
   if not company:
@@ -20,9 +20,12 @@ def upsert_check(db: Session, company_id: UUID, check_key: str, has_findings: bo
   if company.verification_status != "draft":
     raise ValueError("La verificación en listas solo se puede modificar mientras la empresa es un borrador")
 
-  if check_key not in get_required_checks(company.business_sector):
-    raise ValueError("Esa verificación no aplica al sector de esta empresa")
+  if subject == "legal_representative" and company.person_type != "juridica":
+    raise ValueError ("Solo las personas jurídicas tienen representante legal.")
 
+  if check_key not in get_required_checks_for(company.business_sector, subject):
+    raise ValueError("Esa verificación no aplica a ese sujeto.")
+  
   if has_findings and not (note and note.strip()):
     raise ValueError("Los hallazgos requieren una descripción")
 
@@ -31,7 +34,11 @@ def upsert_check(db: Session, company_id: UUID, check_key: str, has_findings: bo
 
   existing = (
     db.query(ComplianceCheck)
-    .filter(ComplianceCheck.company_id == company_id, ComplianceCheck.check_key == check_key)
+    .filter(
+      ComplianceCheck.company_id == company_id, 
+      ComplianceCheck.subject == subject,
+      ComplianceCheck.check_key == check_key
+      )
     .first()
   )
 
@@ -46,6 +53,7 @@ def upsert_check(db: Session, company_id: UUID, check_key: str, has_findings: bo
 
   new_check = ComplianceCheck(
     company_id=company_id,
+    subject=subject,
     check_key=check_key,
     has_findings=has_findings,
     note=clean_note,

@@ -13,8 +13,9 @@ class ComplianceCheck(Base, AuditMixin):
   check_key = Column(String, nullable=False)  # "listas_vinculantes", "antecedentes_judiciales", etc.
   has_findings = Column(Boolean, nullable=False, default=False) # Si tiene recomendaciones
   note = Column(String, nullable=True)
+  subject = Column(String, nullable=False, default="company", server_default="company")
 
   __table_args__ = (
-    UniqueConstraint("company_id", "check_key", name="uq_compliance_check_company_key"),
+    UniqueConstraint("company_id", "subject", "check_key", name="uq_compliance_check_company_subject_key"),
   )
   # UniqueConstraint garantiza que no se repita el mismo check_key para la misma empresa.

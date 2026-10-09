@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
+from typing import Literal
 from app.database import get_db
 from app.auth_dependencies import CompanyManager, CompanyViewer
 from app.schemas.compliance_check import ComplianceCheckUpsert, ComplianceCheckResponse
@@ -24,10 +25,11 @@ def upsert_check_endpoint(
   check_key: str,
   data: ComplianceCheckUpsert,
   current_user: CompanyManager,
+  subject: Literal["company", "legal_representative"] = "company",
   db: Session = Depends(get_db),
 ):
   try:
-    return upsert_check(db, company_id, check_key, data.has_findings, data.note, current_user)
+    return upsert_check(db, company_id, check_key, data.has_findings, data.note, current_user, subject)
   
   except ValueError as e:
     raise HTTPException(status_code=400, detail=str(e))

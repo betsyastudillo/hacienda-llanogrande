@@ -142,6 +142,13 @@
   margin-top: 1.5rem;
 }
 
+.company-detail-checks-subject {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 16px 0 6px;
+  color: var(--text-footer);
+}
+
 .company-detail-empty {
   font-size: 13px;
   color: var(--text-footer);

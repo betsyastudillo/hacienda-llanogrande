@@ -4,7 +4,7 @@ from typing import Optional, Literal
 from pydantic import BaseModel, field_validator, model_validator
 from uuid import UUID
 from app.schemas.mixins import AuditResponseMixin
-
+from app.constants.company_requirements import LEGAL_REP_FIELDS
 
 # Validaciones para teléfono y email, para que no los envíen con un caracter cualquiera
 EMAIL_REGEX = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
@@ -14,10 +14,7 @@ PHONE_REGEX = re.compile(r"\d{7,15}")
 CIIU_REGEX = re.compile(r"\d{4}")
 
 # Validación para campos de representante legal
-LEGAL_REP_FIELDS = (
-  "legal_rep_name", "legal_rep_document_type", "legal_rep_document_number",
-  "legal_rep_email", "legal_rep_city",
-)
+
 VALID_LEGAL_REP_DOCUMENT_TYPES = ("CC", "CE", "PP", "PPT", "PEP")
 
 class CompanyBase (BaseModel):

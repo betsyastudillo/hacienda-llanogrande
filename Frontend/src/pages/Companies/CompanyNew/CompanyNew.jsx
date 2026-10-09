@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Trash } from 'lucide-react'
 import api from '../../../services/api'
+import ComplianceTable from '../../../components/ComplianceTable/ComplianceTable'
 import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES, REQUIRED_JURIDICA_DOCS, REQUIRED_NATURAL_DOCS } from '../../../constants/companyDocuments'
-import { getComplianceChecks } from '../../../constants/complianceChecks'
+import { getComplianceChecks, getRepComplianceChecks } from '../../../constants/complianceChecks'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
 import { isValidEmail, isValidPhone } from '../../../utils/validators'
 import './CompanyNew.css'
@@ -41,6 +42,8 @@ export default function CompanyNew() {
   })
 
   // Paso 2: Checklist de cumplimiento
+  const [companyChecks, setCompanyChecks] = useState({})
+  const [repChecks, setRepChecks] = useState({})
   const [checks, setChecks] = useState({}) 
   const [savingChecks, setSavingChecks] = useState(false)
 
@@ -106,6 +109,21 @@ export default function CompanyNew() {
 
     loadDraft()
   }, [resumeId])
+
+  const isJuridica = form.person_type === 'juridica'
+  const companyItems = getComplianceChecks(form.business_sector)
+  const repItems = getRepComplianceChecks()
+
+  const isAnswered = (items, values) =>
+    items.every(({ key }) => {
+      const v = values[key]
+      return v && typeof v.has_findings === 'boolean' && (!v.has_findings || v.note?.trim())
+    })
+
+  const allChecksReviewed = isAnswered(companyItems, companyChecks) && (!isJuridica || isAnswered(repItems, repChecks))
+
+  const patchChecks = (setter) => (key, patch) =>
+    setter((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }))
 
   const handleChange = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value })
@@ -200,9 +218,9 @@ export default function CompanyNew() {
         legal_rep_email: isJuridica ? form.legal_rep_email.trim() : null,
         legal_rep_city: isJuridica ? form.legal_rep_city.trim() : null,
       }
-      console.log(payload)
+
       const response = await api.post('/companies/', payload)
-      console.log(response)
+
       setCompanyId(response.data.id)
       setStep(2)
     } catch (err) {
@@ -243,35 +261,28 @@ export default function CompanyNew() {
     })
   }
 
-  const allChecksReviewed = complianceChecks.every((c) => getCheckState(c.key).reviewed)
-  const findingsWithoutNote = complianceChecks.some((c) => getCheckState(c.key).has_findings && !getCheckState(c.key).note.trim())
-
   const handleSaveChecks = async () => {
     setError('')
-    
-    if (!allChecksReviewed) {
-      setError('Marca todos los checks como revisados antes de continuar.')
-      return
-    }
-
-    if (findingsWithoutNote) {
-      setError('Describe qué se encontró en los puntos marcados con hallazgo')
-      return
-    }
-
     setSavingChecks(true)
 
     try {
-      for (const c of complianceChecks) {
-        const state = getCheckState(c.key)
-        await api.put(`/compliance-checks/company/${companyId}/${c.key}`, {
-          has_findings: state.has_findings,
-          note: state.has_findings ? state.note: null,
-        })
-      }
+      const jobs = [
+        ...companyItems.map(({ key }) => ({ subject: 'company', key, v: companyChecks[key] })),
+        ...(isJuridica ? repItems.map(({ key }) => ({ subject: 'legal_representative', key, v: repChecks[key] })) : []),
+      ]
+
+      await Promise.all(
+        jobs.map(({ subject, key, v }) =>
+          api.put(
+            `/compliance-checks/company/${companyId}/${key}`,
+            { has_findings: v.has_findings, note: v.note?.trim() || null },
+            { params: { subject } },
+          ),
+        ),
+      )
       setStep(3)
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudieron guardar los checks de cumplimiento'))
+      setError(getErrorMessage(err, 'No se pudo guardar la verificación'))
     } finally {
       setSavingChecks(false)
     }
@@ -553,7 +564,7 @@ export default function CompanyNew() {
                 </div>
 
                 <div className="company-form-field">
-                  <label className="company-form-label">Correo fiscal</label>
+                  <label className="company-form-label">Correo notificaciones</label>
                   <input
                     type="email"
                     className="company-form-input"
@@ -646,10 +657,30 @@ export default function CompanyNew() {
       {step === 2 && (
         <div className="company-form-card">
           <p className="company-form-hint">
-            Antes de subir documentos, confirma que revisaste a este cliente en cada una de las siguientes fuentes.
+            Antes de subir documentos, indica el resultado de la consulta en cada fuente.
           </p>
 
-          <div className="compliance-checks-list">
+          <ComplianceTable
+            title={isJuridica ? 'Empresa' : null}
+            group="company"
+            items={companyItems}
+            values={companyChecks}
+            onChange={patchChecks(setCompanyChecks)}
+          />
+
+          {isJuridica && (
+            <ComplianceTable
+              title="Representante legal"
+              group="legal_rep"
+              items={repItems}
+              values={repChecks}
+              onChange={patchChecks(setRepChecks)}
+            />
+          )}
+
+          {error && <p className="company-form-error">{error}</p>}
+
+          {/* <div className="compliance-checks-list">
             {complianceChecks.map((c) => {
               const state = getCheckState(c.key)
               return (
@@ -690,7 +721,7 @@ export default function CompanyNew() {
                 </div>
               )
             })}
-          </div>
+          </div> */}
 
           <div className="company-form-actions">
             <button
