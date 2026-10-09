@@ -8,7 +8,7 @@ from app.auth_dependencies import InventoryManager, InventoryViewer, StockViewer
 from app.models.product import Product
 from app.schemas.inventory_movement import InventoryMovementCreate, InventoryMovementResponse, KardexResponse, StockResponse
 from app.services.inventory_service import (
-    _get_kardex, get_current_stock, get_sellable_stock, get_movements_by_product, create_manual_movement,
+  _get_kardex, get_sellable_stock, get_movements_by_product, create_manual_movement,
 )
 
 router = APIRouter(prefix="/inventory", tags=["Inventory"])

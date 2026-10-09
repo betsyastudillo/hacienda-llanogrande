@@ -21,7 +21,7 @@ def list_bank_accounts(
   # los roles de cliente solo ven las activas, para elegir al crear un pedido
   only_active = current_user.role in CLIENT_ROLES
 
-  return get_bank_accounts(db, only_active=only_active)
+  return get_bank_accounts(db, current_user, only_active=only_active)
 
 
 @router.get("/{bank_account_id}", response_model=BankAccountResponse, summary="Trae la información de 1 cuentas bancaria.")

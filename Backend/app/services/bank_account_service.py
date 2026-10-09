@@ -53,12 +53,17 @@ def _check_duplicate(db: Session, bank_name: str, account_number: str, exclude_i
     raise ValueError("Ya existe una cuenta activa con ese banco y ese número")
 
 
-def get_bank_accounts(db:Session, only_active: bool =False) -> List[BankAccount]:
+def get_bank_accounts(db:Session, current_user, only_active: bool =False) -> List[BankAccount]:
+
   query = db.query(BankAccount)
+
+  # Los clientes solo ven cuentas activas, sin importar lo que pidan
+  if current_user.role in ("cliente_admin", "cliente_operativo"):
+    only_active = True
 
   if only_active:
     query = query.filter(BankAccount.is_active == True)
-    
+
   return query.all()
 
 
