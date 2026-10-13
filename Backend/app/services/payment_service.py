@@ -7,6 +7,9 @@ from sqlalchemy.orm import Session
 from app.models.bank_account import BankAccount
 from app.models.payment import Payment
 from app.models.order import Order
+from app.models.invoice import Invoice
+from app.services.invoice_provider import get_provider
+from app.services.invoice_pdf import generate_invoice_pdf, INVOICES_DIR
 from app.services.proforma_pdf import generate_proforma_pdf, PROFORMAS_DIR
 
 
@@ -183,6 +186,33 @@ def confirm_payment(
     payment.rejection_reason = None
     order.status = "payment_confirmed"
 
+    # La factura nace pendiente, en la misma transacción que la confirmación
+    invoice = Invoice(
+      order_id=order.id,
+      status="pending",
+      subtotal=order.subtotal,
+      tax=order.tax,
+      total=order.total,
+    )
+    
+    db.add(invoice)
+    db.flush()
+
+    try:
+      result = get_provider().emit(order, invoice)
+      invoice.invoice_number = result.invoice_number
+      invoice.cufe = result.cufe
+      invoice.issued_at = result.issued_at
+      invoice.signed_at = result.signed_at
+      invoice.signature = result.signature
+      invoice.provider = result.provider
+      invoice.status = "issued"
+      invoice.pdf_url = generate_invoice_pdf(db, invoice, order, result.qr_data)
+    except Exception:
+      db.rollback()
+      shutil.rmtree(os.path.join(INVOICES_DIR, str(invoice.id)), ignore_errors=True)
+      raise
+    
   else:
     if not reason or not reason.strip():
       raise ValueError("A reason is required when rejecting a payment")

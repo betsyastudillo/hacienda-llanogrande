@@ -252,16 +252,18 @@ def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_use
 # Esto es lo que alimenta la marca "Acción", el contador "N requiere atención" y el botón "Pendientes primero".
 # Sirve cuando requiere acción para el pago o el transporte
 def attach_needs_action(db: Session, orders: List[Order], current_user: User) -> List[Order]:
+  
   role = current_user.role
   ids = [o.id for o in orders]
 
   payments, assignments = {}, {}
+  
   if ids:
 
     # Trae todos los pagos de la lista en una sola consulta y los guarda en un dict cuya llave es el id del pedido. Igual en transporte.
     payments = {p.order_id: p for p in db.query(Payment).filter(Payment.order_id.in_(ids)).all()}
 
-    # Ordenados por fecha: si hay varios por pedido, queda el más reciente
+    # Un transpoprte por pedido (order_id es único)
     assignments = {
       a.order_id: a
       for a in db.query(Assignment).filter(Assignment.order_id.in_(ids)).order_by(Assignment.created_at).all()
@@ -277,17 +279,19 @@ def attach_needs_action(db: Session, orders: List[Order], current_user: User) ->
 
     # Si es cartera, hay un pago pendiente que ya tiene comprobante, o sea que toca revisarlo.
     if role in ("cartera", "admin"):
-      needs = bool(payment and payment.status == "pending" and payment.receipt_url)
-
-    # Si es logistica, hay un transporte pendiente por validar, o el pedido ya tiene el transporte validado y falta generar la guía.
-    elif role in ("logistica", "admin"):
       needs = bool(
+        (payment and payment.status == "pending" and payment.receipt_url)
+      )
+      
+    # Si es logistica, hay un transporte pendiente por validar, o el pedido ya tiene el transporte validado y falta generar la guía.
+    if role in ("logistica", "admin"):
+      needs = needs or bool(
         (assignment and assignment.validation_status == "pending")
         or order.status == "transport_validated"   # falta generar la guía
       )
 
     # Si es cliente, faltaría generar la proforma, el pago fue rechazado, falta subir el comprobante, o falta enviar el transporte o lo rechazaron.
-    elif role in CLIENT_ROLES:
+    if role in CLIENT_ROLES:
       if order.status == "created":
         needs = (
           payment is None

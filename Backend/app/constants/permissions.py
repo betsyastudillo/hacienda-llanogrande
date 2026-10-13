@@ -6,6 +6,7 @@ ROLES_PERMISSIONS = {
     "bank_account:gestionar", "bank_account:ver",
     "company:ver",
     "order:ver_todos",
+    "invoice:emitir", "invoice:ver"
   },
   "logistica": {
     "vehicle:gestionar", "vehicle:ver",
@@ -30,6 +31,7 @@ ROLES_PERMISSIONS = {
     "dispatch_guide:ver",
     "company:ver",
     "document:ver",
+    "invoice:ver"
   },
   "cliente_admin": {
     "order:crear", "order:ver_empresa", "order:editar_propio",
@@ -38,6 +40,7 @@ ROLES_PERMISSIONS = {
     "dispatch_guide:ver_propio",
     "assignment:crear_propio", "assignment:ver_propio", 
     "payment:crear_propio", "payment:subir_comprobante",
+    "invoice:ver_propio"
   },
   "cliente_operativo": {
     "order:crear", "order:ver_propios", "order:editar_propio",
@@ -46,6 +49,7 @@ ROLES_PERMISSIONS = {
     "dispatch_guide:ver_propio",
     "assignment:crear_propio", "assignment:ver_propio",   
     "payment:crear_propio", "payment:subir_comprobante",
+    "invoice:ver_propio"
   },
 }
 
