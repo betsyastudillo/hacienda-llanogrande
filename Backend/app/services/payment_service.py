@@ -33,23 +33,6 @@ def get_payment_by_id(db: Session, payment_id: UUID) -> Optional[Payment]:
   return db.query(Payment).filter(Payment.id == payment_id).first()
 
 
-# Se genera el número de la factura pro forma
-def generate_proforma_number(db: Session) -> str:
-  year = datetime.utcnow().year
-
-  prefix = f"PRO-{year}-"
-
-  existing_count = (
-    db.query(Payment)
-    .filter(Payment.proforma_number.like(f"{prefix}%"))
-    .count()
-  )
-
-  next_number = existing_count + 1
-
-  return f"{prefix}{next_number:04d}"
-
-
 def save_receipt_file(file: UploadFile, payment_id: UUID) -> str:
   extension = os.path.splitext(file.filename or "")[1].lower()
 
@@ -129,7 +112,7 @@ def create_payment(db: Session, order_id: UUID, bank_account_id: UUID) -> Paymen
   new_payment = Payment(
     order_id=order_id,
     bank_account_id=bank_account_id,
-    proforma_number=generate_proforma_number(db),
+    proforma_number=order.order_number.replace("PED-", "PRO-", 1),
     status="pending",
     amount=order.total,
   )
@@ -212,7 +195,7 @@ def confirm_payment(
       db.rollback()
       shutil.rmtree(os.path.join(INVOICES_DIR, str(invoice.id)), ignore_errors=True)
       raise
-    
+
   else:
     if not reason or not reason.strip():
       raise ValueError("A reason is required when rejecting a payment")

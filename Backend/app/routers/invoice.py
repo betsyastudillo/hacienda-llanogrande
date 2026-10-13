@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from app.database import get_db
 from app.dependencies import user_has_permission
-from app.auth_dependencies import InvoiceIssuer, InvoiceViewerAny
+from app.auth_dependencies import InvoiceViewerAny
 from app.schemas.invoice import InvoiceResponse
 from app.services.invoice_service import get_invoice_by_order, get_invoice_by_id
 from app.services.order_service import get_order_by_id, can_access_order
