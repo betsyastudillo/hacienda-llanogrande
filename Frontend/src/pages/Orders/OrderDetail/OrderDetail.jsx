@@ -6,6 +6,7 @@ import { CircleCheck, CircleX, Clock } from 'lucide-react'
 import { formatCurrency } from '../../../utils/formatCurrency'
 import { formatDate } from '../../../utils/formatDate'
 import PaymentCard from './PaymentCard'
+import InvoiceCard from './InvoiceCard'
 import './OrderDetail.css'
 
 const API_BASE = api.defaults.baseURL
@@ -48,6 +49,7 @@ export default function OrderDetail() {
   const [order, setOrder] = useState(null)
   const [products, setProducts] = useState([])
   const [payment, setPayment] = useState(null)
+  const [invoice, setInvoice] = useState(null)
   const [bankAccount, setBankAccount] = useState(null)
   const [assignment, setAssignment] = useState(null)
   const [dispatchGuide, setDispatchGuide] = useState(null)
@@ -70,6 +72,15 @@ export default function OrderDetail() {
     }
   }
   
+  async function fetchInvoice() {
+    try {
+      const res = await api.get(`/invoices/order/${orderId}`)
+      setInvoice(res.data)
+    } catch {
+      setInvoice(null)  // 404 es normal: aún no hay factura
+    }
+  }
+
   async function reloadPayment() {
     const orderRes = await api.get(`/orders/${orderId}`)
     setOrder(orderRes.data) // el estado del pedido cambia al confirmar el pago
@@ -94,6 +105,7 @@ export default function OrderDetail() {
       // Estas secciones son opcionales según el estado del pedido —
       try {
         await fetchPayment()
+        await fetchInvoice()
       } catch {
         setPayment(null)
       }
@@ -202,7 +214,9 @@ export default function OrderDetail() {
             bankAccount={bankAccount}
             onChanged={reloadPayment}
           />
-
+          
+          <InvoiceCard order={order} invoice={invoice} />
+          
           <div className="detail-card">
             <p className="detail-card-title">Transporte</p>
             {assignment ? (

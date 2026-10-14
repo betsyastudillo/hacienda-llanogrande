@@ -216,12 +216,13 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
 
         {bankAccount && awaitingReceipt && (
           <>
+            <div className="detail-info-row"><span>Titular</span><span>{bankAccount.account_holder_name}</span></div>
             <div className="detail-info-row"><span>Banco</span><span>{bankAccount.bank_name}</span></div>
             <div className="detail-info-row"><span>Tipo</span><span>{bankAccount.account_type}</span></div>
-            <div className="detail-info-row"><span>Cuenta</span><span>{bankAccount.account_number}</span></div>
-            <div className="detail-info-row"><span>Titular</span><span>{bankAccount.account_holder_name}</span></div>
-            {bankAccount.agreement_number && (
+            {bankAccount.agreement_number ? (
               <div className="detail-info-row"><span>Convenio</span><span>{bankAccount.agreement_number}</span></div>
+            ) : (
+              <div className="detail-info-row"><span>Cuenta</span><span>{bankAccount.account_number}</span></div>
             )}
           </>
         )}
