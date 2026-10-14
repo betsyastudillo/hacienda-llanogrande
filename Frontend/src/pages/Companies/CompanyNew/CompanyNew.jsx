@@ -29,6 +29,7 @@ export default function CompanyNew() {
     address: '',
     phone: '',
     email: '',
+    city: '',
     economic_activity_code: '',
     economic_activity_description: '',
     fiscal_address: '',
@@ -147,7 +148,7 @@ export default function CompanyNew() {
 
     if (
       !form.legal_name.trim() || !form.document_number.trim() ||
-      !form.address.trim() || !form.phone || !form.email.trim() ||
+      !form.address.trim() || !form.phone || !form.email.trim() || !form.department || !form.city.trim() ||
       (!isJuridica && !form.document_type)
     ) {
       setError('Todos los campos son obligatorios.')
@@ -212,6 +213,7 @@ export default function CompanyNew() {
         document_number: form.document_number.trim(),
         address: form.address.trim(),
         email: form.email.trim(),
+        city: form.city.trim(),
 
         document_type: isJuridica ? 'NIT' : form.document_type,
         display_name: isJuridica ? clean(form.display_name) : null,
@@ -480,6 +482,7 @@ export default function CompanyNew() {
               />
             </div>
           </div>
+
           <p className="company-form-section-title">Datos de contacto</p>
 
           <div className="company-form-field">
@@ -489,6 +492,20 @@ export default function CompanyNew() {
               value={form.address}
               onChange={handleChange('address')}
             />
+          </div>
+
+          <div className="company-form-row">
+            <div className="company-form-field">
+              <label className="company-form-label">Departamento</label>
+              <select className="company-form-input" value={form.department} onChange={handleChange('department')}>
+                <option value="">Selecciona</option>
+                {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div className="company-form-field">
+              <label className="company-form-label">Ciudad</label>
+              <input className="company-form-input" value={form.city} onChange={handleChange('city')} />
+            </div>
           </div>
 
           <div className="company-form-row">

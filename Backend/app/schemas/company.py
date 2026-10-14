@@ -28,6 +28,9 @@ class CompanyBase (BaseModel):
   address: str
   phone: str
   email: str
+  country: Optional[str] = None
+  department: Optional[str] = None
+  city: Optional[str] = None
   economic_activity_code: Optional[str] = None
   economic_activity_description: Optional[str] = None
   fiscal_address : Optional[str] = None
@@ -40,6 +43,12 @@ class CompanyBase (BaseModel):
   legal_rep_city: Optional[str] = None
 
 class CompanyCreate(CompanyBase):
+
+  # Ubicación: aquí sobrescriben a los opcionales de CompanyBase para volverlos obligatorios al crear
+  country: str = "Colombia"
+  department: str
+  city: str
+
 
   # @field_validatos("campo") valida uno o varios campos por separado
   # Se ejecuta después de comprobar que el valor es del tipo correcto. Si devuelve valor, se acepta. Si lanza ValueError, se corta la petición y responde 422 sin llegar al router.
@@ -120,6 +129,14 @@ class CompanyCreate(CompanyBase):
       raise ValueError(f"Tipo de documento no válido. Opciones: {', '.join(VALID_DOCUMENT_TYPES)}")
     
     return value
+  
+  # Departamento y ciudad no pueden venir vacíos ni solo con espacios
+  @field_validator("department", "city")
+  @classmethod
+  def validate_location(cls, value):
+    if not value or not value.strip():
+      raise ValueError("El departamento y la ciudad son obligatorios")
+    return value.strip()
   
 class CompanyVerifyRequest(BaseModel):
   decision: Literal["approved", "rejected"]

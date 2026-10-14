@@ -9,6 +9,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from sqlalchemy.orm import Session
 from app.models.company import Company 
+from app.services.pdf_helpers import full_address
 
 PROFORMAS_DIR = "uploads/proformas"
 LOGO_PATH = "assets/logo.png"
@@ -94,7 +95,7 @@ def generate_proforma_pdf(db: Session, payment, order, bank_account) -> str:
       p(_doc(c)),
       p(c.fiscal_address or c.address),
       p(f"Tel. {c.fiscal_phone or c.phone or '—'}"),
-      p(c.fiscal_email or c.email),
+      p(full_address(c)),
     ]
 
   parties = Table([[party("Emisor", seller), party("Cliente", customer)]], colWidths=[8.5 * cm, 8.5 * cm])

@@ -253,6 +253,8 @@ export default function CompanyDetail() {
         <div className="company-detail-card">
           <p className="company-detail-card-title">Datos de contacto</p>
           <div className="company-detail-info-row"><span>Dirección</span><span>{company.address}</span></div>
+          <div className="company-detail-info-row"><span>Ciudad</span><span>{company.city}</span></div>
+          <div className="company-detail-info-row"><span>Departamento</span><span>{company.department}</span></div>
           <div className="company-detail-info-row"><span>Teléfono</span><span>{company.phone}</span></div>
           <div className="company-detail-info-row"><span>Correo</span><span>{company.email}</span></div>
 

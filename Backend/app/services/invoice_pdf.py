@@ -14,6 +14,7 @@ from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Tabl
 from sqlalchemy.orm import Session
 
 from app.models.company import Company
+from app.services.pdf_helpers import full_address
 
 INVOICES_DIR = "uploads/invoices"
 LOGO_PATH = "assets/logo.png"
@@ -92,7 +93,7 @@ def generate_invoice_pdf(db: Session, invoice, order, qr_data: str) -> str:
     p(f"{seller.document_type or ''}: {seller.document_number or ''}"),
     p(f"Régimen: {SELLER_TAX_REGIME}"),
     p("Persona Jurídica" if seller.person_type == "juridica" else "Persona Natural"),
-    p(f"Dirección: {seller.fiscal_address or seller.address}"),
+    p(f"Dirección: {full_address(seller)}"),
     p(f"Tel. {seller.fiscal_phone or seller.phone or '—'}"),
     p(f"Email. {seller.fiscal_email or seller.email}"),
     p(f"Autorización de numeración DIAN: {SELLER_DIAN_AUTH}", pend),
@@ -109,7 +110,7 @@ def generate_invoice_pdf(db: Session, invoice, order, qr_data: str) -> str:
   client_rows = [
     [p("Nombre/Razón Social:", b), p(customer.legal_name)],
     [p(f"{customer.document_type or 'Doc'}:", b), p(customer.document_number)],
-    [p("Dirección:", b), p(customer.fiscal_address or customer.address)],
+    [p("Dirección:", b), p(full_address(customer))],
     [p("Teléfono:", b), p(customer.fiscal_phone or customer.phone)],
     [p("Email:", b), p(customer.fiscal_email or customer.email)],
     [p("Forma de pago:", b), p("Contado")],

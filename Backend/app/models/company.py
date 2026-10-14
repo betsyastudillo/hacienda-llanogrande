@@ -21,6 +21,9 @@ class Company(Base, AuditMixin):
   address = Column(String, nullable=False)
   phone = Column(String, nullable=False)
   email = Column(String, nullable=False)
+  country = Column(String, nullable=True)
+  department = Column(String, nullable=True)
+  city = Column(String, nullable=True)
 
   economic_activity_code = Column(String, nullable=True)         # CIIU, 4 dígitos
   economic_activity_description = Column(String, nullable=True) 
