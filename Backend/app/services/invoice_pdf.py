@@ -83,7 +83,7 @@ def generate_invoice_pdf(db: Session, invoice, order, qr_data: str) -> str:
   # ---------- Encabezado: logo + datos del emisor ----------
   if os.path.exists(LOGO_PATH):
     w, h = ImageReader(LOGO_PATH).getSize()
-    logo = Image(LOGO_PATH, width=3.8 * cm, height=3.8 * cm * h / w)
+    logo = Image(LOGO_PATH, width=3.3 * cm, height=3.0 * cm * h / w)
   else:
     logo = p(seller.display_name or seller.legal_name, b)
 
@@ -113,19 +113,20 @@ def generate_invoice_pdf(db: Session, invoice, order, qr_data: str) -> str:
     [p("Teléfono:", b), p(customer.fiscal_phone or customer.phone)],
     [p("Email:", b), p(customer.fiscal_email or customer.email)],
     [p("Forma de pago:", b), p("Contado")],
-    [p("Medio de pago:", b), p("Transferencia bancaria")],
+    [p("Medio de pago:", b), p("Transferencia Débito Interbancario")],
     [p("Total de Líneas:", b), p(len(order.items))],
   ]
-  client_box = Table(client_rows, colWidths=[3.3 * cm, 5.2 * cm])
+  client_box = Table(client_rows, colWidths=[3.5 * cm, 5.0 * cm])
   client_box.setStyle(TableStyle([
     ("VALIGN", (0, 0), (-1, -1), "TOP"),
     ("TOPPADDING", (0, 0), (-1, -1), 1.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
+    ("LINEBELOW", (0, 4), (-1, 4), 0.4, LINE),
   ]))
 
   def date_grid(d, m, y):
     return Table(
       [[p("DIA", c), p("MES", c), p("AÑO", c)], [p(d, cb), p(m, cb), p(y, cb)]],
-      colWidths=[1.0 * cm] * 3,
+      colWidths=[1.2 * cm] * 3,
       style=[("GRID", (0, 0), (-1, -1), 0.5, LINE)],
     )
 
@@ -158,7 +159,7 @@ def generate_invoice_pdf(db: Session, invoice, order, qr_data: str) -> str:
   story += [two, Spacer(1, 0.3 * cm)]
 
   # ---------- Productos ----------
-  rows = [[p("#", cb), p("CÓDIGO", cb), p("DESCRIPCIÓN", cb), p("U.M", cb), p("CANTIDAD", cb),
+  rows = [[p("#", cb), p("CÓDIGO", cb), p("DESCRIPCIÓN", cb), p("U.M", cb), p("CTD", cb),
           p("PRECIO U.", cb), p("IVA %", cb), p("IVA MONTO", cb), p("TOTAL", cb)]]
   for i, item in enumerate(order.items, start=1):
     product = item.product
@@ -169,7 +170,7 @@ def generate_invoice_pdf(db: Session, invoice, order, qr_data: str) -> str:
       p(_money(item.unit_price), r), p(f"{rate * 100:g}%", c),
       p(_money(float(item.subtotal) * rate), r), p(_money(item.subtotal), r),
     ])
-  items = Table(rows, colWidths=[x * cm for x in [0.7, 1.6, 4.9, 1.1, 1.6, 2.2, 1.1, 2.2, 2.6]], repeatRows=1)
+  items = Table(rows, colWidths=[x * cm for x in [0.7, 1.6, 4.7, 1.3, 1.6, 2.2, 1.1, 2.2, 2.6]], repeatRows=1)
   items.setStyle(TableStyle([
     ("BOX", (0, 0), (-1, -1), 0.8, LINE),
     ("LINEBELOW", (0, 0), (-1, 0), 0.6, LINE),
@@ -240,6 +241,9 @@ def generate_invoice_pdf(db: Session, invoice, order, qr_data: str) -> str:
   footer.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
   story.append(footer)
 
-  doc.build(story, onFirstPage=_watermark, onLaterPages=_watermark)
+  doc.build(story, 
+            # onFirstPage=_watermark, 
+            # onLaterPages=_watermark
+            )
   
   return f"/{file_path}"

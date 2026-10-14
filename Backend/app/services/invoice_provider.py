@@ -21,7 +21,7 @@ class SimulatedProvider:
 
   def emit(self, order, invoice) -> ProviderResult:
     now = datetime.now(timezone.utc)
-    number = f"SIM-{order.order_number}"
+    number = f"{order.order_number}"
     raw = f"{number}|{invoice.total}|{now.isoformat()}".encode()
 
     cufe = "PRUEBA-" + hashlib.sha384(raw).hexdigest()
