@@ -191,6 +191,10 @@ def confirm_payment(
       invoice.provider = result.provider
       invoice.status = "issued"
       invoice.pdf_url = generate_invoice_pdf(db, invoice, order, result.qr_data)
+
+      # Estado facturado
+      order.status = "facturado"
+    
     except Exception:
       db.rollback()
       shutil.rmtree(os.path.join(INVOICES_DIR, str(invoice.id)), ignore_errors=True)

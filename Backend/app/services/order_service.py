@@ -298,7 +298,7 @@ def attach_needs_action(db: Session, orders: List[Order], current_user: User) ->
           or payment.status == "failed"
           or (payment.status == "pending" and not payment.receipt_url)
         )
-      elif order.status == "payment_confirmed":
+      elif order.status == "facturado":
         needs = assignment is None or assignment.validation_status == "rejected"
 
     # Le asigna el resultado al objeto del pedido, needs_action no es una columna en la BD, sino un atributo temporal que existe solo durante esa petición
