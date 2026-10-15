@@ -52,9 +52,9 @@ export default function OrderNew() {
 
   useEffect(() => {
     if (!isAdmin) return
-    api.get('/companies/').then((res) => {
-      setCompanies(res.data.filter((c) => c.company_type === 'client'))
-    })
+
+    api.get('/companies/', { params: {company_type: 'client', verification_status: 'approved' }, }).then((res) => 
+      setCompanies(res.data))
   }, [isAdmin])
 
   const handleAddItem = () => {

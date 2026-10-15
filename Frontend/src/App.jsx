@@ -46,7 +46,7 @@ function App() {
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/inventory/:productId" element={<ProductInventory />} />
 
-            <Route path="banks-accounts" element={<RequirePermission permission="bank_account:gestionar"> <BankAccounts /> </RequirePermission>} />
+            <Route path="banks-accounts" element={<BankAccounts />}/>
           </Route> 
           <Route path="*" element={<Navigate to="/orders" replace />} />
         </Routes>

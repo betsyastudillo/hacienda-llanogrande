@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, String, Boolean
+from sqlalchemy import Column, DateTime, ForeignKey, String, Boolean, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from app.database import Base
@@ -48,3 +48,7 @@ class Company(Base, AuditMixin):
   verified_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
   rejection_type = Column(String, nullable=True) # Si es documents es corregible si es por comlistas vinculantes es rechazo definitivo
   rejection_reason = Column(String, nullable=True)
+
+  __table_args__ = (
+    UniqueConstraint("document_type", "document_number", name="uq_company_document"),
+  )

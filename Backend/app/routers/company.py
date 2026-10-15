@@ -15,9 +15,10 @@ def list_companies(
   current_user: CompanyViewer,
   db: Session = Depends(get_db),
   company_type: Optional[str] = None,
-  include_inactive: bool = False
+  include_inactive: bool = False,
+  verification_status: Optional[str] = None
 ):
-  return get_companies(db, current_user, company_type, include_inactive)
+  return get_companies(db, current_user, company_type, include_inactive, verification_status)
 
 
 @router.get("/{company_id}", response_model=CompanyResponse, summary="Busca una empresa por ID")
@@ -51,7 +52,7 @@ def create_company(
   current_user: CompanyManager,
   db: Session = Depends(get_db),
 ):
-  return create_a_company(db=db, company=company)
+  return create_a_company(db=db, company=company, current_user=current_user)
 
 
 @router.patch("/{company_id}/submit", response_model=CompanyResponse, summary="Envía a revisión una empresa en borrador, mientras se termina el proceso de listas y documentos")
@@ -79,7 +80,7 @@ def update_company(
   current_user: CompanyManager, 
   db: Session = Depends(get_db),
 ):
-  company = edit_company(db, company_id, company_update)
+  company = edit_company(db, company_id, company_update, current_user)
 
   if not company:
     raise HTTPException(status_code=404, detail="Company not found")

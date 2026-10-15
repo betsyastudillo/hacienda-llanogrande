@@ -55,7 +55,8 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
     setBusy(true)
     setError('')
     try {
-      await api.post('/payments/', { order_id: order.id, bank_account_id: selectedAccountId })
+      const r = await api.post('/payments/', { order_id: order.id, bank_account_id: selectedAccountId })
+      console.log(r)
       setShowCreate(false)
       await onChanged()
     } catch (err) {
@@ -294,14 +295,14 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
         )}
 
         {payment.status === 'pending' && payment.receipt_url && canConfirm && (
-          <>
+          <div className='pay-decision'>
             <button className="pay-btn is-danger" onClick={() => setShowReject(true)} disabled={busy}>
               Rechazar
             </button>
             <button className="pay-btn is-confirm" onClick={() => setShowConfirm(true)} disabled={busy}>
               Confirmar
             </button>
-          </>
+          </div>
         )}
       </div>
 

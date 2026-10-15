@@ -210,6 +210,17 @@
   margin-top: 14px;
 }
 
+.pay-decision {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pay-decision .pay-btn {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .pay-btn {
   font-size: 14px;
   font-weight: 500;
