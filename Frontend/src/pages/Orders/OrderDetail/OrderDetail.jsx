@@ -55,7 +55,7 @@ export default function OrderDetail() {
   const [dispatchGuide, setDispatchGuide] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
+  
   async function fetchPayment() {
     try {
       const res = await api.get(`/payments/order/${orderId}`)
@@ -85,6 +85,7 @@ export default function OrderDetail() {
     const orderRes = await api.get(`/orders/${orderId}`)
     setOrder(orderRes.data) // el estado del pedido cambia al confirmar el pago
     await fetchPayment()
+    await fetchInvoice()
   }
 
   useEffect(() => {

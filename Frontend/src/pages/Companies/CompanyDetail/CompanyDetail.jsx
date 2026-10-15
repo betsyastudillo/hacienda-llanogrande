@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Download, CircleCheck, CircleX, Clock, Check, X, TriangleAlert, Upload, Pen, Pencil, Power } from 'lucide-react'
-import api, { API_BASE_URL } from '../../../services/api'
+import { Eye, CircleCheck, CircleX, Clock, Check, X, TriangleAlert, Upload, Pen, Pencil, Power } from 'lucide-react'
+import api from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
 import { useToast } from '../../../context/Toast/ToastContext'
 import { COMPANY_STATUS_LABELS, COMPANY_STATUS_COLORS } from '../../../constants/companyStatus'
@@ -9,6 +9,7 @@ import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES } from '../../../consta
 import { getComplianceLabel } from '../../../constants/complianceChecks'
 import StatusBadge from '../../../components/StatusBadge/StatusBadge'
 import Modal from '../../../components/Modal/Modal'
+import FilePreviewModal from '../../../components/FilePreviewModal/FilePreviewModal'
 import { formatDate } from '../../../utils/formatDate'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
 import EditCompanyModal from './EditCompanyModal'
@@ -50,6 +51,7 @@ export default function CompanyDetail() {
   const [submitting, setSubmitting] = useState(false)
 
   const [showEdit, setShowEdit] = useState(false)
+  const [preview, setPreview] = useState(null)
 
   const canReviewDocs = hasPermission('document:revisar')
   const canApproveCompany = hasPermission('company:aprobar')
@@ -328,14 +330,17 @@ export default function CompanyDetail() {
                     </div>
 
                     <div className="company-detail-doc-actions">
-                      <a
-                        href={`${API_BASE_URL}${doc.document_url}`}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        type="button"
                         className="company-detail-download-btn"
+                        title="Ver documento"
+                        onClick={() => setPreview({
+                          title: documentTypeLabel(doc.document_type),
+                          fileUrl: doc.document_url,
+                        })}
                       >
-                        <Download size={16} />
-                      </a>
+                        <Eye size={16} />
+                      </button>
 
                       {canReplaceDocs && (
                         <label className="company-detail-replace-btn" title="Reemplazar archivo">
@@ -594,6 +599,8 @@ export default function CompanyDetail() {
         />
       )}
 
+
+      {preview && <FilePreviewModal {...preview} onClose={() => setPreview(null)} />}
     </main>
   )
 }

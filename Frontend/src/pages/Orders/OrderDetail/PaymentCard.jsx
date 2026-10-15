@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react'
-import { Download } from 'lucide-react'
 import api from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
 import { useToast } from '../../../context/Toast/ToastContext'
 import Modal from '../../../components/Modal/Modal'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
 import StatusBadge from '../../../components/StatusBadge/StatusBadge'
+import FilePreviewModal from '../../../components/FilePreviewModal/FilePreviewModal'
 import { PAYMENT_STATUS_LABELS, PAYMENT_STATUS_COLORS, PAYMENT_STATUS_ICONS } from '../../../constants/paymentStatus'
 import { formatCurrency } from '../../../utils/formatCurrency'
 import { formatDate } from '../../../utils/formatDate'
@@ -28,12 +28,11 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
   const [showReject, setShowReject] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [busy, setBusy] = useState(false)
+  const [preview, setPreview] = useState(null)
 
   const canCreate = hasPermission('payment:crear') || hasPermission('payment:crear_propio')
   const canUpload = hasPermission('payment:subir_comprobante')
   const canConfirm = hasPermission('payment:confirmar')
-
-  const receiptHref = payment?.receipt_url ? `${api.defaults.baseURL}${payment.receipt_url}` : null
 
   async function openCreate() {
     setSelectedAccountId('')
@@ -99,21 +98,11 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
     }
   }
 
-  async function handleDownloadProforma() {
-    try {
-      const res = await api.get(`/payments/${payment.id}/proforma`, { responseType: 'blob' })
-      const url = URL.createObjectURL(res.data)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${payment.proforma_number}.pdf`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      setTimeout(() => URL.revokeObjectURL(url), 10000)
-    } catch {
-      fail('No se pudo descargar la proforma.')
-    }
-  }
+  const openProforma = () => setPreview({
+    title: `Proforma ${payment.proforma_number}`,
+    apiPath: `/payments/${payment.id}/proforma`,
+    filename: `${payment.proforma_number}.pdf`,
+  })
 
   // Sin proforma
   if (!payment) {
@@ -215,12 +204,13 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
         {payment.pdf_url && (
           <div className='detail-info-row'>
             <span>Proforma</span>
-            <button 
-              className='pay-link' 
-              onClick={handleDownloadProforma}
+            <button
+              type="button"
+              className="pay-link"
+              onClick={openProforma}
             >
-              <Download size={14}/>
-              Descargar PDF</button>
+              Ver archivo
+            </button>
           </div>
         )}
 
@@ -238,11 +228,16 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
           </div>
         )}
 
-        {receiptHref && (
+        {payment.receipt_url && (
           <div className="detail-info-row">
             <span>Comprobante</span>
-            <a href={receiptHref} target="_blank" rel="noreferrer">
-              Ver archivo</a>
+            <button
+              type="button"
+              className="pay-link"
+              onClick={() => setPreview({ title: 'Comprobante de pago', fileUrl: payment.receipt_url })}
+            >
+              Ver archivo
+            </button>
           </div>
         )}
       </div>
@@ -327,6 +322,8 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
           </div>
         </Modal>
       )}
+
+      {preview && <FilePreviewModal {...preview} onClose={() => setPreview(null)} />}
     </div>
   )
 }

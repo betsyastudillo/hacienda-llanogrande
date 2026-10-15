@@ -1,33 +1,18 @@
 import { useState } from 'react'
-import { Download } from 'lucide-react'
-import api from '../../../services/api'
-import { useToast } from '../../../context/Toast/ToastContext'
+import { Eye } from 'lucide-react'
+import FilePreviewModal from '../../../components/FilePreviewModal/FilePreviewModal'
 import { formatDate } from '../../../utils/formatDate'
 import { formatCurrency } from '../../../utils/formatCurrency'
 import './OrderDetail.css'
 
 export default function InvoiceCard({ order, invoice }) {
-  const { showToast } = useToast()
-  const [downloading, setDownloading] = useState(false)
+  const [preview, setPreview] = useState(null)
 
-  async function handleDownload() {
-    setDownloading(true)
-    try {
-      const res = await api.get(`/invoices/${invoice.id}/pdf`, { responseType: 'blob' })
-      const url = URL.createObjectURL(res.data)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${invoice.invoice_number}.pdf`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      setTimeout(() => URL.revokeObjectURL(url), 10000)
-    } catch {
-      showToast('No se pudo descargar la factura.', 'error')
-    } finally {
-      setDownloading(false)
-    }
-  }
+  const openPreview = () => setPreview({
+    title: `Factura ${invoice.invoice_number}`,
+    apiPath: `/invoices/${invoice.id}/pdf`,
+    filename: `${invoice.invoice_number}.pdf`,
+  })
 
   return (
     <div className="detail-card">
@@ -63,13 +48,15 @@ export default function InvoiceCard({ order, invoice }) {
           </div>
 
           <div className="pay-actions">
-            <button className="pay-btn is-primary" onClick={handleDownload} disabled={downloading}>
-              <Download size={14} style={{ marginRight: 6, verticalAlign: -2 }} />
-              {downloading ? 'Descargando...' : 'Descargar PDF'}
+            <button className="pay-btn is-primary" onClick={openPreview}>
+              <Eye size={14} style={{ marginRight: 6, verticalAlign: -2 }} />
+              Ver factura
             </button>
           </div>
         </>
       )}
+
+      {preview && <FilePreviewModal {...preview} onClose={() => setPreview(null)} />}
     </div>
   )
 }
