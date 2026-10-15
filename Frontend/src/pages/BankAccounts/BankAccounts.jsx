@@ -308,7 +308,12 @@ export default function BankAccounts() {
               onChange={handleChange('agreement_number')}
             />
           </div>
-
+          {editingId && (
+            <p className="bank-edit-warning">
+              Al editar una cuenta, ten en cuenta que las proformas ya generadas no cambian:
+              sus PDF conservan los datos anteriores.
+            </p>
+          )}
           <button type="button" className="bank-save-btn" onClick={handleSave} disabled={saving}>
             {saving ? 'Guardando...' : 'Guardar'}
           </button>

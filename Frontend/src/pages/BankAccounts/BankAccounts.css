@@ -128,6 +128,12 @@
   margin-bottom: 5px;
 }
 
+.bank-edit-warning {
+  font-size: 13px;
+  color: var(--error);
+  margin: 12px 0 0;
+}
+
 .bank-form-input {
   width: 100%;
   height: 40px;
