@@ -6,7 +6,7 @@ import ComplianceTable from '../../../components/ComplianceTable/ComplianceTable
 import { useToast } from '../../../context/Toast/ToastContext'
 import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES, REQUIRED_JURIDICA_DOCS, REQUIRED_NATURAL_DOCS } from '../../../constants/companyDocuments'
 import { getComplianceChecks, getRepComplianceChecks } from '../../../constants/complianceChecks'
-import { DEPARTMENTS } from '../../../constants/departments'
+import { DEPARTMENTS, CITIES_BY_DEPARTMENT } from '../../../constants/colombia'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
 import { isValidEmail, isValidPhone } from '../../../utils/validators'
 import './CompanyNew.css'
@@ -489,14 +489,29 @@ export default function CompanyNew() {
           <div className="company-form-row">
             <div className="company-form-field">
               <label className="company-form-label">Departamento</label>
-              <select className="company-form-input" value={form.department} onChange={handleChange('department')}>
+              <select
+                className="company-form-input"
+                value={form.department}
+                onChange={(e) => setForm({ ...form, department: e.target.value, city: '' })}
+              >
                 <option value="">Selecciona</option>
                 {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
+
             <div className="company-form-field">
               <label className="company-form-label">Ciudad</label>
-              <input className="company-form-input" value={form.city} onChange={handleChange('city')} />
+              <select
+                className="company-form-input"
+                value={form.city}
+                onChange={handleChange('city')}
+                disabled={!form.department}
+              >
+                <option value="">{form.department ? 'Selecciona' : 'Elige primero el departamento'}</option>
+                {(CITIES_BY_DEPARTMENT[form.department] || []).map((c) => (
+                  <option key={c.code} value={c.name}>{c.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 
