@@ -98,15 +98,6 @@
   background-color: var(--border);
 }
 
-.inventory-form-error {
-  background-color: var(--error);
-  color: var(--white-bg);
-  font-size: 13px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  margin-bottom: 10px;
-}
-
 .inventory-kardex-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

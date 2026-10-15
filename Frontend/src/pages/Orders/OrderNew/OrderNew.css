@@ -11,16 +11,6 @@
   margin: 0 0 2.5rem;
 }
 
-.order-new-error {
-  background-color: var(--warning-soft);
-  border: 1px solid var(--warning);
-  color: var(--text-footer);
-  font-size: 15px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  margin-bottom: 1.25rem;
-}
-
 .order-new-field {
   margin-bottom: 1.5rem;
 }

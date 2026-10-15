@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '../../../services/api'
+import { useToast } from '../../../context/Toast/ToastContext'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
 import './ProductForm.css'
 
@@ -16,6 +17,8 @@ export default function ProductForm() {
   const { productId } = useParams()
   const navigate = useNavigate()
   const isEditing = Boolean(productId)
+  const { showToast } = useToast()
+  const fail = (message) => showToast(message, 'error')
 
   const [baseProducts, setBaseProducts] = useState([])
   const [isPack, setIsPack] = useState(false)
@@ -31,7 +34,6 @@ export default function ProductForm() {
     units_per_pack: '',
   })
 
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(isEditing)
   const [submitting, setSubmitting] = useState(false)
 
@@ -66,17 +68,9 @@ export default function ProductForm() {
   }
 
   const handleSubmit = async () => {
-    setError('')
-
-    if (!form.name || !form.price) {
-      setError('Nombre y precio son obligatorios')
-      return
-    }
-
-    if (isPack && (!form.parent_product_id || !form.units_per_pack)) {
-      setError('Selecciona el producto base y la cantidad por paquete')
-      return
-    }
+    if (!form.name || !form.price) return fail('Nombre y precio son obligatorios')
+    if (isPack && (!form.parent_product_id || !form.units_per_pack))
+      return fail('Selecciona el producto base y la cantidad por paquete')
 
     setSubmitting(true)
 
@@ -93,14 +87,14 @@ export default function ProductForm() {
 
     try {
       if (isEditing) {
-        const response = await api.put(`/products/${productId}`, payload)
-
+        await api.put(`/products/${productId}`, payload)
       } else {
         await api.post('/products/', payload)
       }
+      showToast(isEditing ? 'Producto actualizado.' : 'Producto creado.')
       navigate('/products')
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo guardar el producto'))
+      fail(getErrorMessage(err, 'No se pudo guardar el producto'))
     } finally {
       setSubmitting(false)
     }
@@ -111,8 +105,6 @@ export default function ProductForm() {
   return (
     <main className="product-form-main">
       <h1 className="product-form-title">{isEditing ? 'Editar producto' : 'Nuevo producto'}</h1>
-
-      {error && <div className="product-form-error">{error}</div>}
 
       <div className="product-form-card">
         {/* {isEditing && (

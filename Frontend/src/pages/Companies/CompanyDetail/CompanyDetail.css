@@ -90,15 +90,6 @@
   margin-bottom: 1.25rem;
 }
 
-.company-detail-error {
-  background-color: var(--error-bg);
-  color: var(--error);
-  font-size: 13px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  margin-bottom: 1.25rem;
-}
-
 .company-detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

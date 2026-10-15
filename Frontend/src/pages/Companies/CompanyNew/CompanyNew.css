@@ -4,6 +4,16 @@
   padding: 2rem;
 }
 
+.company-detail-back-btn {
+  background: none;
+  border: none;
+  color: var(--text-footer);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1rem;
+}
+
 .company-form-title {
   font-size: 22px;
   font-weight: 600;

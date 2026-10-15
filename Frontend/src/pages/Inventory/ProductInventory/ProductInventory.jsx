@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowDown, ArrowUp, Wrench, CirclePlus } from 'lucide-react'
 import api from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
+import { useToast } from '../../../context/Toast/ToastContext'
 import Modal from '../../../components/Modal/Modal'
 import { ADJUSTMENT_CATEGORIES } from '../../../constants/inventoryReasons'
 import { formatCurrency } from '../../../utils/formatCurrency'
@@ -36,6 +37,8 @@ export default function ProductInventory() {
   const { productId } = useParams()
   const navigate = useNavigate()
   const { hasPermission } = useAuth()
+  const { showToast } = useToast()
+  const fail = (message) => showToast(message, 'error')
 
   const [product, setProduct] = useState(null)
   const [stock, setStock] = useState(null)
@@ -47,13 +50,11 @@ export default function ProductInventory() {
   const [quantity, setQuantity] = useState('')
   const [reason, setReason] = useState('')
   const [category, setCategory] = useState('')
-  const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const [kardexStart, setKardexStart] = useState(todayISO())
   const [kardexEnd, setKardexEnd] = useState(todayISO())
   const [kardex, setKardex] = useState(null)
-  const [kardexError, setKardexError] = useState('')
   const [kardexLoading, setKardexLoading] = useState(false)
 
   const canManage = hasPermission('inventory:gestionar')
@@ -76,16 +77,15 @@ export default function ProductInventory() {
   }, [productId])
 
   const loadKardex = async () => {
-    setKardexError('')
     setKardexLoading(true)
     try {
-      await api.get(`/inventory/products/${productId}/kardex`, {
+      const res = await api.get(`/inventory/products/${productId}/kardex`, {
         params: { start_date: kardexStart, end_date: kardexEnd },
       })
 
       setKardex(res.data)
     } catch (err) {
-      setKardexError(getErrorMessage(err, 'No se pudo consultar el kardex'))
+      fail(getErrorMessage(err, 'No se pudo consultar el kardex'))
       setKardex(null)
     } finally {
       setKardexLoading(false)
@@ -101,7 +101,6 @@ export default function ProductInventory() {
     setQuantity('')
     setReason('')
     setCategory('')
-    setError('')
   }
 
   const handleClose = () => {
@@ -110,22 +109,16 @@ export default function ProductInventory() {
   }
 
   const handleRegister = async () => {
-    setError('')
     const qty = Number(quantity)
 
-    if (!quantity || (movementType === 'ajuste' ? qty === 0 : qty <= 0) || !Number.isInteger(qty)) {
-      setError('Ingresa una cantidad entera válida')
-      return
-    }
-
-    if (movementType === 'ajuste' && (!category || !reason)) {
-      setError('Los ajustes requieren categoría y motivo')
-      return
-    }
+    if (!quantity || (movementType === 'ajuste' ? qty === 0 : qty <= 0) || !Number.isInteger(qty))
+      return fail('Ingresa una cantidad entera válida')
+    if (movementType === 'ajuste' && (!category || !reason))
+      return fail('Los ajustes requieren categoría y motivo')
 
     setSubmitting(true)
     try {
-      const response = await api.post('/inventory/movements', {
+      await api.post('/inventory/movements', {
         product_id: productId,
         movement_type: movementType,
         quantity: qty,
@@ -134,11 +127,11 @@ export default function ProductInventory() {
       })
 
       handleClose()
+      showToast('Movimiento registrado.')
       await loadData()
       await loadKardex()
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo registrar el movimiento'))
-
+      fail(getErrorMessage(err, 'No se pudo registrar el movimiento'))
     } finally {
       setSubmitting(false)
     }
@@ -197,8 +190,6 @@ export default function ProductInventory() {
             {kardexLoading ? 'Consultando...' : 'Consultar'}
           </button>
         </div>
-
-        {kardexError && <div className="inventory-form-error">{kardexError}</div>}
 
         {kardex && (
           <>
@@ -259,8 +250,6 @@ export default function ProductInventory() {
 
       {showModal && (
         <Modal title="Registrar movimiento" onClose={handleClose}>
-        {error && <div className="inventory-form-error">{error}</div>}
-
         <div className="modal-field">
           <label className="modal-field-label">Tipo de movimiento</label>
           <select

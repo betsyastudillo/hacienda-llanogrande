@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Download, CircleCheck, CircleX, Clock, Check, X, TriangleAlert, Upload } from 'lucide-react'
 import api, { API_BASE_URL } from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
+import { useToast } from '../../../context/Toast/ToastContext'
 import { COMPANY_STATUS_LABELS, COMPANY_STATUS_COLORS } from '../../../constants/companyStatus'
 import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES } from '../../../constants/companyDocuments'
 import { getComplianceLabel } from '../../../constants/complianceChecks'
@@ -33,12 +34,13 @@ export default function CompanyDetail() {
   const { companyId } = useParams()
   const navigate = useNavigate()
   const { hasPermission } = useAuth()
+  const { showToast } = useToast()
+  const fail = (message) => showToast(message, 'error')
 
   const [company, setCompany] = useState(null)
   const [documents, setDocuments] = useState([])
   const [checks, setChecks] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
 
   const [showRejectBox, setShowRejectBox] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
@@ -67,44 +69,35 @@ export default function CompanyDetail() {
   }, [companyId])
 
   const handleDocumentStatus = async (documentId, status) => {
-    setError('')
     try {
       await api.patch(`/documents/${documentId}/status`, { status })
+      showToast(status === 'approved' ? 'Documento aprobado.' : 'Documento rechazado.')
       await loadData()
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo actualizar el documento'))
+      fail(getErrorMessage(err, 'No se pudo actualizar el documento'))
     }
   }
 
   const handleApproveCompany = async () => {
-    setError('')
     setSubmitting(true)
     try {
       await api.patch(`/companies/${companyId}/verify`, { decision: 'approved' })
+      showToast('Empresa aprobada.')
       await loadData()
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo aprobar la empresa'))
+      fail(getErrorMessage(err, 'No se pudo aprobar la empresa'))
     } finally {
       setSubmitting(false)
     }
   }
 
   const handleRejectCompany = async () => {
-    setError('')
-
-    if (!rejectionType) {
-      setError('Selecciona el tipo de rechazo')
-      return
-    }
-
-    if (!rejectionReason.trim()) {
-      setError('Escribe el motivo del rechazo')
-      return
-    }
+    if (!rejectionType) return fail('Selecciona el tipo de rechazo')
+    if (!rejectionReason.trim()) return fail('Escribe el motivo del rechazo')
 
     setSubmitting(true)
     try {
-      const response = await api.patch(`/companies/${companyId}/verify`, {
+      await api.patch(`/companies/${companyId}/verify`, {
         decision: 'rejected',
         rejection_reason: rejectionReason,
         rejection_type: rejectionType,
@@ -113,9 +106,10 @@ export default function CompanyDetail() {
       setShowRejectBox(false)
       setRejectionReason('')
       setRejectionType('')
+      showToast('Empresa rechazada.')
       await loadData()
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo rechazar la empresa'))
+      fail(getErrorMessage(err, 'No se pudo rechazar la empresa'))
     } finally {
       setSubmitting(false)
     }
@@ -123,29 +117,29 @@ export default function CompanyDetail() {
 
   const handleReplaceDocument = async (documentId, file) => {
     if (!file) return
-    setError('')
-    
+
     try {
       const formData = new FormData()
       formData.append('new_file', file)
       await api.put(`/documents/${documentId}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      
+
+      showToast('Documento reemplazado.')
       await loadData()
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo reemplazar el documento'))
+      fail(getErrorMessage(err, 'No se pudo reemplazar el documento'))
     }
   }
 
   const handleResubmit = async () => {
-    setError('')
     setSubmitting(true)
     try {
       await api.patch(`/companies/${companyId}/resubmit`)
+      showToast('Empresa reenviada a revisión.')
       await loadData()
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo reenviar a revisión'))
+      fail(getErrorMessage(err, 'No se pudo reenviar a revisión'))
     } finally {
       setSubmitting(false)
     }
@@ -155,23 +149,24 @@ export default function CompanyDetail() {
     setSubmitting(true)
     try {
       await api.delete(`/companies/${companyId}`)
+      showToast('Empresa desactivada.')
       navigate('/companies')
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo desactivar la empresa'))
-      setConfirmAction(false)
+      fail(getErrorMessage(err, 'No se pudo desactivar la empresa'))
+      setConfirmAction(null)
       setSubmitting(false)
     }
   }
 
   const handleReactivate = async () => {
-    setError('')
     setSubmitting(true)
     try {
       await api.patch(`/companies/${companyId}/reactivate`)
       setConfirmAction(null)
+      showToast('Empresa reactivada.')
       await loadData()
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo reactivar la empresa'))
+      fail(getErrorMessage(err, 'No se pudo reactivar la empresa'))
       setConfirmAction(null)
     } finally {
       setSubmitting(false)
@@ -246,8 +241,6 @@ export default function CompanyDetail() {
           Reenviada tras un rechazo anterior: {company.rejection_reason}
         </p>
       )}
-
-      {error && <div className="company-detail-error">{error}</div>}
 
       <div className="company-detail-grid">
         <div className="company-detail-card">

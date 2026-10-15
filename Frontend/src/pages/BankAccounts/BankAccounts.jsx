@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { CirclePlus, Pencil, Power } from 'lucide-react'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../../context/Toast/ToastContext'
 import Modal from '../../components/Modal/Modal'
 import ConfirmModal from '../../components/ConfirmModal/ConfirmModal'
 import StatusBadge from '../../components/StatusBadge/StatusBadge'
@@ -24,15 +25,15 @@ const EMPTY_FORM = {
 export default function BankAccounts() {
   const { hasPermission } = useAuth()
   const canManage = hasPermission('bank_account:gestionar')
+  const { showToast } = useToast()
+  const fail = (message) => showToast(message, 'error')
 
   const [accounts, setAccounts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
 
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
-  const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
 
   const [confirm, setConfirm] = useState(null) // { type: 'deactivate' | 'reactivate', account }
@@ -43,7 +44,7 @@ export default function BankAccounts() {
       const res = await api.get('/bank-accounts/')
       setAccounts(res.data)
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudieron cargar las cuentas'))
+      fail(getErrorMessage(err, 'No se pudieron cargar las cuentas'))
     } finally {
       setLoading(false)
     }
@@ -62,7 +63,6 @@ export default function BankAccounts() {
   const openCreate = () => {
     setEditingId(null)
     setForm(EMPTY_FORM)
-    setFormError('')
     setShowModal(true)
   }
 
@@ -80,33 +80,22 @@ export default function BankAccounts() {
       account_holder_document_number: account.account_holder_document_number,
       agreement_number: account.agreement_number || '',
     })
-    setFormError('')
     setShowModal(true)
   }
 
   const closeModal = () => {
     setShowModal(false)
     setEditingId(null)
-    setFormError('')
   }
 
   const handleSave = async () => {
-    setFormError('')
-
     const bankName = form.bank === OTHER_BANK ? form.custom_bank.trim() : form.bank
 
-    if (!bankName) {
-      setFormError('Selecciona el banco')
-      return
-    }
-    if (!/^\d{6,20}$/.test(form.account_number)) {
-      setFormError('El número de cuenta debe tener solo números (entre 6 y 20 dígitos)')
-      return
-    }
-    if (!form.account_holder_name.trim() || !form.account_holder_document_number.trim()) {
-      setFormError('Completa los datos del titular')
-      return
-    }
+    if (!bankName) return fail('Selecciona el banco')
+    if (!/^\d{6,20}$/.test(form.account_number))
+      return fail('El número de cuenta debe tener solo números (entre 6 y 20 dígitos)')
+    if (!form.account_holder_name.trim() || !form.account_holder_document_number.trim())
+      return fail('Completa los datos del titular')
 
     const payload = {
       bank_name: bankName,
@@ -124,12 +113,12 @@ export default function BankAccounts() {
         await api.put(`/bank-accounts/${editingId}`, payload)
       } else {
         await api.post('/bank-accounts/', payload)
-
       }
       closeModal()
+      showToast(editingId ? 'Cuenta bancaria actualizada.' : 'Cuenta bancaria creada.')
       await loadAccounts()
     } catch (err) {
-      setFormError(getErrorMessage(err, 'No se pudo guardar la cuenta'))
+      fail(getErrorMessage(err, 'No se pudo guardar la cuenta'))
     } finally {
       setSaving(false)
     }
@@ -144,9 +133,10 @@ export default function BankAccounts() {
         await api.patch(`/bank-accounts/${confirm.account.id}/reactivate`)
       }
       setConfirm(null)
+      showToast(confirm.type === 'deactivate' ? 'Cuenta bancaria desactivada.' : 'Cuenta bancaria reactivada.')
       await loadAccounts()
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo completar la acción'))
+      fail(getErrorMessage(err, 'No se pudo completar la acción'))
       setConfirm(null)
     } finally {
       setProcessing(false)
@@ -167,7 +157,6 @@ export default function BankAccounts() {
         )}
       </div>
 
-      {error && <div className="bank-error">{error}</div>}
       {loading && <p className="bank-empty">Cargando cuentas...</p>}
 
       {!loading && accounts.length === 0 && (
@@ -234,8 +223,6 @@ export default function BankAccounts() {
 
       {showModal && (
         <Modal title={editingId ? 'Editar cuenta bancaria' : 'Nueva cuenta bancaria'} onClose={closeModal}>
-          {formError && <div className="bank-form-error">{formError}</div>}
-
           <div className="bank-form-field">
             <label className="bank-form-label">Banco</label>
             <select className="bank-form-input" value={form.bank} onChange={handleChange('bank')}>

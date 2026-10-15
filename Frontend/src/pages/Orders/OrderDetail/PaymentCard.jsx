@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
-import { CircleCheck, CircleX, Clock, Download, Eye } from 'lucide-react'
+import { Download } from 'lucide-react'
 import api from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
+import { useToast } from '../../../context/Toast/ToastContext'
 import Modal from '../../../components/Modal/Modal'
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal'
 import StatusBadge from '../../../components/StatusBadge/StatusBadge'
@@ -11,17 +12,13 @@ import { formatDate } from '../../../utils/formatDate'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
 import { formatAccountNumber } from '../../../utils/formatAccountNumber'
 
-const STATUS_CONFIG = {
-  confirmed: { label: 'Confirmado', icon: CircleCheck, className: 'is-accent' },
-  failed: { label: 'Rechazado', icon: CircleX, className: 'is-error' },
-  pending: { label: 'Pendiente', icon: Clock, className: '' },
-}
-
 const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.webp']
 const MAX_SIZE = 5 * 1024 * 1024
 
 export default function PaymentCard({ order, payment, bankAccount, onChanged }) {
   const { hasPermission } = useAuth()
+  const { showToast } = useToast()
+  const fail = (message) => showToast(message, 'error')
   const fileInputRef = useRef(null)
 
   const [showCreate, setShowCreate] = useState(false)
@@ -31,7 +28,6 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
   const [showReject, setShowReject] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
 
   const canCreate = hasPermission('payment:crear') || hasPermission('payment:crear_propio')
   const canUpload = hasPermission('payment:subir_comprobante')
@@ -40,27 +36,25 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
   const receiptHref = payment?.receipt_url ? `${api.defaults.baseURL}${payment.receipt_url}` : null
 
   async function openCreate() {
-    setError('')
     setSelectedAccountId('')
     setShowCreate(true)
     try {
       const res = await api.get('/bank-accounts/')
       setAccounts(res.data.filter((a) => a.is_active))
     } catch (err) {
-      setError(getErrorMessage(err))
+      fail(getErrorMessage(err, 'No se pudieron cargar las cuentas bancarias'))
     }
   }
 
   async function handleCreate() {
     setBusy(true)
-    setError('')
     try {
-      const r = await api.post('/payments/', { order_id: order.id, bank_account_id: selectedAccountId })
-      console.log(r)
+      await api.post('/payments/', { order_id: order.id, bank_account_id: selectedAccountId })
       setShowCreate(false)
+      showToast('Proforma generada. Consigna el valor y sube el comprobante.')
       await onChanged()
     } catch (err) {
-      setError(getErrorMessage(err))
+      fail(getErrorMessage(err, 'No se pudo generar la proforma'))
     } finally {
       setBusy(false)
     }
@@ -72,24 +66,18 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
     if (!file) return
 
     const extension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase()
-    if (!ALLOWED_EXTENSIONS.includes(extension)) {
-      setError('El comprobante debe ser PDF, JPG, PNG o WEBP.')
-      return
-    }
-    if (file.size > MAX_SIZE) {
-      setError('El comprobante debe pesar máximo 5 MB.')
-      return
-    }
+    if (!ALLOWED_EXTENSIONS.includes(extension)) return fail('El comprobante debe ser PDF, JPG, PNG o WEBP.')
+    if (file.size > MAX_SIZE) return fail('El comprobante debe pesar máximo 5 MB.')
 
     setBusy(true)
-    setError('')
     try {
       const formData = new FormData()
       formData.append('file', file)
       await api.post(`/payments/${payment.id}/receipt`, formData)
+      showToast('Comprobante subido. Quedó en revisión por cartera.')
       await onChanged()
     } catch (err) {
-      setError(getErrorMessage(err))
+      fail(getErrorMessage(err, 'No se pudo subir el comprobante'))
     } finally {
       setBusy(false)
     }
@@ -97,22 +85,21 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
 
   async function handleDecision(status, reason) {
     setBusy(true)
-    setError('')
     try {
       await api.post(`/payments/${payment.id}/confirm`, { status, reason })
       setShowConfirm(false)
       setShowReject(false)
       setRejectReason('')
+      showToast(status === 'confirmed' ? 'Pago confirmado.' : 'Pago rechazado.')
       await onChanged()
     } catch (err) {
-      setError(getErrorMessage(err))
+      fail(getErrorMessage(err, 'No se pudo registrar la decisión del pago'))
     } finally {
       setBusy(false)
     }
   }
 
   async function handleDownloadProforma() {
-    setError('')
     try {
       const res = await api.get(`/payments/${payment.id}/proforma`, { responseType: 'blob' })
       const url = URL.createObjectURL(res.data)
@@ -124,7 +111,7 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
       link.remove()
       setTimeout(() => URL.revokeObjectURL(url), 10000)
     } catch {
-      setError('No se pudo descargar la proforma.')
+      fail('No se pudo descargar la proforma.')
     }
   }
 
@@ -172,7 +159,6 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
                 </label>
               ))}
             </div>
-            {error && <p className="pay-error">{error}</p>}
             <div className="pay-actions">
               <button className="pay-btn" onClick={() => setShowCreate(false)} disabled={busy}>
                 Cancelar
@@ -187,8 +173,6 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
     )
   }
 
-  const config = STATUS_CONFIG[payment.status] || STATUS_CONFIG.pending
-  const Icon = config.icon
   const awaitingReceipt = payment.status === 'pending' || payment.status === 'failed'
 
   return (
@@ -272,8 +256,6 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
         <p className="detail-empty-inline pay-hint">Comprobante recibido, en revisión por cartera.</p>
       )}
 
-      {error && <p className="pay-error">{error}</p>}
-
       <div className="pay-actions">
         {awaitingReceipt && canUpload && (
           <>
@@ -331,7 +313,6 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
             onChange={(e) => setRejectReason(e.target.value)}
             placeholder="Ej: imagen ilegible, el valor no coincide"
           />
-          {error && <p className="pay-error">{error}</p>}
           <div className="pay-actions">
             <button className="pay-btn" onClick={() => setShowReject(false)} disabled={busy}>
               Cancelar

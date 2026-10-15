@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Trash } from 'lucide-react'
 import api from '../../../services/api'
 import ComplianceTable from '../../../components/ComplianceTable/ComplianceTable'
+import { useToast } from '../../../context/Toast/ToastContext'
 import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES, REQUIRED_JURIDICA_DOCS, REQUIRED_NATURAL_DOCS } from '../../../constants/companyDocuments'
 import { getComplianceChecks, getRepComplianceChecks } from '../../../constants/complianceChecks'
 import { DEPARTMENTS } from '../../../constants/departments'
@@ -13,12 +14,14 @@ import './CompanyNew.css'
 
 export default function CompanyNew() {
   const navigate = useNavigate()
+  const { showToast } = useToast()
+  const fail = (message) => showToast(message, 'error')
 
   const [step, setStep] = useState(1)
   const [companyId, setCompanyId] = useState(null)
-
+  
   const [sameAsOperational, setSameAsOperational] = useState(true)
-
+  
   const [form, setForm] = useState({
     legal_name: '',
     display_name: '',
@@ -30,6 +33,8 @@ export default function CompanyNew() {
     address: '',
     phone: '',
     email: '',
+    country: 'Colombia',
+    department: '',
     city: '',
     economic_activity_code: '',
     economic_activity_description: '',
@@ -42,7 +47,7 @@ export default function CompanyNew() {
     legal_rep_email: '',
     legal_rep_city: '',
   })
-
+  
   // Paso 2: Checklist de cumplimiento
   const [companyChecks, setCompanyChecks] = useState({})
   const [repChecks, setRepChecks] = useState({})
@@ -56,7 +61,6 @@ export default function CompanyNew() {
   // const [uploadedDocs, setUploadedDocs] = useState([])
   const [uploading, setUploading] = useState(false)
 
-  const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const { companyId: resumeId } = useParams()
@@ -114,7 +118,7 @@ export default function CompanyNew() {
         setStep(companyDone && repDone ? 3 : 2)
 
       } catch (err) {
-        setError(getErrorMessage(err, 'No se pudo cargar el borrador'))
+        fail(getErrorMessage(err, 'No se pudo cargar el borrador'))
       } finally {
         setLoadingResume(false)
       }
@@ -124,6 +128,23 @@ export default function CompanyNew() {
   }, [resumeId])
 
   const isJuridica = form.person_type === 'juridica'
+  const step1Complete = Boolean(
+  form.legal_name.trim() &&
+  form.document_number.trim() &&
+  form.business_sector &&
+  form.address.trim() &&
+  form.department &&
+  form.city.trim() &&
+  form.phone &&
+  form.email.trim() &&
+  (isJuridica
+    ? form.legal_rep_name.trim() &&
+      form.legal_rep_document_type &&
+      form.legal_rep_document_number.trim() &&
+      form.legal_rep_email.trim() &&
+      form.legal_rep_city.trim()
+    : form.document_type)
+)
   const companyItems = getComplianceChecks(form.business_sector)
   const repItems = getRepComplianceChecks()
 
@@ -143,7 +164,6 @@ export default function CompanyNew() {
   }
 
   const handleCreateCompany = async () => {
-    setError('')
 
     const isJuridica = form.person_type === 'juridica'
 
@@ -152,39 +172,20 @@ export default function CompanyNew() {
       !form.address.trim() || !form.phone || !form.email.trim() || !form.department || !form.city.trim() ||
       (!isJuridica && !form.document_type)
     ) {
-      setError('Todos los campos son obligatorios.')
-      return
+      return fail('Todos los campos son obligatorios.')
     }
 
-    if (!form.business_sector) {
-      setError('Selecciona el sector del cliente.')
-      return
-    }
-
-    if (!isValidPhone(form.phone)) {
-      setError('El teléfono debe tener solo números (entre 7 y 15 dígitos)')
-      return
-    }
-
-    if (!isValidEmail(form.email)) {
-      setError('El correo no tiene un formato válido')
-      return
-    }
-
-    if (form.economic_activity_code && !/^\d{4}$/.test(form.economic_activity_code)) {
-      setError('El código CIIU debe tener 4 dígitos')
-      return
-    }
+    if (!form.business_sector) return fail('Selecciona el sector del cliente.')
+    if (!isValidPhone(form.phone)) return fail('El teléfono debe tener solo números (entre 7 y 15 dígitos)')
+    if (!isValidEmail(form.email)) return fail('El correo no tiene un formato válido')
+    
+    if (form.economic_activity_code && !/^\d{4}$/.test(form.economic_activity_code)) return fail('El código CIIU debe tener 4 dígitos')
 
     if (!sameAsOperational) {
-      if (form.fiscal_phone && !isValidPhone(form.fiscal_phone)) {
-        setError('El teléfono fiscal debe tener solo números (entre 7 y 15 dígitos)')
-        return
-      }
-      if (form.fiscal_email && !isValidEmail(form.fiscal_email)) {
-        setError('El correo fiscal no tiene un formato válido')
-        return
-      }
+      if (form.fiscal_phone && !isValidPhone(form.fiscal_phone))
+        return fail('El teléfono fiscal debe tener solo números (entre 7 y 15 dígitos)')
+      if (form.fiscal_email && !isValidEmail(form.fiscal_email)) 
+        return fail('El correo fiscal no tiene un formato válido')
     }
 
     if (isJuridica) {
@@ -192,16 +193,11 @@ export default function CompanyNew() {
         !form.legal_rep_name.trim() || !form.legal_rep_document_type ||
         !form.legal_rep_document_number.trim() || !form.legal_rep_email.trim() ||
         !form.legal_rep_city.trim()
-      ) {
-        setError('Completa todos los datos del representante legal.')
-        return
-      }
-      if (!isValidEmail(form.legal_rep_email)) {
-        setError('El correo del representante legal no tiene un formato válido')
-        return
-      }
-    }
+      ) return fail('Completa todos los datos del representante legal.')
 
+      if (!isValidEmail(form.legal_rep_email)) 
+        return fail('El correo del representante legal no tiene un formato válido')
+    }
 
     setSubmitting(true)
     
@@ -236,9 +232,10 @@ export default function CompanyNew() {
       const response = await api.post('/companies/', payload)
 
       setCompanyId(response.data.id)
+      showToast('Empresa creada como borrador. Continúa con la verificación en listas vinculantes.')
       setStep(2)
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo crear la empresa'))
+      fail(getErrorMessage(err, 'No se pudo crear la empresa'))
     } finally {
       setSubmitting(false)
     }
@@ -250,7 +247,6 @@ export default function CompanyNew() {
   
   // Paso 2: Checklist de cumplimiento
   const handleSaveChecks = async () => {
-    setError('')
     setSavingChecks(true)
 
     try {
@@ -268,9 +264,10 @@ export default function CompanyNew() {
           ),
         ),
       )
+      showToast('Verificación en listas guardada. Ahora sube los documentos.')
       setStep(3)
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo guardar la verificación'))
+      fail(getErrorMessage(err, 'No se pudo guardar la verificación'))
     } finally {
       setSavingChecks(false)
     }
@@ -295,19 +292,12 @@ export default function CompanyNew() {
 
   // Agrega un documento a la cola de subida
   const handleAddToQueue = () => {
-    setError('')
 
-    if (!documentType || !file) {
-      setError('Selecciona el tipo de documento y el archivo')
-      return
-    }
+    if (!documentType || !file) return fail('Selecciona el tipo de documento y el archivo')
 
     const actualType = documentType === 'otro' ? customDocumentLabel.trim() : documentType
 
-    if (documentType === 'otro' && !actualType) {
-      setError('Especifica el nombre del documento')
-      return
-    }
+    if (documentType === 'otro' && !actualType) return fail('Especifica el nombre del documento')
 
     setPendingDocs([...pendingDocs, { documentType: actualType, file, id: crypto.randomUUID() }])
     setDocumentType('')
@@ -320,7 +310,6 @@ export default function CompanyNew() {
   }
 
   const handleFinalize = async () => {
-    setError('')
     setUploading(true)
 
     const succeeded = []
@@ -346,17 +335,17 @@ export default function CompanyNew() {
     setPendingDocs(failed)
 
     if (failed.length > 0) {
-      setError(`No se pudieron subir: ${failed.map((d) => documentTypeLabel(d.documentType)).join(', ')}. Revisa la lista e intenta de nuevo.`)
+      fail(`No se pudieron subir: ${failed.map((d) => documentTypeLabel(d.documentType)).join(', ')}. Revisa la lista e intenta de nuevo.`)
       setUploading(false)
-
       return
     }
 
     try {
       await api.patch(`/companies/${companyId}/submit`)
+      showToast('Empresa creada correctamente. Sus datos fueron enviados a revisión.')
       navigate('/companies')
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo enviar la empresa a revisión'))
+      fail(getErrorMessage(err, 'No se pudo enviar la empresa a revisión'))
     } finally {
       setUploading(false)
     }
@@ -366,9 +355,11 @@ export default function CompanyNew() {
   if (loadingResume) return <main className="company-form-main"><p>Cargando...</p></main>
 
 
-
   return (
     <main className="company-form-main">
+      <button className="company-detail-back-btn" onClick={() => navigate('/companies')}>
+        ← Volver a empresas
+      </button>
       <h1 className="company-form-title">Crear empresa</h1>
 
       <div className="company-form-steps">
@@ -376,8 +367,6 @@ export default function CompanyNew() {
         <span className={`company-form-step ${step === 2 ? 'is-active' : step > 2 ? 'is-done' : ''}`}>2. Verificación</span>
         <span className={`company-form-step ${step === 3 ? 'is-active' : ''}`}>3. Documentos</span>
       </div>
-
-      {error && <div className="company-form-error">{error}</div>}
 
       {step === 1 && (
         <div className="company-form-card">

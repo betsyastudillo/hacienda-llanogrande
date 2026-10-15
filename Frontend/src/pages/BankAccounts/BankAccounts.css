@@ -32,15 +32,6 @@
   cursor: pointer;
 }
 
-.bank-error {
-  background-color: var(--error-bg);
-  color: var(--error);
-  font-size: 13px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  margin-bottom: 1.25rem;
-}
-
 .bank-empty {
   text-align: center;
   color: var(--text-footer);
@@ -116,15 +107,6 @@
 
 .bank-icon-btn:hover {
   background-color: #f4f3ee;
-}
-
-.bank-form-error {
-  background-color: var(--error-bg);
-  color: var(--error);
-  font-size: 13px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  margin-bottom: 12px;
 }
 
 .bank-form-field {

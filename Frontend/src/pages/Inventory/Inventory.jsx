@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, CirclePlus } from 'lucide-react'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../../context/Toast/ToastContext'
 import SearchInput from '../../components/SearchInput/SearchInput'
 import Modal from '../../components/Modal/Modal'
 import { ADJUSTMENT_CATEGORIES } from '../../constants/inventoryReasons'
@@ -12,6 +13,8 @@ import './Inventory.css'
 export default function Inventory() {
   const navigate = useNavigate()
   const { hasPermission } = useAuth()
+  const { showToast } = useToast()
+  const fail = (message) => showToast(message, 'error')
 
   const [products, setProducts] = useState([])
   const [stockByProduct, setStockByProduct] = useState({})
@@ -24,7 +27,6 @@ export default function Inventory() {
   const [quantity, setQuantity] = useState('')
   const [category, setCategory] = useState('')
   const [reason, setReason] = useState('')
-  const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const canManage = hasPermission('inventory:gestionar')
@@ -59,7 +61,6 @@ export default function Inventory() {
     setQuantity('')
     setCategory('')
     setReason('')
-    setError('')
   }
 
   const handleClose = () => {
@@ -68,21 +69,13 @@ export default function Inventory() {
   }
 
   const handleRegister = async () => {
-    setError('')
     const qty = Number(quantity)
 
-    if (!selectedProductId) {
-      setError('Selecciona un producto')
-      return
-    }
-    if (!quantity || (movementType === 'ajuste' ? qty === 0 : qty <= 0) || !Number.isInteger(qty)) {
-      setError('Ingresa una cantidad entera válida')
-      return
-    }
-    if (movementType === 'ajuste' && (!category || !reason)) {
-      setError('Los ajustes requieren categoría y motivo')
-      return
-    }
+    if (!selectedProductId) return fail('Selecciona un producto')
+    if (!quantity || (movementType === 'ajuste' ? qty === 0 : qty <= 0) || !Number.isInteger(qty))
+      return fail('Ingresa una cantidad entera válida')
+    if (movementType === 'ajuste' && (!category || !reason))
+      return fail('Los ajustes requieren categoría y motivo')
 
     setSubmitting(true)
     try {
@@ -95,9 +88,10 @@ export default function Inventory() {
       })
 
       handleClose()
+      showToast('Movimiento registrado.')
       await loadData()
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo registrar el movimiento'))
+      fail(getErrorMessage(err, 'No se pudo registrar el movimiento'))
     } finally {
       setSubmitting(false)
     }
@@ -176,8 +170,6 @@ export default function Inventory() {
 
       {showModal && (
         <Modal title="Registrar movimiento" onClose={handleClose}>
-        {error && <div className="inventory-form-error">{error}</div>}
-        
         <div className="modal-field">
           <label className="modal-field-label">Producto</label>
           <select

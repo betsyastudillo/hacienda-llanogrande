@@ -11,15 +11,6 @@
   margin: 0 0 1.5rem;
 }
 
-.product-form-error {
-  background-color: var(--error);
-  color: var(--white-bg);
-  font-size: 14px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  margin-bottom: 1.25rem;
-}
-
 .product-form-card {
   background-color: var(--white-bg);
   border-radius: 12px;

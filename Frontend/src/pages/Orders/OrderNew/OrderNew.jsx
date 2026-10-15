@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
+import { useToast } from '../../../context/Toast/ToastContext'
 import UnitReferenceHelper from '../../../components/UnitReferenceHelper/UnitReferenceHelper'
 import { estimateWeightKg } from '../../../constants/units'
 import { Pencil, Trash } from 'lucide-react'
@@ -12,6 +13,8 @@ import './OrderNew.css'
 export default function OrderNew() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { showToast } = useToast()
+  const fail = (message) => showToast(message, 'error')
 
   const [products, setProducts] = useState([])
   const [companies, setCompanies] = useState([])
@@ -23,7 +26,6 @@ export default function OrderNew() {
   const [stockByProduct, setStockByProduct] = useState({})
   const [editingIndex, setEditingIndex] = useState(null)
 
-  const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const isAdmin = user?.role === 'admin'
@@ -58,18 +60,10 @@ export default function OrderNew() {
   }, [isAdmin])
 
   const handleAddItem = () => {
-    setError('')
     const qty = Number(quantity)
 
-    if (!selectedProductId || !quantity || qty <= 0) {
-      setError('Selecciona un producto y una cantidad válida')
-      return
-    }
-
-    if (!Number.isInteger(qty)) {
-      setError('La cantidad debe ser un número entero, sin decimales')
-      return
-    }
+    if (!selectedProductId || !quantity || qty <= 0) return fail('Selecciona un producto y una cantidad válida')
+    if (!Number.isInteger(qty)) return fail('La cantidad debe ser un número entero, sin decimales')
 
     const product = products.find((m) => m.id === selectedProductId)
 
@@ -78,10 +72,8 @@ export default function OrderNew() {
 
     if (editingIndex !== null) {
       // Editamos una fila existente, como esa es la única de ese producto en la lista, se compara directamente con el stock disponible
-      if (qty > availableStock) {
-        setError(`Solo hay ${availableStock} ${product?.unit} disponibles de ${product?.name}`)
-        return
-      }
+      if (qty > availableStock)
+        return fail(`Solo hay ${availableStock} ${product?.unit} disponibles de ${product?.name}`)
 
       const updatedItems = [...items]
       updatedItems[editingIndex] = {
@@ -98,10 +90,8 @@ export default function OrderNew() {
       // Si ya agregaron el producto antes, y vuelven a agregar el mismo, se sume y no coloque 2 filas sobre el mismo producto.
       const existingIndex = items.findIndex((i) => i.product_id === selectedProductId)
       const alreadyInCart = existingIndex >= 0 ? items[existingIndex].quantity_m3 : 0
-      if (alreadyInCart + qty > availableStock) {
-        setError(`Solo hay ${availableStock - alreadyInCart} ${product?.unit} disponibles de ${product?.name}`)
-        return
-      }
+      if (alreadyInCart + qty > availableStock)
+        return fail(`Solo hay ${availableStock - alreadyInCart} ${product?.unit} disponibles de ${product?.name}`)
       if (existingIndex >= 0) {
         // Si ya existe, actualizamos la cantidad en lugar de agregar un nuevo item
         const updatedItems = [...items]
@@ -146,17 +136,8 @@ export default function OrderNew() {
   }
 
   const handleSubmit = async () => {
-    setError('')
-
-    if (items.length === 0) {
-      setError('Agrega al menos un producto al pedido')
-      return
-    }
-
-    if (isAdmin && !selectedCompanyId) {
-      setError('Selecciona la empresa para la que se crea el pedido')
-      return
-    }
+    if (items.length === 0) return fail('Agrega al menos un producto al pedido')
+    if (isAdmin && !selectedCompanyId) return fail('Selecciona la empresa para la que se crea el pedido')
 
     setSubmitting(true)
 
@@ -170,10 +151,11 @@ export default function OrderNew() {
       }
 
       const response = await api.post('/orders/', payload)
+      showToast('Pedido creado. Elige el medio de pago para continuar.')
       navigate(`/orders/${response.data.id}`)
 
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo crear el pedido'))
+      fail(getErrorMessage(err, 'No se pudo crear el pedido'))
     } finally {
       setSubmitting(false)
     }
@@ -182,8 +164,6 @@ export default function OrderNew() {
   return (
     <main className="order-new-main">
       <h1 className="order-new-title">Crear pedido</h1>
-
-      {error && <div className="order-new-error">{error}</div>}
 
       {isAdmin && (
         <div className="order-new-field">

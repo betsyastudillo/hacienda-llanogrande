@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import { Download } from 'lucide-react'
 import api from '../../../services/api'
+import { useToast } from '../../../context/Toast/ToastContext'
 import { formatDate } from '../../../utils/formatDate'
 import { formatCurrency } from '../../../utils/formatCurrency'
 import './OrderDetail.css'
 
 export default function InvoiceCard({ order, invoice }) {
-  const [error, setError] = useState('')
+  const { showToast } = useToast()
   const [downloading, setDownloading] = useState(false)
 
   async function handleDownload() {
-    setError('')
     setDownloading(true)
     try {
       const res = await api.get(`/invoices/${invoice.id}/pdf`, { responseType: 'blob' })
@@ -23,7 +23,7 @@ export default function InvoiceCard({ order, invoice }) {
       link.remove()
       setTimeout(() => URL.revokeObjectURL(url), 10000)
     } catch {
-      setError('No se pudo descargar la factura.')
+      showToast('No se pudo descargar la factura.', 'error')
     } finally {
       setDownloading(false)
     }
@@ -61,8 +61,6 @@ export default function InvoiceCard({ order, invoice }) {
               </div>
             )} */}
           </div>
-
-          {error && <p className="pay-error">{error}</p>}
 
           <div className="pay-actions">
             <button className="pay-btn is-primary" onClick={handleDownload} disabled={downloading}>
