@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Download, CircleCheck, CircleX, Clock, Check, X, TriangleAlert, Upload } from 'lucide-react'
+import { Download, CircleCheck, CircleX, Clock, Check, X, TriangleAlert, Upload, Pen, Pencil, Power } from 'lucide-react'
 import api, { API_BASE_URL } from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
 import { useToast } from '../../../context/Toast/ToastContext'
@@ -11,6 +11,7 @@ import StatusBadge from '../../../components/StatusBadge/StatusBadge'
 import Modal from '../../../components/Modal/Modal'
 import { formatDate } from '../../../utils/formatDate'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
+import EditCompanyModal from './EditCompanyModal'
 import './CompanyDetail.css'
 
 const DOC_STATUS_CONFIG = {
@@ -47,6 +48,8 @@ export default function CompanyDetail() {
   const [rejectionType, setRejectionType] = useState('')
   const [confirmAction, setConfirmAction] = useState(null) // Estados de la empresa 'desactivada' | 'reactivada' | null  
   const [submitting, setSubmitting] = useState(false)
+
+  const [showEdit, setShowEdit] = useState(false)
 
   const canReviewDocs = hasPermission('document:revisar')
   const canApproveCompany = hasPermission('company:aprobar')
@@ -186,6 +189,13 @@ export default function CompanyDetail() {
     company.verification_status === 'rejected' &&
     company.rejection_type === 'documents'
 
+  const canEdit =
+    canManageCompany &&
+    company.is_active &&
+    (company.verification_status === 'draft' ||
+      company.verification_status === 'approved' ||
+      (company.verification_status === 'rejected' && company.rejection_type === 'documents'))
+
   const statusColors = COMPANY_STATUS_COLORS[company.verification_status] || { bg: '#ece9e2', text: '#5f5e5a' }
 
   // Verificaciones agrupadas por sujeto
@@ -212,18 +222,26 @@ export default function CompanyDetail() {
           </p>
         </div>
         <div className='company-detail-header-actions'>
+          
           {!company.is_active && (
             <StatusBadge label="Desactivada" bgColor="#E5E3DB" textColor="#5F5E5A" />
           )}
+          
           <StatusBadge
             label={COMPANY_STATUS_LABELS[company.verification_status]}
             bgColor={statusColors.bg}
             textColor={statusColors.text}
-          />
+            />
+            
+            {canEdit && (
+              <button type="button" className="company-detail-reactivate-btn" onClick={() => setShowEdit(true)}>
+                <Pencil size={14}/>
+              </button>
+            )}
 
           {canToggleActive && company.is_active && company.company_type !== "own" && (
             <button type='button' className='company-detail-deactivate-btn' onClick={() => setConfirmAction('deactivate')}>
-              Desactivar
+              <Power size={14} />
             </button>
           )}
 
@@ -246,6 +264,12 @@ export default function CompanyDetail() {
         <div className="company-detail-card">
           <p className="company-detail-card-title">Datos de contacto</p>
           <div className="company-detail-info-row"><span>Dirección</span><span>{company.address}</span></div>
+          {(company.city || company.department) && (
+            <div className="company-detail-info-row">
+              <span>Ubicación</span>
+              <span>{[company.city, company.department, company.country].filter(Boolean).join(', ')}</span>
+            </div>
+          )}
           <div className="company-detail-info-row"><span>Ciudad</span><span>{company.city}</span></div>
           <div className="company-detail-info-row"><span>Departamento</span><span>{company.department}</span></div>
           <div className="company-detail-info-row"><span>Teléfono</span><span>{company.phone}</span></div>
@@ -560,6 +584,16 @@ export default function CompanyDetail() {
           </div>
         </Modal>
       )}
+
+      {showEdit && (
+        <EditCompanyModal
+          company={company}
+          canApprove={canApproveCompany}
+          onClose={() => setShowEdit(false)}
+          onSaved={loadData}
+        />
+      )}
+
     </main>
   )
 }

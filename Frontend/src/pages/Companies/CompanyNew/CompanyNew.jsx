@@ -235,6 +235,8 @@ export default function CompanyNew() {
       showToast('Empresa creada como borrador. Continúa con la verificación en listas vinculantes.')
       setStep(2)
     } catch (err) {
+      console.log(err)
+      console.log(err.response)
       fail(getErrorMessage(err, 'No se pudo crear la empresa'))
     } finally {
       setSubmitting(false)

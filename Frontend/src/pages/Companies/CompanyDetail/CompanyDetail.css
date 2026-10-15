@@ -398,6 +398,53 @@
   margin: 0 0 1.25rem;
 }
 
+/* Modal de editar */
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 65vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.edit-row { display: flex; gap: 10px; }
+.edit-row .edit-field { flex: 1; min-width: 0; }
+
+.edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.edit-field input,
+.edit-field select {
+  font: inherit;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.edit-actions {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.edit-warning {
+  margin: 14px 0 0;
+}
+
+.edit-section { font-size: 13px; font-weight: 600; margin: 8px 0 0; }
+.edit-note { font-size: 12px; color: var(--text-footer); margin: 0; }
+.edit-warning { font-size: 13px; color: var(--error); margin: 12px 0 0; }
+
+@media (max-width: 600px) {
+  .edit-row { flex-direction: column; }
+}
+
 @media (max-width: 700px) {
   .company-detail-main {
     padding: 1.25rem 1rem;

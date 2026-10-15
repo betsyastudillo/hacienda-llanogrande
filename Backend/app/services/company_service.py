@@ -2,26 +2,13 @@ from typing import Optional
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy.orm import Session
-from app.constants.company_requirements import REQUIRED_DOCUMENTS, get_required_checks_for, LEGAL_REP_FIELDS
+from app.dependencies import user_has_permission
+from app.constants.company_requirements import REQUIRED_DOCUMENTS, get_required_checks_for, LEGAL_REP_FIELDS, VALID_PERSON_TYPES, VALID_NATURAL_DOCUMENT_TYPES, VALID_BUSINESS_SECTORS, EDITABLE_FIELDS, LEGAL_REP_IDENTITY, REQUIRED_FIELDS, VALID_DOCUMENT_TYPES, VALID_LEGAL_REP_DOCUMENT_TYPES, LEGAL_REP_FIELDS
 from app.schemas.company import CompanyCreate, CompanyUpdate
 from app.models.company import Company
 from app.models.document import Document
 from app.models.compliance_check import ComplianceCheck
 
-VALID_PERSON_TYPES = ("natural", "juridica")
-VALID_NATURAL_DOCUMENT_TYPES = ("CC", "CE", "PP", "PPT", "PEP", "otro")
-VALID_BUSINESS_SECTORS = ("construccion", "agro")
-
-EDITABLE_FIELDS = (
-  "display_name", "address", "phone", "email",
-  "country", "department", "city",
-  "economic_activity_code", "economic_activity_description",
-  "fiscal_address", "fiscal_phone", "fiscal_email",
-  "legal_rep_name", "legal_rep_document_type", "legal_rep_document_number",
-  "legal_rep_email", "legal_rep_city",
-)
-
-LEGAL_REP_IDENTITY = {"legal_rep_name", "legal_rep_document_type", "legal_rep_document_number"}
 
 def _validate_person_type(person_type: str):
   if person_type not in VALID_PERSON_TYPES:
@@ -102,19 +89,19 @@ def create_a_company(db: Session, company: CompanyCreate, current_user) -> Compa
     # Si está desactivada, solicita la reactivación al admin
     if not existing.is_active:
       raise ValueError(
-        f"Ya existe una empresa con ese documento ({existing.client_code}), pero está desactivada. "
+        f"Ya existe una empresa con ese documento ({existing.document_number}), pero está desactivada. "
         "Comunícate con el administrador para que la reactive; luego podrás actualizar sus datos."
       )
     
     # Si fue rechazada por documentos se corrige en la misma, no crea otra
     if existing.verification_status == "rejected":
       raise ValueError(
-        f"Ya existe una empresa con ese documento ({existing.client_code}), rechazada por documentos. "
+        f"Ya existe una empresa con ese documento ({existing.document_number}), rechazada por documentos. "
         "Ábrela desde el listado, reemplaza los documentos y reenvíala a revisión."
       )
     
     #Si está en borrador o pendiente o aprobada
-    raise ValueError(f"Ya existe una empresa con ese documento ({existing.client_code}). Búscala en el listado.")
+    raise ValueError(f"Ya existe una empresa con ese documento ({existing.document_number}). Verifica el tipo y número de documento y vuelve a intentarlo.")
   
 
   _validate_person_type(company.person_type)   
@@ -234,22 +221,31 @@ def edit_company(db: Session, company_id: UUID, company_update: CompanyUpdate, c
   # model_dump(exclude_unset=True) convierte el obj en dict pero solo los campos que el cliente envía en la petición, los que no, se omiten
   changes = company_update.model_dump(exclude_unset=True)
 
-  # Solo se aplican los campos que llegaron en la petición están en la lista "blanca"
-  changed: {f for f in EDITABLE_FIELDS if f in changes and changes[f] != getattr(company, f)}
+  # Campos de la lista blanca que llegaron y cuyo valor es distinto al actual.
+  changed = {f for f in EDITABLE_FIELDS if f in changes and changes[f] != getattr(company, f)}
+
+  # Una persona natural no tiene rep.legal
+  if company.person_type != "juridica":
+    changed -= set(LEGAL_REP_FIELDS)
 
   if not changed:
     return company # Si no hay nada que guardar, no se toca el estado
   
-  for field in changed:
-    setattr(company, field, changes[field])
+  for f in changed & REQUIRED_FIELDS:
+    if not (changes[f] or "").strip():
+      raise ValueError("Los campos obligatorios no pueden quedar vacíos")
+    
+  for f in changed:
+    setattr(company, f, changes[f])
 
   # Se valida con los valores YA aplicados, para que se pueda completar un representante faltante
   if company.person_type == "juridica":
     if not all((getattr(company, f) or "").strip() for f in LEGAL_REP_FIELDS):
       db.rollback() # Deshace los cambios aplicadoa arriba
       raise ValueError("Faltan los datos del representante legal")
-    
-  if company.verification_status == "approved":
+  
+  # Solo quien NO puede aprobar manda la empresa de nuevo a revisión
+  if company.verification_status == "approved" and not user_has_permission(current_user, "company:aprobar"):
     if changed & LEGAL_REP_IDENTITY:
       # Si cambió el rep. legal, hay que repetir las listas vinculantes del rep.
       db.query(ComplianceCheck).filter(
