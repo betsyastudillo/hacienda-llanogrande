@@ -1,38 +1,51 @@
-import { createContext, useCallback, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { CircleCheck, CircleX, X } from 'lucide-react'
 import './Toast.css'
 
 const ToastContext = createContext(null)
 
 export function ToastProvider({ children }) {
-  const [toasts, setToasts] = useState([])
+  const [popup, setPopup] = useState(null)
+  const timer = useRef(null)
+  const nextId = useRef(0)
 
-  const dismiss = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id))
+  const dismiss = useCallback(() => {
+    clearTimeout(timer.current)
+    setPopup(null)
   }, [])
 
-  // type: 'success' | 'error'. Los errores duran más para dar tiempo de leerlos
+  // Si llega un aviso nuevo mientras hay uno abierto, lo reemplaza
   const showToast = useCallback((message, type = 'success', duration) => {
-    const id = crypto.randomUUID()
-    setToasts((prev) => [...prev, { id, message, type }])
-    setTimeout(() => dismiss(id), duration ?? (type === 'error' ? 4000 : 6000))
-  }, [dismiss])
+    clearTimeout(timer.current)
+    const ms = 6000
+    setPopup({id: ++nextId.current, message, type, ms })
+    timer.current = setTimeout(() => setPopup(null), ms)
+  }, [popup, dismiss])
+
+  useEffect(() => () => clearTimeout(timer.current), [])
+
+  const Icon = popup?.type === 'error' ? CircleX : CircleCheck
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="app-toast-container" aria-live="polite">
-        {toasts.map((t) => (  
-          <div key={t.id} className={`app-toast is-${t.type}`} role="status">
-            {t.type === 'success' ? <CircleCheck size={18} /> : <CircleX size={18} />}
-            <span className="app-toast-message">{t.message}</span>
-            <button type="button" className="app-toast-close" onClick={() => dismiss(t.id)} aria-label="Cerrar">
-              <X size={14} />
-            </button>
+      { popup && (
+        <div className='fb-overlay' onClick={dismiss}>
+          <div
+            key={popup.id}
+            className={`fb-box fb-${popup.type}`}
+            role='alertdialog'
+            aria-live='assertive'
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Icon className='fb-icon' size={38} />
+            <p className='fb-message'>{popup.message}</p>
+            <button type='button' className='fb-btn' onClick={dismiss}>Entendido</button>
+            <div className='fb-progress' style={{animationDuration: `${popup.ms}ms`}} />
           </div>
-        ))}
-      </div>
-    </ToastContext.Provider>
+        </div>
+      )}
+      </ToastContext.Provider>
   )
 }
 
