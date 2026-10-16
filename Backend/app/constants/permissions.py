@@ -5,6 +5,7 @@ ROLES_PERMISSIONS = {
     "payment:crear", "payment:confirmar", "payment:ver",
     "bank_account:gestionar", "bank_account:ver",
     "company:ver",
+    "document:ver",
     "order:ver_todos",
     "invoice:emitir", "invoice:ver"
   },
@@ -29,7 +30,7 @@ ROLES_PERMISSIONS = {
     "payment:ver",
     "assignment:ver",
     "dispatch_guide:ver",
-    "company:ver",
+    "company:gestionar", "company:ver",
     "document:ver",
     "invoice:ver"
   },

@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from xml.sax.saxutils import escape
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -9,7 +9,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from sqlalchemy.orm import Session
 from app.models.company import Company 
-from app.services.pdf_helpers import full_address
+from app.services.pdf_helpers import full_address, format_date
 
 PROFORMAS_DIR = "uploads/proformas"
 LOGO_PATH = "assets/logo.png"
@@ -56,7 +56,7 @@ def generate_proforma_pdf(db: Session, payment, order, bank_account) -> str:
     return Paragraph(escape(str(text)) if text not in (None, "") else "—", style)
 
   # Hora de Colombia (UTC-5, sin horario de verano)
-  now = datetime.utcnow() - timedelta(hours=5)
+  now = datetime.now(timezone.utc)
 
   doc = SimpleDocTemplate(
     file_path,
@@ -81,7 +81,9 @@ def generate_proforma_pdf(db: Session, payment, order, bank_account) -> str:
   header = Table(
     [[logo, [Paragraph("PROFORMA", title),
             Paragraph(f"No. {escape(payment.proforma_number)}", ParagraphStyle("x", parent=right, fontName="Helvetica-Bold")),
-            Paragraph(f"Fecha: {now.strftime('%d/%m/%Y')}", right)]]],
+            Paragraph(f"Fecha: {format_date(now)}", right)
+            ]
+    ]],
     colWidths=[8 * cm, 9 * cm],
   )
   header.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
@@ -93,9 +95,8 @@ def generate_proforma_pdf(db: Session, payment, order, bank_account) -> str:
       Paragraph(label, section),
       p(c.legal_name, bold),
       p(_doc(c)),
-      p(c.fiscal_address or c.address),
-      p(f"Tel. {c.fiscal_phone or c.phone or '—'}"),
       p(full_address(c)),
+      p(f"Tel. {c.fiscal_phone or c.phone or '—'}"),
     ]
 
   parties = Table([[party("Emisor", seller), party("Cliente", customer)]], colWidths=[8.5 * cm, 8.5 * cm])

@@ -14,7 +14,7 @@ from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Tabl
 from sqlalchemy.orm import Session
 
 from app.models.company import Company
-from app.services.pdf_helpers import full_address
+from app.services.pdf_helpers import full_address, format_date, MONTHS_ES
 
 INVOICES_DIR = "uploads/invoices"
 LOGO_PATH = "assets/logo.png"
@@ -133,14 +133,14 @@ def generate_invoice_pdf(db: Session, invoice, order, qr_data: str) -> str:
 
   dates = Table(
     [[p("FECHA DE EMISIÓN", cb), p("FECHA DE VENCIMIENTO", cb)],
-      [date_grid(f"{issued:%d}", f"{issued:%m}", f"{issued:%Y}"), date_grid("--", "--", "--")]],
+      [date_grid(f"{issued:%d}", MONTHS_ES[issued.month - 1], f"{issued:%Y}"), date_grid("--", "--", "--")]],
     colWidths=[4.2 * cm, 4.2 * cm],
   )
   info_top = Table(
     [[p("FACTURA ELECTRÓNICA DE VENTA:", b), p(number, b)],
       [p("MONEDA:", b), p("COP Peso colombiano")],
       [p("HORA EMISIÓN:", b), p(f"{issued:%H:%M:%S}")],
-      [p("FECHA FIRMADO:", b), p(f"{signed:%d/%m/%Y %H:%M:%S}")]],
+      [p("FECHA FIRMADO:", b), p(format_date(signed, with_time=True))]],
     colWidths=[4.2 * cm, 4.2 * cm],
   )
   info_top.setStyle(TableStyle([

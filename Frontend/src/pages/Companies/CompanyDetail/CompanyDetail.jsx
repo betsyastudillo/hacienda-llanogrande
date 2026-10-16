@@ -272,8 +272,8 @@ export default function CompanyDetail() {
               <span>{[company.city, company.department, company.country].filter(Boolean).join(', ')}</span>
             </div>
           )}
-          <div className="company-detail-info-row"><span>Ciudad</span><span>{company.city}</span></div>
-          <div className="company-detail-info-row"><span>Departamento</span><span>{company.department}</span></div>
+          {/* <div className="company-detail-info-row"><span>Ciudad</span><span>{company.city}</span></div>
+          <div className="company-detail-info-row"><span>Departamento</span><span>{company.department}</span></div> */}
           <div className="company-detail-info-row"><span>Teléfono</span><span>{company.phone}</span></div>
           <div className="company-detail-info-row"><span>Correo</span><span>{company.email}</span></div>
 

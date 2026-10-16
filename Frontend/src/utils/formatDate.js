@@ -1,6 +1,6 @@
 const MONTHS_SHORT = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sept', 'oct', 'nov', 'dic',
+  'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
+  'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
 ]
 
 export function formatDate(value) {
@@ -12,12 +12,12 @@ export function formatDate(value) {
   //getFullYear año completo, pero con el slice se recorta a los últimos 2
   const year = String(date.getFullYear()).slice(-2)
 
-  return `${day}/${month}/${year}`
+  return `${day}/ ${month} /${year}`
 }
 
 // Para fechas SIN hora (formato "YYYY-MM-DD", ej. las del kardex) —
 // evita el desfase de un día que causa new Date() al asumir UTC.
 export function formatDateOnly(value) {
   const [year, month, day] = value.split('-')
-  return `${day}/${MONTHS_SHORT[Number(month) - 1]}/${year.slice(-2)}`
+  return `${day}/ ${MONTHS_SHORT[Number(month) - 1]} /${year.slice(-2)}`
 }
