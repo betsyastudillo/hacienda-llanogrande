@@ -52,18 +52,26 @@ def create_dispatch_guide(db: Session, order_id: UUID) -> DispatchGuide:
     if not order:
         raise ValueError("Order not found")
 
-    if order.status != "payment_confirmed":
-        raise ValueError("Order must have payment confirmed before generating dispatch guide")
-
     existing = db.query(DispatchGuide).filter(DispatchGuide.order_id == order_id).first()
 
     if existing:
         raise ValueError("A dispatch guide already exists for this order")
 
+    # La guía solo se genera cuando logística ya aprobó el transporte
+    if order.status != "transport_validated":
+        raise ValueError(
+            f"The order transport must be validated before generating the dispatch guide (current status: {order.status})"
+        )
+
     assignment = db.query(Assignment).filter(Assignment.order_id == order_id).first()
 
     if not assignment:
         raise ValueError("Order has no transport assignment yet")
+
+    if assignment.validation_status != "approved":
+        raise ValueError(
+            f"The transport must be approved before generating the dispatch guide (current: {assignment.validation_status})"
+        )
 
     plant = db.query(Company).filter(Company.company_type == "own").first()
 

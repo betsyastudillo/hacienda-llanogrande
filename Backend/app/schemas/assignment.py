@@ -2,8 +2,11 @@ from pydantic import BaseModel
 from uuid import UUID
 from decimal import Decimal
 from datetime import datetime
-from typing import Optional, Literal
+from typing import List, Optional, Literal
 from app.schemas.mixins import AuditResponseMixin
+from app.schemas.vehicle import VehicleResponse
+from app.schemas.carrier import CarrierResponse
+from app.schemas.document import DocumentBase
 
 
 class VehicleSubmission(BaseModel):
@@ -49,6 +52,14 @@ class AssignmentResponse(AuditResponseMixin):
     background_check_verified: bool
     validated_at: Optional[datetime] = None
     validated_by_user_id: Optional[UUID] = None
+
+    # No son columnas: el servicio los adjunta (attach_transport_details). El cliente no tiene
+    # vehicle:ver ni carrier:ver, por eso van dentro de la respuesta de la asignación.
+    vehicle: Optional[VehicleResponse] = None
+    carrier: Optional[CarrierResponse] = None
+    documents: List[DocumentBase] = []
+    # Documentos obligatorios que faltan o fueron rechazados, p. ej. "vehicle:soat"
+    missing_documents: List[str] = []
 
     class Config:
         from_attributes = True

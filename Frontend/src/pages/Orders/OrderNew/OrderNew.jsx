@@ -163,6 +163,10 @@ export default function OrderNew() {
 
   return (
     <main className="order-new-main">
+      <button className="company-detail-back-btn" onClick={() => navigate('/orders')}>
+        ← Volver a pedidos
+      </button>
+      
       <h1 className="order-new-title">Crear pedido</h1>
 
       {isAdmin && (
@@ -186,7 +190,7 @@ export default function OrderNew() {
       <div className="order-new-card">
         <p className="order-new-card-title">Seleccionar productos:</p>
         
-        <UnitReferenceHelper />
+        {/* <UnitReferenceHelper /> */}
 
         <div className="order-new-item-row">
           <select

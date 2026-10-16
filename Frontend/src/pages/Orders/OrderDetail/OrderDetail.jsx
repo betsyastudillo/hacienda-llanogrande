@@ -7,6 +7,7 @@ import { formatCurrency } from '../../../utils/formatCurrency'
 import { formatDate } from '../../../utils/formatDate'
 import PaymentCard from './PaymentCard'
 import InvoiceCard from './InvoiceCard'
+import TransportCard from './TransportCard'
 import './OrderDetail.css'
 
 const API_BASE = api.defaults.baseURL
@@ -81,11 +82,28 @@ export default function OrderDetail() {
     }
   }
 
-  async function reloadPayment() {
+  async function fetchAssignment() {
+    try {
+      const res = await api.get(`/assignments/order/${orderId}`)
+      setAssignment(res.data)
+    } catch {
+      setAssignment(null) 
+    }
+  }
+
+  async function fetchDispatchGuide() {
+    try {
+      const res = await api.get(`/dispatch-guides/order/${orderId}`)
+      setDispatchGuide(res.data)
+    } catch {
+      setDispatchGuide(null)
+    }
+  }
+
+  async function reloadAll() {
     const orderRes = await api.get(`/orders/${orderId}`)
     setOrder(orderRes.data) // el estado del pedido cambia al confirmar el pago
-    await fetchPayment()
-    await fetchInvoice()
+    await Promise.all([fetchPayment(), fetchInvoice(), fetchAssignment(), fetchDispatchGuide()])
   }
 
   useEffect(() => {
@@ -138,11 +156,6 @@ export default function OrderDetail() {
   if (error) return <main className="detail-main"><p className="detail-empty detail-error-text">{error}</p></main>
   if (!order) return null
 
-  const ASSIGNMENT_STATUS_CONFIG = {
-    approved: { label: 'Aprobado', icon: CircleCheck, className: 'is-accent' },
-    rejected: { label: 'Rechazado', icon: CircleX, className: 'is-error' },
-    pending: { label: 'Pendiente de validación', icon: Clock, className: '' },
-  }
   return (
     <main className="detail-main">
       <button className="company-detail-back-btn" onClick={() => navigate('/orders')}>
@@ -213,25 +226,26 @@ export default function OrderDetail() {
             order={order}
             payment={payment}
             bankAccount={bankAccount}
-            onChanged={reloadPayment}
+            onChanged={reloadAll}
           />
           
-          <InvoiceCard order={order} invoice={invoice} />
+          <InvoiceCard order={order} invoice={invoice} onChanged={reloadAll}/>
+
+          <TransportCard order={order} assignment={assignment} dispatchGuide={dispatchGuide} onChanged={reloadAll} />
           
           <div className="detail-card">
             <p className="detail-card-title">Transporte</p>
             {assignment ? (
               <div className="detail-info-list">
                 {(() => {
-                  const config = ASSIGNMENT_STATUS_CONFIG[assignment.validation_status] || ASSIGNMENT_STATUS_CONFIG.pending
-                  const Icon = config.icon
+                  // const Icon = config.icon
                   return (
                     <div className="detail-info-row">
                       <span>Estado</span>
-                      <span className={`detail-badge ${config.className}`}>
-                        <Icon size={14} style={{ marginRight: 4, verticalAlign: -2 }} />
-                        {config.label}
-                      </span>
+                      {/* <span className={`detail-badge ${config.className}`}> */}
+                        {/* <Icon size={14} style={{ marginRight: 4, verticalAlign: -2 }} /> */}
+                        {/* {config.label} */}
+                      {/* </span> */}
                     </div>
                   )
                 })()}

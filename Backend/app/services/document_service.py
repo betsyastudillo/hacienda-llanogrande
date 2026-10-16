@@ -44,6 +44,7 @@ def create_document(
     company_id: Optional[UUID] = None, 
     vehicle_id: Optional[UUID] = None, 
     carrier_id: Optional[UUID] = None, 
+    current_user=None,
   ) -> Document:
 
   owners = [company_id, vehicle_id, carrier_id]
@@ -61,7 +62,8 @@ def create_document(
     carrier_id=carrier_id,
     document_type=document_type,
     document_url=file_path,
-    status="pending"
+    status="pending",
+    created_by_user_id=current_user.id if current_user else None,
   )
 
   db.add(new_document)
@@ -72,19 +74,21 @@ def create_document(
 
 
 # Actualizar el estado del documento
-def update_document_status(db: Session, document_id: UUID, new_status: str) -> Optional[Document]:
+def update_document_status(db: Session, document_id: UUID, new_status: str, current_user=None) -> Optional[Document]:
   document = db.query(Document).filter(Document.id == document_id).first()
   if not document:
-      return None
+    return None
 
   document.status = new_status
+  document.updated_by_user_id = current_user.id
+  
   db.commit()
   db.refresh(document)
 
   return document
 
 
-def replace_document_file(db: Session, document_id: UUID, new_file: UploadFile) -> Optional[Document]:
+def replace_document_file(db: Session, document_id: UUID, new_file: UploadFile, current_user=None) -> Optional[Document]:
   document = db.query(Document).filter(Document.id == document_id).first()
   
   if not document:
@@ -101,6 +105,10 @@ def replace_document_file(db: Session, document_id: UUID, new_file: UploadFile) 
   # Actualiza el registro del documento con la nueva ruta del archivo
   document.document_url = new_file_path
   document.status = "pending"  # Reinicia el estado a "pending" 
+
+  if current_user:
+    document.updated_by_user_id = current_user.id
+
   db.commit()
   db.refresh(document)
   

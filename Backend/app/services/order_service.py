@@ -2,10 +2,13 @@ from typing import List, Optional
 from uuid import UUID
 from decimal import Decimal
 from datetime import datetime, timedelta
+from sqlalchemy import or_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, joinedload
+from app.constants.transport_requirements import compute_missing_documents
 from app.models.assignment import Assignment
 from app.models.company import Company
+from app.models.document import Document
 from app.models.inventory_movement import InventoryMovement
 from app.models.order import Order
 from app.models.order_item import OrderItem
@@ -256,8 +259,8 @@ def attach_needs_action(db: Session, orders: List[Order], current_user: User) ->
   role = current_user.role
   ids = [o.id for o in orders]
 
-  payments, assignments = {}, {}
-  
+  payments, assignments, transport_documents = {}, {}, []
+
   if ids:
 
     # Trae todos los pagos de la lista en una sola consulta y los guarda en un dict cuya llave es el id del pedido. Igual en transporte.
@@ -269,11 +272,28 @@ def attach_needs_action(db: Session, orders: List[Order], current_user: User) ->
       for a in db.query(Assignment).filter(Assignment.order_id.in_(ids)).order_by(Assignment.created_at).all()
     }
 
+    # Documentos de los vehículos y transportadores de esas asignaciones, para saber si falta alguno
+    vehicle_ids = {a.vehicle_id for a in assignments.values()}
+    carrier_ids = {a.carrier_id for a in assignments.values()}
+
+    if assignments:
+      transport_documents = (
+        db.query(Document)
+        .filter(or_(Document.vehicle_id.in_(vehicle_ids), Document.carrier_id.in_(carrier_ids)))
+        .all()
+      )
+
   # Recorre cada pedido y toma su pago y su transporte del diccionario (None si no existen)
   for order in orders:
     payment = payments.get(order.id)
     assignment = assignments.get(order.id)
     needs = False
+
+    # Un transporte pendiente solo se puede revisar cuando ya están todos los documentos obligatorios
+    transport_docs_missing = bool(
+      assignment
+      and compute_missing_documents(assignment.vehicle_id, assignment.carrier_id, transport_documents)
+    )
 
     # Decide según el rol de quien consulta:
 
@@ -283,14 +303,21 @@ def attach_needs_action(db: Session, orders: List[Order], current_user: User) ->
         (payment and payment.status == "pending" and payment.receipt_url)
       )
       
-    # Si es logistica, hay un transporte pendiente por validar, o el pedido ya tiene el transporte validado y falta generar la guía.
+    # Si es logistica, hay un transporte pendiente por validar (con sus documentos completos),
+    # o el pedido ya tiene el transporte validado y falta generar la guía.
     if role in ("logistica", "admin"):
       needs = needs or bool(
-        (assignment and assignment.validation_status == "pending")
+        (
+          order.status == "facturado"
+          and assignment
+          and assignment.validation_status == "pending"
+          and not transport_docs_missing
+        )
         or order.status == "transport_validated"   # falta generar la guía
       )
 
-    # Si es cliente, faltaría generar la proforma, el pago fue rechazado, falta subir el comprobante, o falta enviar el transporte o lo rechazaron.
+    # Si es cliente, faltaría generar la proforma, el pago fue rechazado, falta subir el comprobante,
+    # o falta enviar el transporte, lo rechazaron o le faltan documentos por subir.
     if role in CLIENT_ROLES:
       if order.status == "created":
         needs = (
@@ -299,7 +326,11 @@ def attach_needs_action(db: Session, orders: List[Order], current_user: User) ->
           or (payment.status == "pending" and not payment.receipt_url)
         )
       elif order.status == "facturado":
-        needs = assignment is None or assignment.validation_status == "rejected"
+        needs = (
+          assignment is None
+          or assignment.validation_status == "rejected"
+          or (assignment.validation_status == "pending" and transport_docs_missing)
+        )
 
     # Le asigna el resultado al objeto del pedido, needs_action no es una columna en la BD, sino un atributo temporal que existe solo durante esa petición
     order.needs_action = needs
