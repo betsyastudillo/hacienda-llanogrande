@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Numeric, ForeignKey, Index
+from sqlalchemy import Column, DateTime, String, Numeric, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -17,6 +17,9 @@ class Order(Base, AuditMixin):
     subtotal = Column(Numeric(12, 2), nullable=False, default=0)
     tax = Column(Numeric(12, 2), nullable=False, default=0)
     total = Column(Numeric(12, 2), nullable=False, default=0)
+    cancelled_at = Column(DateTime(timezone=True), nullable=True)
+    cancelled_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    cancellation_reason = Column(String, nullable=True)
 
 
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")

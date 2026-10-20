@@ -1,7 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import or_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, joinedload
@@ -22,6 +22,7 @@ from app.services.inventory_service import get_sellable_stock, register_order_de
 
 CLIENT_ROLES = ("cliente_operativo", "cliente_admin")
 STAFF_VIEW_ALL_ROLES = ("admin", "soporte")
+CANCELLABLE_STATUSES = ("created",)
 
 
 # Genera los números de orden PED-2026-0000. Para facilitar las búsquedas.
@@ -88,7 +89,7 @@ def _resolve_company_id(order: OrderCreate, current_user: User) -> UUID:
   raise ValueError("This role is not allowed to create orders")
 
 
-def _reverse_order_deductions(db: Session, order: Order, current_user: User) -> None:
+def _reverse_order_deductions(db: Session, order: Order, current_user: User, reason: str) -> None:
   movements = db.query(InventoryMovement).filter(InventoryMovement.order_id == order.id).all()
 
   # Neto por producto: salidas menos entradas ya registradas para este pedido,
@@ -251,6 +252,44 @@ def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_use
   return order
 
 
+def cancel_order(db: Session, order_id: UUID, reason: str, current_user) -> Optional[Order]:
+  order = get_order_by_id(db, order_id)
+  
+  if not order:
+    return None
+  
+  if order.status == "cancelled":
+    raise ValueError("El pedido ya está anulado")
+  
+  if order.status not in CANCELLABLE_STATUSES:
+    raise ValueError("Solo se pueden anular pedidos que aún no tienen el pago confirmado")
+
+  reason = (reason or "").strip()
+  if not reason:
+    raise ValueError("El motivo de la anulación es obligatorio")
+
+  payment = db.query(Payment).filter(Payment.order_id == order.id).first()
+  
+  if payment and payment.status == "pending" and payment.receipt_url:
+    raise ValueError("El cliente ya subió un comprobante: confirma o rechaza el pago antes de anular el pedido")
+  
+  if payment and payment.status == "pending":
+    payment.status = "cancelled"
+
+  _reverse_order_deductions(db, order, current_user, f"Anulación del pedido {order.order_number}")
+
+  order.status = "cancelled"
+  order.cancelled_at = datetime.now(timezone.utc)
+  order.cancelled_by_user_id = current_user.id
+  order.cancellation_reason = reason
+  order.updated_by_user_id = current_user.id
+
+  db.commit()
+  db.refresh(order)
+  
+  return order
+
+
 # Calcula para cada pedido, si la persona que lo mira tiene algo que hacer y le añade el resultado al pedido como un campo needs_action (V o F).
 # Esto es lo que alimenta la marca "Acción", el contador "N requiere atención" y el botón "Pendientes primero".
 # Sirve cuando requiere acción para el pago o el transporte
@@ -285,6 +324,11 @@ def attach_needs_action(db: Session, orders: List[Order], current_user: User) ->
 
   # Recorre cada pedido y toma su pago y su transporte del diccionario (None si no existen)
   for order in orders:
+
+    if order.status == "cancelled":
+      order.needs_action = False
+      continue
+
     payment = payments.get(order.id)
     assignment = assignments.get(order.id)
     needs = False
