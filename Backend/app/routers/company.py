@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import user_has_permission
 from app.auth_dependencies import CompanyApprover, CompanyViewer, CompanyManager
-from app.schemas.company import CompanyCreate, CompanyResponse, CompanyUpdate, CompanyVerifyRequest
+from app.schemas.company import CompanyCreate, CompanyDeactivate, CompanyReactivate, CompanyResponse, CompanyUpdate, CompanyVerifyRequest
 from app.services.company_service import create_a_company, get_companies, edit_company, deactivate_company, get_company_by_client_code, get_company_by_id, reactivate_company, resubmit_company, submit_company, verify_company
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
@@ -101,18 +101,19 @@ def update_company(
 @router.patch("/{company_id}/reactivate", response_model=CompanyResponse, summary="Reactiva una empresa desactivada")
 def reactivate_company_endpoint(
   company_id: UUID,
+  data: CompanyReactivate,
   current_user: CompanyManager,
   db: Session = Depends(get_db),
 ):
-  only_drafts = not user_has_permission(current_user, "company:desactivar")
-
   try:
-    company = reactivate_company(db, company_id)
+    company = reactivate_company(db, company_id, data.require_update, current_user)
   
   except PermissionError as e:
+    db.rollback()
     raise HTTPException(status_code=403, detail=str(e))
   
   except ValueError as e:
+    db.rollback()
     raise HTTPException(status_code=400, detail=str(e))
 
   if not company:
@@ -121,27 +122,29 @@ def reactivate_company_endpoint(
   return company
 
 
-@router.delete("/{company_id}", summary="Desactiva una empresa")
+@router.patch("/{company_id}", summary="Desactiva una empresa")
 def remove_company(
   company_id: UUID, 
+  data: CompanyDeactivate,
   current_user: CompanyManager,
   db: Session = Depends(get_db),
 ):
-  only_drafts = not user_has_permission(current_user, "company:desactivar")
 
   try:
-    company = deactivate_company(db, company_id)
+    company = deactivate_company(db, company_id, data.reason, current_user)
   
   except PermissionError as e:
+    db.rollback()
     raise HTTPException(status_code=403, detail=str(e))
   
   except ValueError as e:
+    db.rollback()
     raise HTTPException(status_code=400, detail=str(e))
   
   if not company:
     raise HTTPException(status_code=404, detail="Company not found")
   
-  return {"detail": "Company deactivated successfully"}
+  return company
     
 
 @router.patch("/{company_id}/resubmit", response_model=CompanyResponse, summary="Reenvía a revisión una empresa rechazada por documentos")
@@ -154,6 +157,7 @@ def resubmit_company_endpoint(
     company = resubmit_company(db, company_id, current_user)
   
   except ValueError as e:
+    db.rollback()
     raise HTTPException(status_code=400, detail=str(e))
 
   if not company:
@@ -173,6 +177,7 @@ def verify_company_endpoint(
     company = verify_company(db, company_id, data.decision, data.rejection_reason, data.rejection_type, current_user)
     print(company)
   except ValueError as e:
+    db.rollback()
     raise HTTPException(status_code=400, detail=str(e))
 
   if not company:

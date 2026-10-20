@@ -1,9 +1,10 @@
 from typing import Optional
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from app.dependencies import user_has_permission
-from app.constants.company_requirements import REQUIRED_DOCUMENTS, get_required_checks_for, LEGAL_REP_FIELDS, VALID_PERSON_TYPES, VALID_NATURAL_DOCUMENT_TYPES, VALID_BUSINESS_SECTORS, EDITABLE_FIELDS, LEGAL_REP_IDENTITY, REQUIRED_FIELDS, VALID_DOCUMENT_TYPES, VALID_LEGAL_REP_DOCUMENT_TYPES, LEGAL_REP_FIELDS
+from app.constants.company_requirements import REQUIRED_DOCUMENTS, get_required_checks_for, LEGAL_REP_FIELDS, VALID_PERSON_TYPES, VALID_NATURAL_DOCUMENT_TYPES, VALID_BUSINESS_SECTORS, EDITABLE_FIELDS, LEGAL_REP_IDENTITY, REQUIRED_FIELDS, VALID_REJECTION_TYPES
 from app.schemas.company import CompanyCreate, CompanyUpdate
 from app.models.company import Company
 from app.models.document import Document
@@ -34,9 +35,9 @@ def _resolve_document_type(person_type: str, document_type: Optional[str]) -> st
 
 
 # Trae todas las empresas
-def get_companies(db: Session, current_user, company_type: Optional[str] = None, include_inactive: bool = False, verification_status=None) -> list[Company]:
+def get_companies(db: Session, current_user, company_type: Optional[str] = None, include_inactive: bool = False, verification_status: Optional[str]=None) -> list[Company]:
 
-  query = db.query(Company)
+  query = db.query(Company).order_by(Company.created_at.desc())
 
   if company_type:
     query = query.filter(Company.company_type == company_type)
@@ -63,15 +64,20 @@ def get_company_by_client_code(db: Session, client_code: str) -> Optional[Compan
 # Generación del código del cliente
 def generate_client_code(db: Session, company_type: str) -> str:
   prefix = "HAC" if company_type == "own" else "CLI"
-  existing_count = db.query(Company).filter(Company.company_type == company_type).count()
-  next_number = existing_count + 1
+
+  codes = db.query(Company.client_code).filter(Company.client_code.like(f"{prefix}-%")).all()
+  numbers = [int(c[0].split("-")[1]) for c in codes if c[0].split("-")[1].isdigit()]
   
-  return f"{prefix}-{next_number:04d}"
+  return f"{prefix}-{max(numbers, default=0) + 1:04d}"
 
 
 # Crea una empresa
 def create_a_company(db: Session, company: CompanyCreate, current_user) -> Company:
   
+  # Primero se valida lo que llega, después se busca el duplicado
+  _validate_person_type(company.person_type)
+  _validate_business_sector(company.company_type, company.business_sector)
+
   doc_type = _resolve_document_type(company.person_type, company.document_type)
   doc_number = company.document_number.strip()
 
@@ -104,10 +110,6 @@ def create_a_company(db: Session, company: CompanyCreate, current_user) -> Compa
     raise ValueError(f"Ya existe una empresa con ese documento ({existing.document_number}). Verifica el tipo y número de documento y vuelve a intentarlo.")
   
 
-  _validate_person_type(company.person_type)   
-  _validate_business_sector(company.company_type, company.business_sector)
-
-
   # El client_code se genera automáticamente, no se asigna ni se elige.
   new_company = Company(
     legal_name=company.legal_name,
@@ -139,7 +141,15 @@ def create_a_company(db: Session, company: CompanyCreate, current_user) -> Compa
   )
 
   db.add(new_company)
-  db.commit()
+
+  try:
+    db.commit()
+
+  except IntegrityError:
+    # Dos envíos simultaneos, o un código de cliente repetido
+    db.rollback()
+    raise ValueError("No se puede crear la empresa porque ya existe un registro con esos datos. Intenta de nuevo")
+  
   db.refresh(new_company)
   
   return new_company
@@ -195,6 +205,7 @@ def submit_company(db: Session, company_id: UUID, current_user) -> Optional[Comp
       raise ValueError("Los hallazgos en listas requieren una descripción")  
 
   company.verification_status = "pending"
+  company.updated_by_user_id = current_user.id
 
   db.commit()
   db.refresh(company)
@@ -202,7 +213,6 @@ def submit_company(db: Session, company_id: UUID, current_user) -> Optional[Comp
   return company
 
 
-# Editar 
 def edit_company(db: Session, company_id: UUID, company_update: CompanyUpdate, current_user) -> Optional[Company]:
   company = get_company_by_id(db, company_id)
 
@@ -244,22 +254,30 @@ def edit_company(db: Session, company_id: UUID, company_update: CompanyUpdate, c
       db.rollback() # Deshace los cambios aplicadoa arriba
       raise ValueError("Faltan los datos del representante legal")
   
+  rep_person_changed = bool(changed & LEGAL_REP_IDENTITY)
+
+  # Si cambió la persona del representante, sus listas ya no sirven: hay que repetirlas
+  def clear_rep_checks():
+    db.query(ComplianceCheck).filter(
+      ComplianceCheck.company_id == company.id,
+      ComplianceCheck.subject == "legal_representative",
+    ).delete()
+
+  if company.verification_status == "draft" and rep_person_changed:
+    clear_rep_checks()
+
   # Solo quien NO puede aprobar manda la empresa de nuevo a revisión
   if company.verification_status == "approved" and not user_has_permission(current_user, "company:aprobar"):
-    if changed & LEGAL_REP_IDENTITY:
-      # Si cambió el rep. legal, hay que repetir las listas vinculantes del rep.
-      db.query(ComplianceCheck).filter(
-        ComplianceCheck.company_id == company_id,
-        ComplianceCheck.subject == "legal_representative",
-      ).delete()
+    if rep_person_changed:
+      clear_rep_checks()
       company.verification_status = "draft"
-    
+
     else:
       company.verification_status = "pending"
 
     company.verified_at = None
     company.verified_by_user_id = None
-    
+
   company.updated_by_user_id = current_user.id
   
   db.commit()
@@ -274,39 +292,65 @@ def _check_can_toggle(company: Company, only_drafts: bool):
     raise PermissionError("Solo un administrador puede desactivar o reactivar una empresa que ya salió de borrador")
 
 
-def reactivate_company(db: Session, company_id: UUID, only_drafts: bool = False) -> Optional[Company]:
+def reactivate_company(db: Session, company_id: UUID, require_update: bool, current_user) -> Optional[Company]:
   company = get_company_by_id(db, company_id)
 
   if not company:
     return None
 
-  _check_can_toggle(company, only_drafts)
+  _check_can_toggle(company, only_drafts=not user_has_permission(current_user, "company:desactivar"))
   
   if company.is_active:
     raise ValueError("La empresa ya está activa")
 
   company.is_active = True
+
+  # Solo tiene sentido pedir actualización si estaba aprobada
+  if require_update and company.verification_status == "approved":
+    company.verification_status = "rejected"
+    company.rejection_type = "documents"
+    company.rejection_reason = "Reactivación: actualizar los datos y reemplazar los documentos."
+    company.verified_at = None
+    company.verified_by_user_id = None
+    # Todos los documentos quedan por reemplazar: así "reenviar a revisión" exige subir los nuevos
+    db.query(Document).filter(Document.company_id == company.id).update({"status": "rejected"})
+
+  company.updated_by_user_id = current_user.id
+
   db.commit()
   db.refresh(company)
 
   return company
 
 
-def deactivate_company(db: Session, company_id: UUID, only_drafts: bool = False) -> Optional[Company]:
+def deactivate_company(db: Session, company_id: UUID, reason: str, current_user) -> Optional[Company]:
   company = get_company_by_id(db, company_id)
   
   if not company:
     return None
 
-  _check_can_toggle(company, only_drafts)
+  _check_can_toggle(company, only_drafts=not user_has_permission(current_user, "company:desactivar"))
 
   if company.company_type == "own":
     raise ValueError("No se puede desactivar la empresa propia.")
   
+  if not company.is_active:
+    raise ValueError("La empresa ya está desactivada")
+  
+  reason = (reason or "").strip()
+
+  if not reason:
+    raise ValueError("El motivo de la desactivación es obligatorio")
+  
   company.is_active = False
-  
+  company.deactivation_reason = reason
+  company.deactivated_at = datetime.now(timezone.utc)
+  company.deactivated_by_user_id = current_user.id
+  company.updated_by_user_id = current_user.id
+
   db.commit()
-  
+  db.refresh(company)
+
   return company
 
 
@@ -317,6 +361,12 @@ def verify_company(db: Session, company_id: UUID, decision: str, rejection_reaso
   if not company:
     return None
 
+  if decision not in("approved", "rejected"):
+    raise ValueError("La decisión debe ser 'approved' o 'rejected'")
+  
+  if not company.is_active:
+    raise ValueError("La empresa está desactivada")
+  
   if company.verification_status == "draft":
     raise ValueError("La empresa aún no se encuentra creada totalmente, falta completar la verificación en listas vinculantes y la documentación.")
   
@@ -324,17 +374,24 @@ def verify_company(db: Session, company_id: UUID, decision: str, rejection_reaso
     raise ValueError(f"Esta empresa ya fue {company.verification_status}")
 
   if decision == "rejected":
-    if not rejection_reason:
+    if not (rejection_reason or "").strip():
       raise ValueError("Rechazar requiere un motivo")
     
-    if not rejection_type:
-      raise ValueError("Rechazar requiere un tipo de rechazo")
+    if rejection_type not in VALID_REJECTION_TYPES:
+      raise ValueError(f"El tipo de rechazo debe ser uno de: {', '.join(VALID_REJECTION_TYPES)}")
 
+  # Si van a aprobar una empresa con documentos rechazados
+  if decision == "approved" and db.query(Document).filter(
+    Document.company_id == company_id, Document.status == "rejected"
+  ).count() > 0:
+    raise ValueError("No se puede aprobar mientras haya documentos rechazados")
+  
   company.verification_status = decision
-  company.rejection_reason = rejection_reason if decision == "rejected" else None
+  company.rejection_reason = rejection_reason.strip() if decision == "rejected" else None
   company.rejection_type = rejection_type if decision == "rejected" else None
-  company.verified_at = datetime.utcnow()
+  company.verified_at = datetime.now(timezone.utc)
   company.verified_by_user_id = current_user.id
+  company.updated_by_user_id = current_user.id
 
   db.commit()
   db.refresh(company)
@@ -348,6 +405,9 @@ def resubmit_company(db: Session, company_id: UUID, current_user) -> Optional[Co
 
   if not company:
     return None
+
+  if not company.is_active:
+    raise ValueError("La empresa está desactivada")
 
   if company.verification_status != "rejected":
     raise ValueError("Solo se puede reenviar una empresa rechazada")

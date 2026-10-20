@@ -49,6 +49,10 @@ class Company(Base, AuditMixin):
   rejection_type = Column(String, nullable=True) # Si es documents es corregible si es por comlistas vinculantes es rechazo definitivo
   rejection_reason = Column(String, nullable=True)
 
+  deactivation_reason = Column(String, nullable=True)
+  deactivated_at = Column(DateTime(timezone=True), nullable=True)
+  deactivated_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
   __table_args__ = (
     UniqueConstraint("document_type", "document_number", name="uq_company_document"),
   )

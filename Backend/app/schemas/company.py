@@ -188,3 +188,11 @@ class CompanyResponse(CompanyBase, AuditResponseMixin):
 
   class Config:
     from_attributes = True
+
+
+class CompanyDeactivate(BaseModel):
+  reason: str
+
+
+class CompanyReactivate(BaseModel):
+  require_update: bool = False

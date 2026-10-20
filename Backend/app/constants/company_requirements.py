@@ -34,6 +34,7 @@ VALID_LEGAL_REP_DOCUMENT_TYPES = ("CC", "CE", "PP", "PPT", "PEP")
 VALID_PERSON_TYPES = ("natural", "juridica")
 VALID_NATURAL_DOCUMENT_TYPES = ("CC", "CE", "PP", "PPT", "PEP", "otro")
 VALID_BUSINESS_SECTORS = ("construccion", "agro")
+VALID_REJECTION_TYPES = ("documents", "compliance")
 
 # Campos que no se pueden dejar vacíos al editar
 REQUIRED_FIELDS = {"address", "phone", "email", "country", "department", "city"}
