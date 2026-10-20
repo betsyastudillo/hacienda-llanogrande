@@ -44,6 +44,7 @@ export default function CompanyDetail() {
   const [checks, setChecks] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const [actionReason, setActionReason] = useState('')
   const [showRejectBox, setShowRejectBox] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
   const [rejectionType, setRejectionType] = useState('')
@@ -56,6 +57,8 @@ export default function CompanyDetail() {
   const canReviewDocs = hasPermission('document:revisar')
   const canApproveCompany = hasPermission('company:aprobar')
   const canManageCompany = hasPermission('company:gestionar')
+
+  const closeAction = () => { setConfirmAction(null); setActionReason('') }
 
   const loadData = async () => {
     const [companyRes, docsRes, checksRes] = await Promise.all([
@@ -153,7 +156,7 @@ export default function CompanyDetail() {
   const handleDeactivate = async () => {
     setSubmitting(true)
     try {
-      await api.delete(`/companies/${companyId}`)
+      await api.patch(`/companies/${companyId}`, { reason: actionReason.trim() })
       showToast('Empresa desactivada.')
       navigate('/companies')
     } catch (err) {
@@ -163,10 +166,14 @@ export default function CompanyDetail() {
     }
   }
 
-  const handleReactivate = async () => {
+  const handleReactivate = async (requireUpdate = false) => {
     setSubmitting(true)
     try {
-      await api.patch(`/companies/${companyId}/reactivate`)
+      await api.patch(`/companies/${companyId}/reactivate`, { require_update: requireUpdate })
+      showToast(requireUpdate
+        ? 'Empresa reactivada. Quedó pendiente de actualizar sus datos y documentos.'
+        : 'Empresa reactivada.')
+      closeAction()
       setConfirmAction(null)
       showToast('Empresa reactivada.')
       await loadData()
@@ -554,39 +561,81 @@ export default function CompanyDetail() {
         </div>
       )}
 
-      {confirmAction && (
-        <Modal 
-          title={confirmAction === 'deactivate' ? "Desactivar empresa" : "Reactivar empresa"} 
-          onClose={() => setConfirmAction(null)}
-        >
+      {confirmAction === 'deactivate' && (
+  <Modal title="Desactivar empresa" onClose={closeAction}>
+    <p className="company-detail-modal-text">
+      ¿Seguro que quieres desactivar a <strong>{company.display_name || company.legal_name}</strong>?
+      Dejará de aparecer en el listado, no podrá crear pedidos y sus usuarios no podrán iniciar sesión.
+    </p>
 
-          <p className="company-detail-modal-text">
-            {confirmAction === 'deactivate' ? (
-              <>
-                ¿Seguro que quieres desactivar a <strong>{company.display_name || company.legal_name}</strong>?
-                Dejará de aparecer en el listado, no podrá crear pedidos y sus usuarios no podrán iniciar sesión.
-              </>
-            ) : (
-              <>
+    <label className="company-detail-reason-label" htmlFor="deactivation-reason">
+      Motivo (obligatorio)
+    </label>
+    <textarea
+      id="deactivation-reason"
+      className="company-detail-reason-input"
+      rows={3}
+      value={actionReason}
+      onChange={(e) => setActionReason(e.target.value)}
+      placeholder="Ej: la empresa cerró operaciones"
+    />
+
+    <div className="company-detail-approve-actions">
+      <button type="button" className="company-detail-cancel-reject-btn" onClick={closeAction}>
+        Cancelar
+      </button>
+      <button
+        type="button"
+        className="company-detail-reject-confirm-btn"
+        onClick={handleDeactivate}
+        disabled={!actionReason.trim() || submitting}
+      >
+        {submitting ? 'Procesando...' : 'Desactivar'}
+      </button>
+    </div>
+  </Modal>
+      )}
+
+      {confirmAction === 'reactivate' && (
+        <Modal title="Reactivar empresa" onClose={closeAction}>
+          {company.deactivation_reason && (
+            <p className="company-detail-modal-text">
+              Se desactivó el {formatDate(company.deactivated_at)}. Motivo: {company.deactivation_reason}
+            </p>
+          )}
+
+          {company.verification_status === 'approved' ? (
+            <>
+              <p className="company-detail-modal-text">¿La información de la empresa cambió desde entonces?</p>
+              <p className="company-detail-modal-text">
+                Si pides actualización, el área de operaciones deberá editar los datos, reemplazar los documentos y
+                reenviarla a revisión antes de que pueda volver a crear pedidos.
+              </p>
+              <div className="company-detail-approve-actions">
+                <button type="button" className="company-detail-cancel-reject-btn" onClick={() => handleReactivate(true)} disabled={submitting}>
+                  Pedir actualización
+                </button>
+                <button type="button" className="company-detail-approve-btn" onClick={() => handleReactivate(false)} disabled={submitting}>
+                  Reactivar tal cual
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="company-detail-modal-text">
                 ¿Quieres reactivar a <strong>{company.display_name || company.legal_name}</strong>?
-                Volverá a aparecer en el listado, podrá crear pedidos y sus usuarios podrán iniciar sesión.
-              </>
-            )}
-          </p>
-
-          <div className="company-detail-approve-actions">
-            <button type="button" className="company-detail-cancel-reject-btn" onClick={() => setConfirmAction(false)}>
-              Cancelar
-            </button>
-
-            <button 
-              type="button" 
-              className={confirmAction === 'deactivate' ? "company-detail-reject-confirm-btn" : "company-detail-approve-btn"}
-              onClick={confirmAction === 'deactivate' ? handleDeactivate : handleReactivate}
-              disabled={submitting}>
-              {submitting ? 'Procesando...' : 'Confirmar'}
-            </button>
-          </div>
+                Volverá a aparecer en el listado y podrá continuar su proceso.
+              </p>
+              <div className="company-detail-approve-actions">
+                <button type="button" className="company-detail-cancel-reject-btn" onClick={closeAction}>
+                  Cancelar
+                </button>
+                <button type="button" className="company-detail-approve-btn" onClick={() => handleReactivate(false)} disabled={submitting}>
+                  Reactivar
+                </button>
+              </div>
+            </>
+          )}
         </Modal>
       )}
 

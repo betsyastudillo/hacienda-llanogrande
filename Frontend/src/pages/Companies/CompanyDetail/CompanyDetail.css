@@ -403,6 +403,28 @@
   margin: 0 0 1.25rem;
 }
 
+.company-detail-reason-label {
+  display: block;
+  font-size: 13px;
+  margin: 12px 0 6px;
+}
+
+.company-detail-reason-input {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px;
+  border: 1px solid #d9d5cb;
+  border-radius: 8px;
+  resize: vertical;
+}
+
+.company-detail-approve-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Modal de editar */
 .edit-form {
   display: flex;

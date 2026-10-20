@@ -183,6 +183,9 @@ class CompanyResponse(CompanyBase, AuditResponseMixin):
   verified_by_user_id: Optional[UUID] = None
   rejection_reason: Optional[str] = None
   rejection_type: Optional[str] = None
+  deactivation_reason: Optional[str] = None
+  deactivated_at: Optional[datetime] = None
+  deactivated_by_user_id: Optional[UUID] = None
   is_active: bool
   needs_action: bool = False
 

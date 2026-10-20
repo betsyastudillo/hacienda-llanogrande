@@ -324,6 +324,7 @@ def reactivate_company(db: Session, company_id: UUID, require_update: bool, curr
 
 
 def deactivate_company(db: Session, company_id: UUID, reason: str, current_user) -> Optional[Company]:
+  print(reason)
   company = get_company_by_id(db, company_id)
   
   if not company:
