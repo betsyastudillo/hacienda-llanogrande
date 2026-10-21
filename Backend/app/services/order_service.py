@@ -106,7 +106,7 @@ def _reverse_order_deductions(db: Session, order: Order, current_user: User, rea
         order_id=order.id,
         movement_type="entrada",
         quantity=quantity,
-        reason=f"Reversión por edición del pedido {order.order_number}",
+        reason=reason,
         created_by_user_id=current_user.id,
       ))
 
@@ -202,7 +202,12 @@ def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_use
   db.query(OrderItem).filter(OrderItem.order_id == order.id).delete()
 
   # Revierte el inventario con movimientos nuevos, sin borrar el historial
-  _reverse_order_deductions(db, order, current_user)
+  _reverse_order_deductions(
+    db, 
+    order, 
+    current_user, 
+    f"Reversión por edición del pedido {order.order_number}"
+  )
 
   db.flush()
 

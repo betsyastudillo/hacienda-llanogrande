@@ -256,12 +256,13 @@
 }
 
 .pay-btn {
+  height: 34px;
   font-size: 14px;
   font-weight: 500;
-  padding: 8px 14px;
+  padding: 0 14px;
   margin-top: 10px;
   border-radius: 8px;
-  border: 1px solid #d9d5cb;
+  border: 1px solid var(--border);
   background: var(--white-bg);
   cursor: pointer;
 }
@@ -280,6 +281,11 @@
 .pay-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.pay-btn.is-edit {
+  background:var(--bg);
+  color: var(--text);
 }
 
 .pay-btn.is-primary {

@@ -12,7 +12,7 @@ import PaymentCard from './PaymentCard'
 import InvoiceCard from './InvoiceCard'
 import TransportCard from './TransportCard'
 import './OrderDetail.css'
-import { CircleCheck, CircleX } from 'lucide-react'
+import { CircleCheck, CircleX, Pencil } from 'lucide-react'
 
 const API_BASE = api.defaults.baseURL
 
@@ -170,6 +170,7 @@ export default function OrderDetail() {
   if (error) return <main className="detail-main"><p className="detail-empty detail-error-text">{error}</p></main>
   if (!order) return null
 
+  const canEdit = hasPermission('order:editar_propio') && order.status === 'created' && !payment
   const canCancel = hasPermission('order:anular') && order.status === 'created'
 
   return (
@@ -184,13 +185,30 @@ export default function OrderDetail() {
           <p className="detail-order-id">{order.company_display_name}</p>
           <p className="detail-order-date">Creado el {formatDate(order.created_at)}</p>
         </div>
-        {canCancel && (
-          <button type="button" className="pay-btn is-danger" onClick={() => { setCancelReason(''); setShowCancel(true) }}>
-            < CircleX />
-          </button>
+
+        {(canEdit || canCancel) && (
+          <div className="detail-header-actions">
+            {canEdit && (
+              <button
+                type="button"
+                className="pay-btn is-edit "
+                onClick={() => navigate(`/orders/${orderId}/edit`)}
+              >
+                <Pencil size={18}/>
+              </button>
+            )}
+            {canCancel && (
+              <button
+                type="button"
+                className="pay-btn is-danger"
+                onClick={() => { setCancelReason(''); setShowCancel(true) }}
+              >
+                < CircleX size={18}/>
+              </button>
+            )}
+          </div>
         )}
       </div>
-
 
       {showCancel && (
         <Modal title="Anular pedido" onClose={() => setShowCancel(false)}>

@@ -64,6 +64,7 @@ def update_order(
     raise HTTPException(status_code=403, detail=str(e))
 
   except ValueError as e:
+    db.rollback()
     raise HTTPException(status_code=400, detail=str(e))
   
   if not updated:

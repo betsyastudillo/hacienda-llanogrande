@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import api from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
 import { useToast } from '../../../context/Toast/ToastContext'
@@ -16,6 +16,9 @@ export default function OrderNew() {
   const { showToast } = useToast()
   const fail = (message) => showToast(message, 'error')
 
+  const { orderId } = useParams()
+  const isEdit = Boolean(orderId)
+
   const [products, setProducts] = useState([])
   const [companies, setCompanies] = useState([])
   const [selectedCompanyId, setSelectedCompanyId] = useState('')
@@ -26,38 +29,95 @@ export default function OrderNew() {
   const [stockByProduct, setStockByProduct] = useState({})
   const [editingIndex, setEditingIndex] = useState(null)
 
+  // Para el modo edición
+  const [loadingEdit, setLoadingEdit] = useState(isEdit)
+  const [reserved, setReserved] = useState({})        // producto -> cantidad que este pedido ya tiene reservada
+  const [companyName, setCompanyName] = useState('')
+  const [orderCompanyId, setOrderCompanyId] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const isAdmin = user?.role === 'admin'
 
+  // Al editar, el stock que ve el usuario ya descontó lo que este pedido reservó: se le suma de vuelta
+  const stockOf = (productId) => (stockByProduct[productId] || 0) + (reserved[productId] || 0)
+
+  const buildItem = (product, productId, qty, fallbackPrice) => ({
+    product_id: productId,
+    product_name: product?.name,
+    product_unit: product?.unit,
+    approx_weight_kg: product?.approx_weight_kg,
+    unit_price: product?.price ?? fallbackPrice,
+    quantity_m3: qty,
+  })
+
   // Muestra solo los productos que tienen stock, y se muestra en la creación la ctd disponible al seleccionar uno.
   useEffect(() => {
-  async function loadProducts() {
-    const res = await api.get('/products/')
-    setProducts(res.data)
+    async function load() {
+      try {
+        const productRes = await api.get('/products/')
+        const list = productRes.data
+        setProducts(list)
 
-    const stockEntries = await Promise.all(
-      res.data.map(async (p) => {
-        try {
-          const stockRes = await api.get(`/inventory/products/${p.id}/stock`)
-          return [p.id, stockRes.data.current_stock]
-        } catch {
-          return [p.id, 0]
+        const stockEntries = await Promise.all(
+          list.map(async (p) => {
+            try {
+              const stockRes = await api.get(`/inventory/products/${p.id}/stock`)
+              return [p.id, stockRes.data.current_stock]
+            } catch {
+              return [p.id, 0]
+            }
+          })
+        )
+        setStockByProduct(Object.fromEntries(stockEntries))
+
+        if (!isEdit) return
+
+        const order = (await api.get(`/orders/${orderId}`)).data
+
+        if (order.status !== 'created') {
+          fail ('Solo se pueden editar pedidos en estado "creado".')
+          return navigate(`/orders/${orderId}`)
         }
-      })
-    )
-    setStockByProduct(Object.fromEntries(stockEntries))
-  }
 
-  loadProducts()
-}, [])
+        // Si tiene la proforma no se edita, el PDF queda con el total que tenía
+        let hasPayment = false
+        try {
+          await api.get(`/payments/order/${orderId}`)
+          hasPayment = true
+        } catch {
+          // 404 no hay proforma
+        }
+
+        if (hasPayment) {
+          fail ('Este pedido ya tiene proforma y no se puede editar. Anúlalo y crea uno nuevo.')
+          return navigate(`/orders/${orderId}`)
+        }
+
+        setCompanyName(order.company_display_name)
+        setOrderCompanyId(order.company_id)
+        setReserved(Object.fromEntries(order.items.map((i) => [i.product_id, i.quantity_m3])))
+        setItems(
+          order.items.map((i) =>
+            buildItem(list.find((p) => p.id === i.product_id), i.product_id, i.quantity_m3, i.unit_price)
+          )
+        )
+      } catch (err) {
+        fail(getErrorMessage(err, 'No se pudo cargar la información'))
+        if (isEdit) navigate('/orders')
+      } finally {
+        setLoadingEdit(false)
+      }
+    }
+    load()
+  }, [orderId])
 
   useEffect(() => {
-    if (!isAdmin) return
+    if (!isAdmin || isEdit) return
 
-    api.get('/companies/', { params: {company_type: 'client', verification_status: 'approved' }, }).then((res) => 
-      setCompanies(res.data))
-  }, [isAdmin])
+    api
+    .get('/companies/', { params: {company_type: 'client', verification_status: 'approved' }, })
+    .then((res) => setCompanies(res.data))
+  }, [isAdmin, isEdit])
 
   const handleAddItem = () => {
     const qty = Number(quantity)
@@ -68,7 +128,7 @@ export default function OrderNew() {
     const product = products.find((m) => m.id === selectedProductId)
 
     // Validación para que no agreguen más de lo que hay en stock
-    const availableStock = stockByProduct[selectedProductId] || 0
+    const availableStock = stockOf(selectedProductId)
 
     if (editingIndex !== null) {
       // Editamos una fila existente, como esa es la única de ese producto en la lista, se compara directamente con el stock disponible
@@ -76,22 +136,17 @@ export default function OrderNew() {
         return fail(`Solo hay ${availableStock} ${product?.unit} disponibles de ${product?.name}`)
 
       const updatedItems = [...items]
-      updatedItems[editingIndex] = {
-        product_id: selectedProductId,
-        product_name: product?.name,
-        product_unit: product?.unit,
-        approx_weight_kg: product?.approx_weight_kg,
-        unit_price: product?.price,
-        quantity_m3: qty,
-      }
+      updatedItems[editingIndex] = buildItem(product, selectedProductId, qty)
       setItems(updatedItems)
       setEditingIndex(null)
     } else {
       // Si ya agregaron el producto antes, y vuelven a agregar el mismo, se sume y no coloque 2 filas sobre el mismo producto.
       const existingIndex = items.findIndex((i) => i.product_id === selectedProductId)
       const alreadyInCart = existingIndex >= 0 ? items[existingIndex].quantity_m3 : 0
+
       if (alreadyInCart + qty > availableStock)
         return fail(`Solo hay ${availableStock - alreadyInCart} ${product?.unit} disponibles de ${product?.name}`)
+      
       if (existingIndex >= 0) {
         // Si ya existe, actualizamos la cantidad en lugar de agregar un nuevo item
         const updatedItems = [...items]
@@ -102,14 +157,7 @@ export default function OrderNew() {
         setItems(updatedItems)
       } else {
         // Producto nuevo: agrega una fila
-        setItems([...items, {
-          product_id: selectedProductId,
-          product_name: product?.name,
-          product_unit: product?.unit,
-          approx_weight_kg: product?.approx_weight_kg,
-          unit_price: product?.price,
-          quantity_m3: qty,
-        }])
+        setItems([...items, buildItem(product, selectedProductId, qty)])
       }
       
       // Reiniciamos los campos de selección
@@ -137,7 +185,7 @@ export default function OrderNew() {
 
   const handleSubmit = async () => {
     if (items.length === 0) return fail('Agrega al menos un producto al pedido')
-    if (isAdmin && !selectedCompanyId) return fail('Selecciona la empresa para la que se crea el pedido')
+    if (isAdmin && !isEdit && !selectedCompanyId) return fail('Selecciona la empresa para la que se crea el pedido')
 
     setSubmitting(true)
 
@@ -147,29 +195,45 @@ export default function OrderNew() {
       }
 
       if (isAdmin) {
-        payload.company_id = selectedCompanyId
+        payload.company_id = isEdit ? orderCompanyId : selectedCompanyId
       }
 
-      const response = await api.post('/orders/', payload)
-      showToast('Pedido creado. Elige el medio de pago para continuar.')
-      navigate(`/orders/${response.data.id}`)
+      if (isEdit) {
+        console.log(payload)
+        const r= await api.put(`/orders/${orderId}`, payload)
+        console.log(r)
+        showToast('Pedido actualizado')
+        navigate(`/orders/${orderId}`)
+      } else {
+        const response = await api.post('/orders/', payload)
+        showToast('Pedido creado. Elige el medio de pago para continuar.')
+        navigate(`/orders/${response.data.id}`)
+      }
 
     } catch (err) {
-      fail(getErrorMessage(err, 'No se pudo crear el pedido'))
+      fail(getErrorMessage(err, isEdit ?  'No se pudo crear el pedido' : 'No se pudo crear el pedido'))
     } finally {
       setSubmitting(false)
     }
   }
 
+  if (loadingEdit) return <main className="order-new-main"><p>Cargando pedido...</p></main>
+
+  const selectedProduct = products.find((m) => m.id === selectedProductId)
+
+
   return (
     <main className="order-new-main">
-      <button className="company-detail-back-btn" onClick={() => navigate('/orders')}>
-        ← Volver a pedidos
+      <button 
+        className="company-detail-back-btn" 
+        onClick={() => navigate(isEdit ? `/orders/${orderId}` : '/orders')}
+      >
+        ← {isEdit ? 'Volver al pedido' : 'Volver a pedidos'}
       </button>
       
-      <h1 className="order-new-title">Crear pedido</h1>
+      <h1 className="order-new-title">{isEdit ? 'Editar pedido' : 'Crear pedido'}</h1>
 
-      {isAdmin && (
+      {isAdmin && !isEdit && (
         <div className="order-new-field">
           <label className="order-new-label">Empresa</label>
           <select
@@ -187,11 +251,11 @@ export default function OrderNew() {
         </div>
       )}
 
+      {isEdit && <p className="order-new-stock-hint">Empresa: {companyName}</p>}
+
       <div className="order-new-card">
         <p className="order-new-card-title">Seleccionar productos:</p>
         
-        {/* <UnitReferenceHelper /> */}
-
         <div className="order-new-item-row">
           <select
             className="order-new-select"
@@ -250,7 +314,6 @@ export default function OrderNew() {
                   <th>Precio unitario</th>
                   <th>Total</th>
                   <th>Acciones</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -258,7 +321,7 @@ export default function OrderNew() {
                   const estimatedKg = estimateWeightKg(item.approx_weight_kg, item.product_unit, item.quantity_m3)
                   const lineTotal = item.unit_price * item.quantity_m3
                   return(
-                    <tr key={index}>
+                    <tr key={item.product_id}>
                     <td>{item.product_name}</td>
                     <td>{item.quantity_m3} {item.product_unit}</td>
                     <td className="order-new-weight-cell">
@@ -283,6 +346,7 @@ export default function OrderNew() {
             </table>
           </div>
           )}
+
           {items.length > 0 && (
             <div className="order-new-summary">
               <p className="order-new-total-weight">
@@ -303,16 +367,20 @@ export default function OrderNew() {
         </div>
 
       <div className="order-new-actions">
-        <button type="button" className="order-new-cancel-btn" onClick={() => navigate('/orders')}>
+        <button 
+          type="button" 
+          className="order-new-cancel-btn" 
+          onClick={() => navigate(isEdit ? `/orders/${orderId}` : '/orders')}>
           Cancelar
         </button>
+
         <button
           type="button"
           className="order-new-submit-btn"
           onClick={handleSubmit}
           disabled={submitting}
         >
-          {submitting ? 'Creando...' : 'Confirmar'}
+          {submitting ? 'Guardando...' : isEdit ? 'Guardar' : 'Confirmar'}
         </button>
       </div>
     </main>
