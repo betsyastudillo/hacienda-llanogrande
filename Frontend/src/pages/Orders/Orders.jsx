@@ -18,11 +18,10 @@ export default function Orders() {
   const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [pendingFirst, setPendingFirst] = useState(false)
+  const [showCancelled, setShowCancelled] = useState(false)
 
   const { hasPermission } = useAuth()
   const canCreate = hasPermission('order:crear')
-
-  const { user, logout } = useAuth()
 
   const navigate = useNavigate()
 
@@ -42,8 +41,10 @@ export default function Orders() {
     fetchOrders()
   }, [])
   
+  // Los pedidos anulados se esconden por defecto
+  const baseOrders = showCancelled ? orders : orders.filter((o) => o.status !== 'cancelled')
 
-  const filteredOrders = orders.filter((order) => {
+  const filteredOrders = baseOrders.filter((order) => {
     const term = searchTerm.toLowerCase()
 
     return (
@@ -52,89 +53,103 @@ export default function Orders() {
       STATUS_LABELS[order.status]?.toLowerCase().includes(term)
     )
   })
-
+  
   // sort es estable: dentro de cada grupo se conserva el orden por fecha
   const visibleOrders = pendingFirst
-    ? [...filteredOrders].sort((a, b) => Number(b.needs_action) - Number(a.needs_action))
-    : filteredOrders
-
-  const actionCount = orders.filter((o) => o.needs_action).length
-
+  ? [...filteredOrders].sort((a, b) => Number(b.needs_action) - Number(a.needs_action))
+  : filteredOrders
+  
+  const actionCount = baseOrders.filter((o) => o.needs_action).length
+  
   const orderStatusHelpItems = ORDER_STATUS_STEPS.map((step) => ({
     key: step.key,
     abrev: step.abrev,
     label: step.label,
     color: STATUS_COLORS[step.key]?.bg
-  }))
+  },
+  {
+    key: 'cancelled', 
+    abrev: 'A',
+    label: 'Anulado',
+    color: STATUS_COLORS.cancelled.bg
+  }  
+  ))
 
   return (
-      <main className="orders-main">
-        <div className="orders-main-header">
-          <h1 className="orders-title">Pedidos</h1>
-          {canCreate && (
-            <button className='orders-create-btn' onClick={() => navigate('/orders/new')}>
-              <CirclePlus size={18} />
-              Nuevo
-            </button>
-          )}
-          </div>
-          <SearchInput
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder="Buscar por código o empresa..."
-          />
+    <main className="orders-main">
+      <div className="orders-main-header">
+        <h1 className="orders-title">Pedidos</h1>
+        {canCreate && (
+          <button className='orders-create-btn' onClick={() => navigate('/orders/new')}>
+            <CirclePlus size={18} />
+            Nuevo
+          </button>
+        )}
+        </div>
+        <SearchInput
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Buscar por código o empresa..."
+        />
 
-          <div className="orders-toolbar">
+        <div className="orders-toolbar">
+          <div className="orders-toggles">
             <label className="orders-toggle">
-              <input
-                type="checkbox"
-                checked={pendingFirst}
-                onChange={(e) => setPendingFirst(e.target.checked)}
-              />
+              <input type="checkbox" checked={pendingFirst} onChange={(e) => setPendingFirst(e.target.checked)} />
               Pendientes primero
             </label>
-            {actionCount > 0 && (
-              <span className="orders-action-count">
-                {actionCount} {actionCount === 1 ? 'requiere' : 'requieren'} tu atención
-              </span>
-            )}
+            <label className="orders-toggle">
+              <input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} />
+              Mostrar anulados
+            </label>
           </div>
+          {actionCount > 0 && (
+            <span className="orders-action-count">
+              {actionCount} {actionCount === 1 ? 'requiere' : 'requieren'} tu atención
+            </span>
+          )}
+        </div>
 
-        {loading && <p className="orders-empty">Cargando pedidos...</p>}
-        {error && <p className="orders-empty orders-error-text">{error}</p>}
+      {loading && <p className="orders-empty">Cargando pedidos...</p>}
+      {error && <p className="orders-empty orders-error-text">{error}</p>}
 
-        {!loading && !error && orders.length === 0 && (
-          <p className="orders-empty">Todavía no hay pedidos registrados.</p>
-        )}
-          
-        {!loading && !error && orders.length > 0 && (
-          <div className="orders-table-wrapper">
-            <table className="orders-table">
-              <thead>
-                <tr>
-                  <th>Pedido</th>
-                  <th>Empresa</th>
-                  <th>Fecha</th>
-                  <th>Q.</th>
-                  <th>
-                    <StatusHelpPopover
-                      triggerLabel="Estado ⓘ"
-                      title="Estados del pedido"
-                      items={orderStatusHelpItems}
-                    />
-                  </th>
-                  <th className="orders-align-right">Total</th>
-                  <th>Detalle</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleOrders.map((order) => {
-                  const colors = STATUS_COLORS[order.status] || { bg: '#ece9e2', text: '#5f5e5a' }
-                  
-                  return(
+      {!loading && !error && baseOrders.length === 0 && (
+        <p className="orders-empty">Todavía no hay pedidos registrados.</p>
+      )}
+        
+      {!loading && !error && baseOrders.length > 0 && (
+        <div className="orders-table-wrapper">
+          <table className="orders-table">
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Empresa</th>
+                <th>Fecha</th>
+                <th>Q.</th>
+                <th>
+                  <StatusHelpPopover
+                    triggerLabel="Estado ⓘ"
+                    title="Estados del pedido"
+                    items={orderStatusHelpItems}
+                  />
+                </th>
+                <th className="orders-align-right">Total</th>
+                <th>Detalle</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleOrders.map((order) => {
+                const colors = STATUS_COLORS[order.status] || { bg: '#ece9e2', text: '#5f5e5a' }
+                const rowClass = [
+                  'orders-row',
+                  order.needs_action ? 'is-attention' : '',
+                  order.status === 'cancelled' ? 'orders-row-cancelled' : '',
+                ].join(' ')
+
+                return(
                   <tr
                     key={order.id}
-                    className={`orders-row ${order.needs_action ? 'is-attention' : ''}`}
+                    className={rowClass}
                     onClick={() => navigate(`/orders/${order.id}`)}
                   >
                     <td>
@@ -157,12 +172,12 @@ export default function Orders() {
                       <Eye/>
                     </td>
                   </tr>
-                  )  
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </main>
+                )  
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </main>
   )
 }

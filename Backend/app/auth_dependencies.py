@@ -66,6 +66,7 @@ OrderViewerCompany = Annotated[User, Depends(require_permission("order:ver_empre
 OrderViewerOwn = Annotated[User, Depends(require_permission("order:ver_propios"))]
 OrderEditorOwn = Annotated[User, Depends(require_permission("order:editar_propio"))]
 OrderEditorLimited = Annotated[User, Depends(require_permission("order:editar_limitado"))]
+OrderCanceller = Annotated[User, Depends(require_permission("order:anular"))]
 
 # BlackList
 BlacklistManager = Annotated[User, Depends(require_permission("blacklist:gestionar"))]

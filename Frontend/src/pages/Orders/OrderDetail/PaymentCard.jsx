@@ -313,7 +313,7 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
               Cancelar
             </button>
             <button
-              className="pay-btn is-danger"
+              className="pay-btn is-primary"
               onClick={() => handleDecision('failed', rejectReason.trim())}
               disabled={!rejectReason.trim() || busy}
             >

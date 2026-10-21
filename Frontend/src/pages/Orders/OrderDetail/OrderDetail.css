@@ -22,7 +22,16 @@
 }
 
 .detail-header {
-  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detail-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .detail-eyebrow {
@@ -120,6 +129,19 @@
   font-weight: 500;
 }
 
+.detail-stepper.is-cancelled .detail-stepper-track-fill { 
+  background: #8a8a85; 
+}
+
+.detail-stepper.is-cancelled .detail-stepper-circle.is-current {
+  background: #5f5e5a;
+  border-color: #5f5e5a;
+  color: #ffffff;
+}
+
+.detail-stepper.is-cancelled .detail-stepper-label.is-current { 
+  color: #5f5e5a; 
+}
 
 /* Tabla de productos */
 .detail-grid {
@@ -186,6 +208,18 @@
   margin-top: 4px;
 }
 
+.detail-cancelled {
+  background: var(--code-bg);
+  color: var(--text-footer);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.detail-cancelled p { 
+  margin: 6px 0 0; 
+}
 
 /* Acciones de pago */
 .detail-info-row {

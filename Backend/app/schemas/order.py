@@ -6,48 +6,54 @@ from typing import List, Optional, Any
 from app.schemas.mixins import AuditResponseMixin
 
 class OrderItemCreate(BaseModel):
-    product_id: UUID
-    quantity_m3: int
+  product_id: UUID
+  quantity_m3: int
     
 
 class OrderItemResponse(BaseModel):
-    id: UUID
-    product_id: UUID
-    quantity_m3: int
-    unit_price: Decimal
-    subtotal: Decimal
+  id: UUID
+  product_id: UUID
+  quantity_m3: int
+  unit_price: Decimal
+  subtotal: Decimal
 
-    class Config:
-        from_attributes = True
+  class Config:
+    from_attributes = True
 
 
 class OrderCreate(BaseModel):
-    company_id: Optional[UUID] = None
-    items: List[OrderItemCreate]
+  company_id: Optional[UUID] = None
+  items: List[OrderItemCreate]
 
 
 class OrderResponse(AuditResponseMixin):
-    id: UUID
-    company_id: UUID
-    status: str
-    subtotal: Decimal
-    tax: Decimal
-    total: Decimal
-    items: List[OrderItemResponse]
-    order_number: str
-    needs_action: bool = False
+  id: UUID
+  company_id: UUID
+  status: str
+  subtotal: Decimal
+  tax: Decimal
+  total: Decimal
+  items: List[OrderItemResponse]
+  order_number: str
+  needs_action: bool = False
+  cancelled_at: Optional[datetime] = None
+  cancelled_by_user_id: Optional[UUID] = None
+  cancellation_reason: Optional[str] = None
 
-    # Se declara el objeto para que computed_field lo pueda leer
-    company: Any  = Field(default=None, exclude=True)  # solo uso interno, nunca se serializa directo
+  # Se declara el objeto para que computed_field lo pueda leer
+  company: Any  = Field(default=None, exclude=True)  # solo uso interno, nunca se serializa directo
 
-    # Le dice a Pydantic que el campo no viene directo de una columna, sino que se calcula dinámicamente cada vez que se renderiza la respuesta
-    @computed_field
-    @property
-    def company_display_name(self) -> Optional[str]:
-        if not self.company:
-            return None
-        
-        return self.company.display_name or self.company.legal_name
+  # Le dice a Pydantic que el campo no viene directo de una columna, sino que se calcula dinámicamente cada vez que se renderiza la respuesta
+  @computed_field
+  @property
+  def company_display_name(self) -> Optional[str]:
+    if not self.company:
+      return None
+    
+    return self.company.display_name or self.company.legal_name
 
-    class Config:
-        from_attributes = True
+  class Config:
+    from_attributes = True
+
+class OrderCancel(BaseModel):
+  reason: str

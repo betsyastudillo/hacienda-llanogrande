@@ -562,38 +562,38 @@ export default function CompanyDetail() {
       )}
 
       {confirmAction === 'deactivate' && (
-  <Modal title="Desactivar empresa" onClose={closeAction}>
-    <p className="company-detail-modal-text">
-      ¿Seguro que quieres desactivar a <strong>{company.display_name || company.legal_name}</strong>?
-      Dejará de aparecer en el listado, no podrá crear pedidos y sus usuarios no podrán iniciar sesión.
-    </p>
+        <Modal title="Desactivar empresa" onClose={closeAction}>
+          <p className="company-detail-modal-text">
+            ¿Seguro que quieres desactivar a <strong>{company.display_name || company.legal_name}</strong>?
+            Dejará de aparecer en el listado, no podrá crear pedidos y sus usuarios no podrán iniciar sesión.
+          </p>
 
-    <label className="company-detail-reason-label" htmlFor="deactivation-reason">
-      Motivo (obligatorio)
-    </label>
-    <textarea
-      id="deactivation-reason"
-      className="company-detail-reason-input"
-      rows={3}
-      value={actionReason}
-      onChange={(e) => setActionReason(e.target.value)}
-      placeholder="Ej: la empresa cerró operaciones"
-    />
+          <label className="company-detail-reason-label" htmlFor="deactivation-reason">
+            Motivo (obligatorio)
+          </label>
+          <textarea
+            id="deactivation-reason"
+            className="company-detail-reason-input"
+            rows={3}
+            value={actionReason}
+            onChange={(e) => setActionReason(e.target.value)}
+            placeholder="Ej: la empresa cerró operaciones"
+          />
 
-    <div className="company-detail-approve-actions">
-      <button type="button" className="company-detail-cancel-reject-btn" onClick={closeAction}>
-        Cancelar
-      </button>
-      <button
-        type="button"
-        className="company-detail-reject-confirm-btn"
-        onClick={handleDeactivate}
-        disabled={!actionReason.trim() || submitting}
-      >
-        {submitting ? 'Procesando...' : 'Desactivar'}
-      </button>
-    </div>
-  </Modal>
+          <div className="company-detail-approve-actions">
+            <button type="button" className="company-detail-cancel-reject-btn" onClick={closeAction}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="company-detail-reject-confirm-btn"
+              onClick={handleDeactivate}
+              disabled={!actionReason.trim() || submitting}
+            >
+              {submitting ? 'Procesando...' : 'Desactivar'}
+            </button>
+          </div>
+        </Modal>
       )}
 
       {confirmAction === 'reactivate' && (
