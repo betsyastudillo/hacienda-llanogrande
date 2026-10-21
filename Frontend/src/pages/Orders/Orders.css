@@ -61,7 +61,6 @@
 }
 
 .orders-table-wrapper {
-  background-color: var(--code-bg);
   border-radius: 12px;
   overflow: hidden;
 }
