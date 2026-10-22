@@ -1,4 +1,4 @@
-import os
+import os, re
 from datetime import datetime, timezone
 from typing import Optional, List
 from uuid import UUID
@@ -6,12 +6,16 @@ from fastapi import UploadFile
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from app.constants.transport_requirements import (
+  ALLOWED_DOCUMENTS_BY_SUBJECT,
   EDITABLE_ASSIGNMENT_STATUSES,
+  OWNER_DOCUMENT,
   PLATE_BLACKLIST_TYPE,
   REQUIRED_DOCUMENTS_BY_SUBJECT,
   TRANSPORT_ALLOWED_EXTENSIONS,
   TRANSPORT_MAX_FILE_SIZE,
   VALID_CARRIER_DOCUMENT_TYPES,
+  VALID_OWNER_DOCUMENT_TYPES,
+  VALID_VEHICLE_TYPES,
   compute_missing_documents,
   normalize_plate,
 )
@@ -23,12 +27,24 @@ from app.models.order import Order
 from app.models.vehicle import Vehicle
 from app.services.document_blacklist_service import is_document_blacklisted
 from app.services.document_service import create_document, replace_document_file
-from app.services.order_service import can_access_order
+from app.services.order_service import can_access_order, CLIENT_ROLES
+
+
+PHONE_RE = re.compile(r"\d{7,15}")
+
+
+def is_owner_carrier(vehicle, carrier) -> bool:
+  return bool(
+    vehicle and carrier and vehicle.owner_document_id
+    and vehicle.owner_document_id == carrier.document_id
+    and vehicle.owner_document_type == carrier.document_type
+  )
 
 
 # Adjunta a cada asignación su vehículo, transportador, documentos y los documentos que faltan.
 # Son atributos temporales (no columnas), igual que needs_action en los pedidos.
 def attach_transport_details(db: Session, assignments: List[Assignment]) -> List[Assignment]:
+  
   if not assignments:
     return assignments
 
@@ -37,6 +53,7 @@ def attach_transport_details(db: Session, assignments: List[Assignment]) -> List
 
   vehicles = {v.id: v for v in db.query(Vehicle).filter(Vehicle.id.in_(vehicle_ids)).all()}
   carriers = {c.id: c for c in db.query(Carrier).filter(Carrier.id.in_(carrier_ids)).all()}
+
   documents = (
     db.query(Document)
     .filter(or_(Document.vehicle_id.in_(vehicle_ids), Document.carrier_id.in_(carrier_ids)))
@@ -44,14 +61,46 @@ def attach_transport_details(db: Session, assignments: List[Assignment]) -> List
     .all()
   )
 
+  # Documentos vetados entre todos los envíos, en una sola consulta
+  numbers = set()
+  
+  for v in vehicles.values():
+    numbers.add(v.plate)
+    if v.owner_document_id:
+      numbers.add(v.owner_document_id)
+  
+  for c in carriers.values():
+    numbers.add(c.document_id)
+
+  listed = set()
+  
+  if numbers:
+    rows = (
+      db.query(DocumentBlacklist.document_type, DocumentBlacklist.document_number)
+      .filter(DocumentBlacklist.is_active == True, DocumentBlacklist.document_number.in_(numbers))  # noqa: E712
+      .all()
+    )
+    listed = {(r[0], r[1]) for r in rows}
+
   for a in assignments:
+    # Primero se asignan los atributos...
     a.vehicle = vehicles.get(a.vehicle_id)
     a.carrier = carriers.get(a.carrier_id)
     a.documents = [
       d for d in documents
       if d.vehicle_id == a.vehicle_id or d.carrier_id == a.carrier_id
     ]
-    a.missing_documents = compute_missing_documents(a.vehicle_id, a.carrier_id, a.documents)
+    a.missing_documents = compute_missing_documents(a.vehicle_id, a.carrier_id, a.documents, is_owner_carrier(a.vehicle, a.carrier))
+    
+    # Depsués de calcula lo vetado, que los usa
+    v, c = a.vehicle, a.carrier
+    a.blocked = []
+    if v and (PLATE_BLACKLIST_TYPE, v.plate) in listed:
+      a.blocked.append("vehicle")
+    if v and v.owner_document_id and (v.owner_document_type, v.owner_document_id) in listed:
+      a.blocked.append("owner")
+    if c and (c.document_type, c.document_id) in listed:
+      a.blocked.append("carrier")
 
   return assignments
 
@@ -79,19 +128,33 @@ def get_assignment_detail_by_order(db: Session, order_id: UUID) -> Optional[Assi
 # Rechaza de entrada un vehículo o transportador vetado. No se incluye el motivo del veto:
 # es información interna que el cliente no debe ver.
 def _ensure_not_blacklisted(db: Session, vehicle_data, carrier_data) -> None:
+  
   if is_document_blacklisted(db, PLATE_BLACKLIST_TYPE, normalize_plate(vehicle_data.plate)):
     raise ValueError("This vehicle is not authorized to enter the plant")
 
   if is_document_blacklisted(db, carrier_data.document_type, carrier_data.document_id.strip()):
     raise ValueError("This carrier is not authorized to enter the plant")
 
+  if is_document_blacklisted(db, vehicle_data.owner_document_type, vehicle_data.owner_document_id.strip()):
+    raise ValueError("The vehicle owner is not authorized to enter the plant")
+
 
 def _validate_submission(vehicle_data, carrier_data) -> None:
+  
   if not normalize_plate(vehicle_data.plate):
     raise ValueError("The vehicle plate is required")
 
+  if vehicle_data.type not in VALID_VEHICLE_TYPES:
+    raise ValueError(f"Vehicle type must be one of: {', '.join(VALID_VEHICLE_TYPES)}")
+
   if vehicle_data.capacity_m3 <= 0:
     raise ValueError("The vehicle capacity must be greater than zero")
+
+  if not vehicle_data.owner_name.strip() or not vehicle_data.owner_document_id.strip():
+    raise ValueError("The vehicle owner name and document number are required")
+
+  if vehicle_data.owner_document_type not in VALID_OWNER_DOCUMENT_TYPES:
+    raise ValueError(f"Owner document type must be one of: {', '.join(VALID_OWNER_DOCUMENT_TYPES)}")
 
   if carrier_data.document_type not in VALID_CARRIER_DOCUMENT_TYPES:
     raise ValueError(f"Carrier document type must be one of: {', '.join(VALID_CARRIER_DOCUMENT_TYPES)}")
@@ -99,23 +162,54 @@ def _validate_submission(vehicle_data, carrier_data) -> None:
   if not carrier_data.document_id.strip() or not carrier_data.full_name.strip():
     raise ValueError("The carrier name and document number are required")
 
+  if not PHONE_RE.fullmatch((carrier_data.phone or "").strip()):
+    raise ValueError("The carrier phone must have between 7 and 15 digits")
 
-# Busca o crea un vehículo (global: se reutiliza entre pedidos por placa)
+  if not (carrier_data.address or "").strip():
+    raise ValueError("The carrier address is required")
+
+
+# Se reutiliza entre pedidos por placa)
 def _find_or_create_vehicle(db: Session, data, current_user) -> Vehicle:
+  
   plate = normalize_plate(data.plate)
+
+  fields = {
+    "type": data.type,
+    "capacity_m3": data.capacity_m3,
+    "owner_name": data.owner_name.strip(),
+    "owner_document_type": data.owner_document_type,
+    "owner_document_id": data.owner_document_id.strip(),
+    "owner_phone": data.owner_phone,
+  }
+
   vehicle = db.query(Vehicle).filter(Vehicle.plate == plate).first()
 
   if vehicle:
     if not vehicle.is_active:
       raise ValueError("This vehicle is inactive and cannot be used")
+        
+    owner_changed = (
+      (vehicle.owner_document_type, vehicle.owner_document_id)
+      != (fields["owner_document_type"], fields["owner_document_id"])
+    )
+      
+    # Si la placa ya existía, se actualizan los datos que llegan (si hay cambios)
+    if any(getattr(vehicle, k) != v for k, v in fields.items()):
+      for k, v in fields.items():
+        setattr(vehicle, k, v)
+      
+      vehicle.updated_by_user_id = current_user.id
+
+      if owner_changed:
+        # El documento del dueño anterior ya no sirve: se vuelve a pedir
+        db.query(Document).filter(
+          Document.vehicle_id == vehicle.id, Document.document_type == OWNER_DOCUMENT
+        ).update({"status": "rejected"})
+        
     return vehicle
 
-  new_vehicle = Vehicle(
-    type=data.type, 
-    capacity_m3=data.capacity_m3, 
-    plate=plate,
-    created_by_user_id=current_user.id,
-  )
+  new_vehicle = Vehicle(plate=plate, created_by_user_id=current_user.id, **fields)
 
   db.add(new_vehicle)
   db.flush()  # asigna el id sin cerrar la transacción todavía
@@ -123,9 +217,14 @@ def _find_or_create_vehicle(db: Session, data, current_user) -> Vehicle:
   return new_vehicle
 
 
-# Busca o crea un transportador (global: se reutiliza entre pedidos por tipo y número de documento).
+# Se reutiliza entre pedidos por tipo y número de documento).
 def _find_or_create_carrier(db: Session, data, current_user) -> Carrier:
   document_id = data.document_id.strip()
+  fields = {
+    "full_name": data.full_name.strip(), 
+    "phone": data.phone.strip(), 
+    "address": data.address.strip()
+  }
 
   carrier = (
     db.query(Carrier)
@@ -136,15 +235,17 @@ def _find_or_create_carrier(db: Session, data, current_user) -> Carrier:
   if carrier:
     if not carrier.is_active:
       raise ValueError("This carrier is inactive and cannot be used")
+    
+    if any(getattr(carrier, k) != v for k, v in fields.items()):
+      for k, v in fields.items():
+        setattr(carrier, k, v)
+      carrier.updated_by_user_id = current_user.id
+
     return carrier
 
   new_carrier = Carrier(
-    full_name=data.full_name.strip(),
-    document_type=data.document_type,
-    document_id=document_id,
-    phone=data.phone,
-    address=data.address,
-    created_by_user_id=current_user.id
+    document_type=data.document_type, document_id=document_id,
+    created_by_user_id=current_user.id, **fields,
   )
 
   db.add(new_carrier)
@@ -286,11 +387,11 @@ def upload_transport_document(
   if assignment.validation_status not in EDITABLE_ASSIGNMENT_STATUSES:
     raise ValueError(f"Cannot upload documents for a submission that is {assignment.validation_status}")
 
-  if subject not in REQUIRED_DOCUMENTS_BY_SUBJECT:
+  if subject not in ALLOWED_DOCUMENTS_BY_SUBJECT:
     raise ValueError("subject must be 'vehicle' or 'carrier'")
 
-  if document_type not in REQUIRED_DOCUMENTS_BY_SUBJECT[subject]:
-    allowed = ", ".join(REQUIRED_DOCUMENTS_BY_SUBJECT[subject])
+  if document_type not in ALLOWED_DOCUMENTS_BY_SUBJECT[subject]:
+    allowed = ", ".join(ALLOWED_DOCUMENTS_BY_SUBJECT[subject])
     raise ValueError(f"Document type for {subject} must be one of: {allowed}")
 
   _validate_transport_file(file)
@@ -338,14 +439,14 @@ def get_transport_document(db: Session, order_id: UUID, document_id: UUID) -> Do
 
 # Validación de la asignación
 def validate_assignment(
-    db: Session,
-    assignment_id: UUID,
-    decision: str,
-    rejection_reason: Optional[str],
-    background_check_verified: bool,
-    blacklist_carrier: bool,
-    current_user
-  ) -> Assignment:
+  db: Session,
+  assignment_id: UUID,
+  decision: str,
+  rejection_reason: Optional[str],
+  background_check_verified: bool,
+  blacklist_carrier: bool,
+  current_user
+) -> Assignment:
   assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
 
   if not assignment:
@@ -366,6 +467,25 @@ def validate_assignment(
     if order.status != "facturado":
       raise ValueError(f"The order must be 'facturado' to approve its transport (current: {order.status})")
 
+    detail = attach_transport_details(db, [assignment])[0]
+
+    if detail.blocked:
+      raise ValueError("Cannot approve: the vehicle, its owner or the carrier is on the blacklist")
+
+    if detail.missing_documents:
+      raise ValueError(f"Cannot approve: missing required documents: {', '.join(detail.missing_documents)}")
+
+    # Logística no tiene document:revisar, así que su aprobación cubre los documentos obligatorios
+    for doc in detail.documents:
+      allowed = ALLOWED_DOCUMENTS_BY_SUBJECT["vehicle" if doc.vehicle_id else "carrier"]
+
+      if doc.document_type in allowed and doc.status != "approved":
+        doc.status = "approved"
+        doc.updated_by_user_id = current_user.id
+
+    if attach_transport_details(db, [assignment])[0].blocked:
+      raise ValueError("Cannot approve: the vehicle, its owner or the carrier is on the blacklist")
+    
     documents = (
       db.query(Document)
       .filter(or_(Document.vehicle_id == assignment.vehicle_id, Document.carrier_id == assignment.carrier_id))
@@ -375,7 +495,7 @@ def validate_assignment(
 
     if missing:
       raise ValueError(f"Cannot approve: missing required documents: {', '.join(missing)}")
-
+    
     # Logística no tiene document:revisar, así que su aprobación cubre los documentos obligatorios
     for doc in documents:
       required = REQUIRED_DOCUMENTS_BY_SUBJECT["vehicle" if doc.vehicle_id else "carrier"]
@@ -414,3 +534,74 @@ def validate_assignment(
   db.refresh(assignment)
 
   return attach_transport_details(db, [assignment])[0]
+
+
+def _used_by_company(db: Session, company_id, vehicle_id=None, carrier_id=None) -> bool:
+  query = (
+    db.query(Assignment.id)
+    .join(Order, Order.id == Assignment.order_id)
+    .filter(Order.company_id == company_id)
+  )
+  if vehicle_id:
+    query = query.filter(Assignment.vehicle_id == vehicle_id)
+  if carrier_id:
+    query = query.filter(Assignment.carrier_id == carrier_id)
+  return query.first() is not None
+
+
+# Búsqueda de ayuda para el formulario. Devuelve None si no existe, está inactivo, está vetado, o (para clientes) no lo ha usado su empresa: así no revela datos ajenos.
+def lookup_vehicle(db: Session, plate: str, current_user) -> Optional[Vehicle]:
+  
+  plate = normalize_plate(plate)
+  
+  if not plate:
+    return {"status": "not_found"}
+
+  if is_document_blacklisted(db, PLATE_BLACKLIST_TYPE, plate):
+    return {"status": "blocked", "subject": "vehicle"}
+
+  vehicle = db.query(Vehicle).filter(Vehicle.plate == plate).first()
+  
+  if not vehicle:
+    return {"status": "not_found"}
+
+  # Un vehículo inactivo tampoco se puede usar: el envío lo rechazaría
+  if not vehicle.is_active:
+    return {"status": "blocked", "subject": "vehicle"}
+
+  # Un cliente solo recibe datos de lo que su propia empresa ya usó
+  if current_user.role in CLIENT_ROLES and not _used_by_company(db, current_user.company_id, vehicle_id=vehicle.id):
+    return {"status": "not_found"}
+
+  if vehicle.owner_document_id and is_document_blacklisted(db, vehicle.owner_document_type, vehicle.owner_document_id):
+    return {"status": "blocked", "subject": "owner"}
+
+  return {"status": "found", "vehicle": vehicle}
+
+
+def lookup_carrier(db: Session, document_type: str, document_id: str, current_user) -> Optional[Carrier]:
+  
+  document_id = (document_id or "").strip()
+  
+  if not document_id:
+    return {"status": "not_found"}
+
+  if is_document_blacklisted(db, document_type, document_id):
+    return {"status": "blocked"}
+
+  carrier = (
+    db.query(Carrier)
+    .filter(Carrier.document_type == document_type, Carrier.document_id == document_id)
+    .first()
+  )
+
+  if not carrier:
+    return {"status": "not_found"}
+
+  if not carrier.is_active:
+    return {"status": "blocked"}
+
+  if current_user.role in CLIENT_ROLES and not _used_by_company(db, current_user.company_id, carrier_id=carrier.id):
+    return {"status": "not_found"}
+
+  return {"status": "found", "carrier": carrier}

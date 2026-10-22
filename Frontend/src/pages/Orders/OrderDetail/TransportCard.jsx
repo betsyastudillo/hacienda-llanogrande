@@ -7,28 +7,10 @@ import Modal from '../../../components/Modal/Modal'
 import StatusBadge from '../../../components/StatusBadge/StatusBadge'
 import FilePreviewModal from '../../../components/FilePreviewModal/FilePreviewModal'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
-import { TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES } from '../../../constants/transport'
+import { 
+    TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES, VEHICLE_TYPES, vehicleTypeLabel, 
+} from '../../../constants/transport'
 
-// ---- Llamadas al backend: ajustar aquí si algo no coincide ----
-const api_ = {
-  create: (body) => api.post('/assignments/', body),
-  // VERIFICAR: el cuerpo del reenvío (se asume igual al de crear, sin order_id)
-  resubmit: (orderId, body) => api.put(`/assignments/order/${orderId}/resubmit`, body),
-  uploadDoc: (orderId, subject, documentType, file) => {
-    const fd = new FormData()
-    fd.append('subject', subject)
-    fd.append('document_type', documentType)
-    fd.append('file', file)
-    return api.post(`/assignments/order/${orderId}/documents`, fd)
-  },
-  // VERIFICAR: nombres de los campos del cuerpo
-  validate: (id, body) => api.patch(`/assignments/${id}/validate`, body),
-  // VERIFICAR: cuerpo del POST
-  createGuide: (orderId) => api.post('/dispatch-guides/', { order_id: orderId }),
-}
-
-// VERIFICAR: ruta de descarga de un documento de transporte
-const docPreviewPath = (orderId, doc) => `/assignments/order/${orderId}/documents/${doc.id}`
 
 const STATUS = {
   pending: { label: 'Pendiente de validación', icon: Clock, bg: '#fdf1b8', text: '#7a5c00' },
@@ -37,7 +19,8 @@ const STATUS = {
 }
 
 const EMPTY_FORM = {
-  plate: '', capacity_m3: '',
+  plate: '', type: '', capacity_m3: '',
+  owner_name: '', owner_document_type: 'CC', owner_document_id: '', owner_phone: '',
   full_name: '', document_type: 'CC', document_id: '', phone: '', address: '',
 }
 
@@ -51,84 +34,265 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [formError, setFormError] = useState('')
+  const [ownerIsCarrier, setOwnerIsCarrier] = useState(false)
   const [showApprove, setShowApprove] = useState(false)
   const [checked, setChecked] = useState(false)
   const [showReject, setShowReject] = useState(false)
   const [reason, setReason] = useState('')
+  const [blacklist, setBlacklist] = useState(false)
   const [preview, setPreview] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [hint, setHint] = useState({ vehicle: false, carrier: false })
+  const [blocked, setBlocked] = useState({ vehicle: null, carrier: false })
 
-  const fail = (err, fallback) => showToast(getErrorMessage(err, fallback), 'error')
   const set = (f) => (e) => setForm({ ...form, [f]: e.target.value })
+  const setDigits = (f) => (e) => setForm({ ...form, [f]: e.target.value.replace(/\D/g, '') })
 
-  // Ejecuta una acción mostrando el resultado como toast y recargando el pedido
-  async function run(action, okMessage, errorMessage, after) {
+
+  // Ejecuta una acción mostrando el resultado y recargando el pedido
+  // onError: si se pasa, el error se muestra donde se indique (dentro de un modal) y no como popup.
+  async function run(action, okMessage, errorMessage, after, onError) {
     setBusy(true)
+    
     try {
       await action()
       showToast(okMessage)
       after?.()
       await onChanged()
+    
     } catch (err) {
-      fail(err, errorMessage)
+      const message = getErrorMessage(err, errorMessage)
+      if (onError) onError(message)
+      else showToast(message, 'error')
+    
     } finally {
       setBusy(false)
     }
   }
 
   function openForm() {
-    // Al corregir un rechazo se precargan los datos actuales
-    setForm(
-      assignment
-        ? {
-            plate: assignment.vehicle.plate,
-            capacity_m3: String(assignment.vehicle.capacity_m3),
-            full_name: assignment.carrier.full_name,
-            document_type: assignment.carrier.document_type,
-            document_id: assignment.carrier.document_id,
-            phone: assignment.carrier.phone || '',
-            address: assignment.carrier.address || '',
-          }
-        : EMPTY_FORM
-    )
+    setFormError('')
+
+    if (assignment) {
+      console.log(assignment)
+      const v = assignment.vehicle
+      const c = assignment.carrier
+
+      setOwnerIsCarrier(sameOwner)
+
+      setForm({
+        plate: v.plate,
+        type: v.type,
+        capacity_m3: String(v.capacity_m3),
+        owner_name: v.owner_name || '',
+        owner_document_type: v.owner_document_type,
+        owner_document_id: v.owner_document_id || '',
+        owner_phone: v.owner_phone,
+        full_name: c.full_name,
+        document_type: c.document_type,
+        document_id: c.document_id,
+        phone: c.phone || '',
+        address: c.address || ''
+      })
+    } else {
+      setOwnerIsCarrier(false)
+      setForm(EMPTY_FORM)
+      setBlocked({ vehicle: null, carrier: false })
+    }
+
     setShowForm(true)
   }
 
-  function handleSubmit() {
-    if (!form.plate.trim() || !(Number(form.capacity_m3) > 0) || !form.full_name.trim() || !form.document_id.trim())
-      return showToast('Completa la placa, la capacidad y los datos del transportador.', 'error')
+  async function lookupVehicle() {
+    const plate = form.plate.trim()
+    if (plate.length < 5) return
+    // Al corregir un rechazo, si la placa no cambió, ya está cargada
+    if (assignment && plate === assignment.vehicle.plate) return
 
-    // VERIFICAR: nombres y estructura (vehicle / carrier) según schemas/assignment.py
+    try {
+      const { data } = await api.get('/assignments/lookup/vehicle', { params: { plate } })
+
+      if (data.status === 'blocked') {
+        setBlocked((b) => ({ ...b, vehicle: data.subject }))
+        return setHint((h) => ({ ...h, vehicle: false }))
+      }
+      setBlocked((b) => ({ ...b, vehicle: null }))
+
+      if (data.status !== 'found') return setHint((h) => ({ ...h, vehicle: false }))
+
+      const v = data.vehicle
+      setForm((f) => ({
+        ...f,
+        type: v.type,
+        capacity_m3: String(v.capacity_m3),
+        owner_name: v.owner_name || '',
+        owner_document_type: v.owner_document_type || 'CC',
+        owner_document_id: v.owner_document_id || '',
+        owner_phone: v.owner_phone || '',
+      }))
+      setOwnerIsCarrier(false)
+      setHint((h) => ({ ...h, vehicle: true }))
+
+    } catch {
+      setBlocked((b) => ({ ...b, vehicle: null }))
+      setHint((h) => ({ ...h, vehicle: false }))
+    }
+  }
+
+  async function lookupCarrier() {
+    const id = form.document_id.trim()
+    if (id.length < 5) return
+    if (assignment && id === assignment.carrier.document_id && form.document_type === assignment.carrier.document_type) return
+
+    try {
+      const { data } = await api.get('/assignments/lookup/carrier', {
+        params: { document_type: form.document_type, document_id: id },
+      })
+
+      if (data.status === 'blocked') {
+        setBlocked((b) => ({ ...b, carrier: true }))
+        return setHint((h) => ({ ...h, carrier: false }))
+      }
+
+      setBlocked((b) => ({ ...b, carrier: false }))
+
+      if (data.status !== 'found') return setHint((h) => ({ ...h, carrier: false }))
+
+      const c = data.carrier
+
+      setForm((f) => ({ ...f, full_name: c.full_name, phone: c.phone || '', address: c.address || '' }))
+      setHint((h) => ({ ...h, carrier: true }))
+    } catch {
+      setBlocked((b) => ({ ...b, carrier: false }))
+      setHint((h) => ({ ...h, carrier: false }))
+    }
+  }
+  
+  function handleSubmit() {
+    const owner = ownerIsCarrier 
+      ? { name: form.full_name, type: form.document_type, id: form.document_id, phone: form.phone }
+      : { name: form.owner_name, type: form.owner_document_type, id: form.owner_document_id, phone: form.owner_phone }
+
+    if (!form.plate.trim() || !form.type || !(Number(form.capacity_m3) > 0))
+      return setFormError('Completa la placa, el tipo y la capacidad del vehículo.')
+    if (!owner.name.trim() || !owner.id.trim())
+      return setFormError('Completa los datos del dueño del vehículo.')
+    if (!form.full_name.trim() || !form.document_id.trim() || !form.address.trim())
+      return setFormError('Completa el nombre, el documento y la dirección del transportador.')
+    if (!/^\d{7,15}$/.test(form.phone))
+      return setFormError('El teléfono del transportador debe tener entre 7 y 15 dígitos.')
+
+    setFormError('')
+
     const body = {
-      vehicle: { plate: form.plate.trim(), capacity_m3: Number(form.capacity_m3) },
+      vehicle: {
+        plate: form.plate.trim(),
+        type: form.type,
+        capacity_m3: Number(form.capacity_m3),
+        owner_name: owner.name.trim(),
+        owner_document_type: owner.type,
+        owner_document_id: owner.id.trim(),
+        owner_phone: owner.phone.trim() || null,
+      },
       carrier: {
         full_name: form.full_name.trim(),
         document_type: form.document_type,
         document_id: form.document_id.trim(),
-        phone: form.phone.trim() || null,
-        address: form.address.trim() || null,
+        phone: form.phone.trim(),
+        address: form.address.trim(),
       },
     }
 
     run(
-      () => (assignment ? api_.resubmit(order.id, body) : api_.create({ order_id: order.id, ...body })),
-      assignment ? 'Datos corregidos y reenviados a logística.' : 'Datos de transporte enviados. Ahora sube los documentos.',
+      () => (assignment 
+        ? api.put(`/assignments/order/${order.id}/resubmit`, body)
+        : api.post('/assignments/', { order_id: order.id, ...body })),
+      assignment ? 'Datos corregidos y reenviados a logística.' : 'Datos enviados. Ahora sube los documentos.',
       'No se pudo enviar el transporte',
-      () => setShowForm(false)
+      () => setShowForm(false),
+      setFormError
     )
   }
 
   function handleUpload(key, file) {
     if (!file) return
     const [subject, documentType] = key.split(':')
-    run(() => api_.uploadDoc(order.id, subject, documentType, file), 'Documento subido.', 'No se pudo subir el documento')
+
+    const formData = new FormData()
+    formData.append('subject', subject)
+    formData.append('document_type', documentType)
+    formData.append('file', file)
+    
+    run(
+      () => api.post(`/assignments/order/${order.id}/documents`, formData),
+      'Documento subido.',
+      'No se pudo subir el documento')
   }
+
+    function handleApprove() {
+    run(
+      () => api.patch(`/assignments/${assignment.id}/validate`, {
+        decision: 'approved',
+        rejection_reason: null,
+        background_check_verified: true,
+        blacklist_carrier: false,
+      }),
+      'Transporte aprobado.',
+      'No se pudo aprobar el transporte',
+      () => setShowApprove(false)
+    )
+  }
+
+  function handleReject() {
+    run(
+      () => api.patch(`/assignments/${assignment.id}/validate`, {
+        decision: 'rejected',
+        rejection_reason: reason.trim(),
+        background_check_verified: false,
+        blacklist_carrier: blacklist,
+      }),
+      'Transporte rechazado.',
+      'No se pudo rechazar el transporte',
+      () => setShowReject(false)
+    )
+  }
+
+  function handleCreateGuide() {
+    run(
+      () => api.post('/dispatch-guides/', { order_id: order.id }),
+      'Guía de despacho generada.',
+      'No se pudo generar la guía'
+    )
+  }
+
+  function openPreview(label, doc) {
+    setPreview({
+      title: label,
+      apiPath: `/assignments/order/${order.id}/documents/${doc.id}/file`,
+    })
+  }
+
+  const v = assignment?.vehicle
+  const c = assignment?.carrier
+
+  // El dueño y el transportador son la misma persona si tienen el mismo documento
+  const sameOwner = Boolean(
+    v?.owner_document_id &&
+    v.owner_document_id === c?.document_id &&
+    v.owner_document_type === c?.document_type
+  )
 
   const missing = assignment?.missing_documents || []
   const status = assignment ? STATUS[assignment.validation_status] || STATUS.pending : null
 
+  const ownerDocLabel = v?.owner_document_type === 'NIT' ? 'RUT del propietario' : 'Cédula del propietario'
+
   // Un documento subido o faltante, por cada uno de los 4 requeridos
-  const docRows = Object.entries(TRANSPORT_DOCS).map(([key, label]) => {
+  const docRows = Object.entries(TRANSPORT_DOCS)
+  .filter(([key]) => !(sameOwner && key === 'vehicle:documento_propietario'))
+  .map(([key, baseLabel]) => {
+    const label = key === 'vehicle:documento_propietario' ? ownerDocLabel : baseLabel
     const [subject, documentType] = key.split(':')
     const doc = assignment?.documents?.find(
       (d) => d.document_type === documentType && (subject === 'vehicle' ? d.vehicle_id : d.carrier_id)
@@ -136,8 +300,8 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     return { key, label, doc, isMissing: missing.includes(key) }
   })
 
-  const canFix = canSubmit && assignment && assignment.validation_status === 'rejected'
-  const canUpload = canSubmit && assignment && assignment.validation_status !== 'approved'
+  const canFix = canSubmit && assignment?.validation_status === 'rejected'
+  const canUpload = canSubmit && assignment && assignment?.validation_status !== 'approved'
   const canDecide = canValidate && assignment?.validation_status === 'pending'
   const canMakeGuide =
     canGuide && assignment?.validation_status === 'approved' &&
@@ -162,20 +326,53 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
         </>
       ) : (
         <>
+          {assignment.blocked?.length > 0 && assignment.validation_status !== 'approved' && (
+            <p className="pay-error">
+              {canValidate
+                ? 'Atención: el vehículo, su dueño o el transportador están en la lista de vetados. No se puede aprobar este transporte.'
+                : 'Este transporte no está autorizado. Si tienes dudas, comunícate con Logística.'}
+            </p>
+          )}
           <div className="detail-info-list">
             <div className="detail-info-row">
               <span>Estado</span>
               <StatusBadge label={status.label} bgColor={status.bg} textColor={status.text} icon={status.icon} />
             </div>
-            <div className="detail-info-row"><span>Placa</span><span>{assignment.vehicle.plate}</span></div>
-            <div className="detail-info-row"><span>Capacidad</span><span>{assignment.vehicle.capacity_m3} </span></div>
             <div className="detail-info-row">
-              <span>Transportador</span><span>{assignment.carrier.full_name}</span>
+              <span>Placa</span>
+              <span>{assignment.vehicle.plate}</span>
             </div>
             <div className="detail-info-row">
-              <span>Documento</span>
-              <span>{assignment.carrier.document_type} {assignment.carrier.document_id}</span>
+              <span>Tipo</span>
+              <span>{vehicleTypeLabel(assignment.vehicle.type)}</span>
             </div>
+            <div className="detail-info-row">
+              <span>Capacidad</span>
+              <span>{assignment.vehicle.capacity_m3}</span>
+            </div>
+
+            {sameOwner ? (
+              <>
+                <div className="detail-info-row"><span>Transportador y dueño</span><span>{c.full_name}</span></div>
+                <div className="detail-info-row"><span>Documento</span><span>{c.document_type} {c.document_id}</span></div>
+                <div className="detail-info-row"><span>Teléfono</span><span>{c.phone}</span></div>
+              </>
+            ) : (
+              <>
+                <div className="detail-info-row"><span>Dueño</span><span>{v.owner_name || '—'}</span></div>
+                <div className="detail-info-row">
+                  <span>Documento del dueño</span>
+                  <span>{v.owner_document_type ? `${v.owner_document_type} ${v.owner_document_id}` : '—'}</span>
+                </div>
+                {v.owner_phone && (
+                  <div className="detail-info-row"><span>Teléfono del dueño</span><span>{v.owner_phone}</span></div>
+                )}
+                <div className="detail-info-row"><span>Transportador</span><span>{c.full_name}</span></div>
+                <div className="detail-info-row"><span>Documento</span><span>{c.document_type} {c.document_id}</span></div>
+                <div className="detail-info-row"><span>Teléfono</span><span>{c.phone}</span></div>
+              </>
+            )}
+
             {assignment.validation_status === 'rejected' && assignment.rejection_reason && (
               <div className="detail-info-row">
                 <span>Motivo</span><span className="pay-reason">{assignment.rejection_reason}</span>
@@ -185,19 +382,24 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
           <p className="detail-card-title" style={{ marginTop: 14 }}>Documentos</p>
           <div className="detail-info-list">
+
             {docRows.map(({ key, label, doc, isMissing }) => (
               <div key={key} className="detail-info-row">
                 <span>{label}</span>
                 <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+
                   {isMissing ? <em>Falta</em> : <CircleCheck size={14} />}
                   {doc && (
                     <button
-                      type="button" className="pay-link" title="Ver documento"
-                      onClick={() => setPreview({ title: label, apiPath: docPreviewPath(order.id, doc) })}
+                      type="button" 
+                      className="pay-link" 
+                      title="Ver documento"
+                      onClick={() => openPreview(label, doc)}
                     >
                       <Eye size={14} />
                     </button>
                   )}
+
                   {canUpload && (
                     <label className="pay-link" title={doc ? 'Reemplazar' : 'Subir'}>
                       <Upload size={14} />
@@ -207,6 +409,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                       />
                     </label>
                   )}
+
                 </span>
               </div>
             ))}
@@ -217,26 +420,35 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               Sube los documentos que faltan (PDF o imagen, máximo 5 MB).
             </p>
           )}
+
           {assignment.validation_status === 'pending' && !canValidate && missing.length === 0 && (
             <p className="detail-empty-inline pay-hint">En revisión por logística.</p>
           )}
 
-          <div className="pay-actions">
-            {canFix && <button className="pay-btn is-primary" onClick={openForm}>Corregir datos</button>}
-          </div>
+          {canFix && (
+            <div className="pay-actions">
+              <button className="pay-btn is-primary" onClick={openForm}>Corregir datos</button>
+            </div>
+          )}
 
           {canDecide && (
             <div className="pay-decision">
-              <button className="pay-btn is-danger" onClick={() => { setReason(''); setShowReject(true) }} disabled={busy}>
+              <button 
+                className="pay-btn is-danger" 
+                onClick={() => { setReason(''); setBlacklist(false); setShowReject(true) }}
+                disabled={busy}
+              >
                 Rechazar
               </button>
+
               <button
+              type='button'
                 className="pay-btn is-primary"
-                onClick={() => { setChecked(false); setShowApprove(true) }}
-                disabled={busy || missing.length > 0}
+                disabled={!checked || busy}
+                onClick={handleApprove}
                 title={missing.length > 0 ? 'Faltan documentos' : undefined}
               >
-                Aprobar
+                {busy ? 'Aprobando...' : 'Aprobar'}
               </button>
             </div>
           )}
@@ -244,8 +456,10 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
           {canMakeGuide && (
             <div className="pay-actions">
               <button
-                className="pay-btn is-primary" disabled={busy}
-                onClick={() => run(() => api_.createGuide(order.id), 'Guía de despacho generada.', 'No se pudo generar la guía')}
+                type='button'
+                className="pay-btn is-primary" 
+                disabled={busy}
+                onClick={handleCreateGuide}
               >
                 Generar guía de despacho
               </button>
@@ -258,41 +472,121 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
         <Modal title={assignment ? 'Corregir datos de transporte' : 'Datos de transporte'} onClose={() => setShowForm(false)}>
           <div className="edit-form">
             <p className="edit-section">Vehículo</p>
+
             <div className="edit-row">
               <label className="edit-field">Placa
-                <input value={form.plate} onChange={set('plate')} maxLength={7} />
+                <input
+                  value={form.plate}
+                  onChange={(e) => {
+                    setForm({ ...form, plate: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })
+                    setHint((h) => ({ ...h, vehicle: false }))
+                    setBlocked((b) => ({ ...b, vehicle: null }))
+                  }}
+                  onBlur={lookupVehicle}
+                  maxLength={7}
+                />
               </label>
-              <label className="edit-field">Capacidad
-                <input type="number" min="0" value={form.capacity_m3} onChange={set('capacity_m3')} />
+
+              <label className="edit-field">Tipo
+                <select value={form.type} onChange={set('type')}>
+                  <option value="">Selecciona</option>
+                  {VEHICLE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
               </label>
             </div>
 
-            <p className="edit-section">Transportador</p>
-            <label className="edit-field">Nombre completo
-              <input value={form.full_name} onChange={set('full_name')} />
+            {hint.vehicle && (
+              <p className="edit-note">Datos cargados de un registro anterior. Revísalos y corrígelos si algo cambió.</p>
+            )}
+
+            {blocked.vehicle && (
+              <p className="pay-error">
+                {blocked.vehicle === 'owner' ? 'El dueño de este vehículo' : 'Este vehículo'} no está autorizado para
+                realizar el transporte. Si tienes dudas, comunícate con Logística.
+              </p>
+            )}
+
+            <label className="edit-field">Capacidad (m³)
+              <input type="number" min="0" value={form.capacity_m3} onChange={set('capacity_m3')} />
             </label>
+
+            <p className="edit-section">Dueño del vehículo</p>
+            <label style={{ display: 'flex', gap: 8, fontSize: 13 }}>
+              <input type="checkbox" checked={ownerIsCarrier} onChange={(e) => setOwnerIsCarrier(e.target.checked)} />
+              El transportador es el dueño del vehículo
+            </label>
+            {!ownerIsCarrier && (
+              <>
+                <label className="edit-field">Nombre o razón social
+                  <input value={form.owner_name} onChange={set('owner_name')} />
+                </label>
+                <div className="edit-row">
+                  <label className="edit-field">Tipo de documento
+                    <select value={form.owner_document_type} onChange={set('owner_document_type')}>
+                      {OWNER_DOCUMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                  </label>
+                  <label className="edit-field">Número
+                    <input value={form.owner_document_id} onChange={set('owner_document_id')} />
+                  </label>
+                </div>
+                <label className="edit-field">Teléfono (opcional)
+                  <input value={form.owner_phone} onChange={setDigits('owner_phone')} maxLength={15} inputMode="numeric" />
+                </label>
+              </>
+            )}
+
+            <p className="edit-section">Transportador</p>
             <div className="edit-row">
               <label className="edit-field">Tipo de documento
-                <select value={form.document_type} onChange={set('document_type')}>
+                <select
+                  value={form.document_type}
+                  onChange={(e) => { set('document_type')(e); setHint((h) => ({ ...h, carrier: false })) }}
+                  onBlur={lookupCarrier}
+                >
                   {CARRIER_DOCUMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </label>
               <label className="edit-field">Número
-                <input value={form.document_id} onChange={set('document_id')} />
+                <input
+                  value={form.document_id}
+                  onChange={(e) => { 
+                    set('document_id')(e); 
+                    setHint((h) => ({ ...h, carrier: false }))
+                    setBlocked((b) => ({ ...b, carrier: false }))
+                  }}
+                  onBlur={lookupCarrier}
+                />
               </label>
+              {blocked.carrier && (
+                <p className="pay-error">
+                  Este transportador no está autorizado para realizar el transporte. Si tienes dudas, comunícate con Logística.
+                </p>
+              )}
             </div>
+
+            {hint.carrier && (
+              <p className="edit-note">Datos cargados de un registro anterior. Revísalos y corrígelos si algo cambió.</p>
+            )}
+
+            <label className="edit-field">Nombre completo
+              <input value={form.full_name} onChange={set('full_name')} />
+            </label>
             <div className="edit-row">
               <label className="edit-field">Teléfono
-                <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '') })} />
+                <input value={form.phone} onChange={setDigits('phone')} maxLength={15} inputMode="numeric" />
               </label>
               <label className="edit-field">Dirección
-                <input value={form.address} onChange={set('address')} />
+                <input value={form.address} onChange={set('address')} maxLength={200} />
               </label>
             </div>
           </div>
-          <div className="company-detail-approve-actions edit-actions">
-            <button type="button" className="company-detail-cancel-reject-btn" onClick={() => setShowForm(false)} disabled={busy}>Cancelar</button>
-            <button type="button" className="company-detail-approve-btn" onClick={handleSubmit} disabled={busy}>
+
+          {formError && <p className="pay-error">{formError}</p>}
+
+          <div className="pay-actions">
+            <button type="button" className="pay-btn" onClick={() => setShowForm(false)} disabled={busy}>Cancelar</button>
+            <button type="button" className="pay-btn is-primary" onClick={handleSubmit} disabled={busy || Boolean(blocked.vehicle) || blocked.carrier}>
               {busy ? 'Enviando...' : assignment ? 'Reenviar' : 'Enviar'}
             </button>
           </div>
@@ -303,15 +597,18 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
         <Modal title="Aprobar transporte" onClose={() => setShowApprove(false)}>
           <label style={{ display: 'flex', gap: 8, fontSize: 13 }}>
             <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
-            Confirmo que consulté los antecedentes del transportador y revisé los documentos.
+            Confirmo que consulté los antecedentes del transportador y que los datos del dueño y los
+            documentos coinciden con la tarjeta de propiedad.
           </label>
-          <div className="company-detail-approve-actions edit-actions">
-            <button type="button" className="company-detail-cancel-reject-btn" onClick={() => setShowApprove(false)} disabled={busy}>Cancelar</button>
+          <div className="pay-actions">
+            <button type="button" className="pay-btn" onClick={() => setShowApprove(false)} disabled={busy}>Cancelar</button>
             <button
-              type="button" className="company-detail-approve-btn" disabled={!checked || busy}
+              type="button" className="pay-btn is-primary" disabled={!checked || busy}
               onClick={() => run(
-                // VERIFICAR: nombres de los campos del cuerpo
-                () => api_.validate(assignment.id, { validation_status: 'approved', background_check_verified: true }),
+                () => api_.validate(assignment.id, {
+                  decision: 'approved', rejection_reason: null,
+                  background_check_verified: true, blacklist_carrier: false,
+                }),
                 'Transporte aprobado.', 'No se pudo aprobar el transporte', () => setShowApprove(false)
               )}
             >
@@ -328,14 +625,17 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             id="transport-reason" className="pay-textarea" rows={3} value={reason}
             onChange={(e) => setReason(e.target.value)} placeholder="Ej: la licencia está vencida"
           />
-          <div className="company-detail-approve-actions edit-actions">
-            <button type="button" className="company-detail-cancel-reject-btn" onClick={() => setShowReject(false)} disabled={busy}>Cancelar</button>
+          <label style={{ display: 'flex', gap: 8, fontSize: 13, marginTop: 12 }}>
+            <input type="checkbox" checked={blacklist} onChange={(e) => setBlacklist(e.target.checked)} />
+            Vetar al transportador: no podrá volver a ingresar a la planta
+          </label>
+          <div className="pay-actions">
+            <button type="button" className="pay-btn" onClick={() => setShowReject(false)} disabled={busy}>Cancelar</button>
             <button
-              type="button" className="company-detail-reject-confirm-btn" disabled={!reason.trim() || busy}
-              onClick={() => run(
-                () => api_.validate(assignment.id, { validation_status: 'rejected', rejection_reason: reason.trim() }),
-                'Transporte rechazado.', 'No se pudo rechazar el transporte', () => setShowReject(false)
-              )}
+              type="button" 
+              className="pay-btn is-danger" 
+              disabled={!reason.trim() || busy}
+              onClick={handleReject}
             >
               {busy ? 'Rechazando...' : 'Rechazar'}
             </button>

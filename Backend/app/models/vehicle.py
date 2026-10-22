@@ -13,3 +13,9 @@ class Vehicle(Base, AuditMixin):
   capacity_m3 = Column(Numeric(6, 2), nullable=False)
   plate = Column(String(10), unique=True, nullable=False)
   is_active = Column(Boolean, default=True)
+
+  # Datos del propietario del vehículo
+  owner_name = Column(String(100), nullable=True)
+  owner_document_type = Column(String(10), nullable=True)
+  owner_document_id = Column(String(100), nullable=True)
+  owner_phone = Column(String(15), nullable=True)

@@ -17,52 +17,53 @@ router = APIRouter(prefix="/dispatch-guides", tags=["Dispatch Guides"])
 
 @router.get("/", response_model=list[DispatchGuideResponse], summary="Lista todas las guías de despacho")
 def list_dispatch_guides(
-    current_user: DispatchGuideViewer,
-    db: Session = Depends(get_db),
+  current_user: DispatchGuideViewer,
+  db: Session = Depends(get_db),
 ):
-    return get_dispatch_guides(db)
+  return get_dispatch_guides(db)
 
 
 @router.get("/order/{order_id}", response_model=DispatchGuideResponse, summary="Trae una guía por id de una orden")
 def get_guide_by_order_id(
-    order_id: UUID, 
-    current_user: DispatchGuideViewerAny,
-    db: Session = Depends(get_db),
+  order_id: UUID, 
+  current_user: DispatchGuideViewerAny,
+  db: Session = Depends(get_db),
 ):
-    order = get_order_by_id(db, order_id)
-    
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
+  order = get_order_by_id(db, order_id)
+  
+  if not order:
+    raise HTTPException(status_code=404, detail="Order not found")
 
-    if current_user.role not in CAN_VIEW_DISPATCH_GUIDES and current_user.role != "soporte" and not can_access_order(order, current_user):
-        raise HTTPException(status_code=404, detail="Order not found")
+  if current_user.role not in CAN_VIEW_DISPATCH_GUIDES and current_user.role != "soporte" and not can_access_order(order, current_user):
+    raise HTTPException(status_code=404, detail="Order not found")
 
-    guide = get_dispatch_guide_by_order(db, order_id)
-    
-    if not guide:
-        raise HTTPException(status_code=404, detail="Dispatch guide not found for this order")
-    
-    return guide
+  guide = get_dispatch_guide_by_order(db, order_id)
+  
+  if not guide:
+    raise HTTPException(status_code=404, detail="Dispatch guide not found for this order")
+  
+  return guide
 
 
 @router.post("/", response_model=DispatchGuideResponse, summary="Registra una guía de despacho.")
 def register_dispatch_guide(
-    data: DispatchGuideCreate, 
-    current_user: DispatchGuideCreator,
-    db: Session = Depends(get_db),
+  data: DispatchGuideCreate, 
+  current_user: DispatchGuideCreator,
+  db: Session = Depends(get_db),
 ):
-    try:
-        return create_dispatch_guide(db, data.order_id)
-    
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+  try:
+    return create_dispatch_guide(db, data.order_id, current_user)
+  
+  except ValueError as e:
+    db.rollback()
+    raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/verify/{token}", response_model=VerificationResponse, summary="Verifica una guía de despacho.")
-def verify_guide(token: str, db: Session = Depends(get_db)):
-    try:
-        return verify_dispatch_guide(db, token)
-    
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+def verify_guide(token: str, db: Session = Depends(get_db), current_user=None):
+  try:
+    return verify_dispatch_guide(db, token, current_user=None)
+  
+  except ValueError as e:
+    raise HTTPException(status_code=400, detail=str(e))
 

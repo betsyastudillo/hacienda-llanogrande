@@ -39,6 +39,7 @@ AssignmentCreatorOwn = Annotated[User, Depends(require_permission("assignment:cr
 AssignmentViewerAny = Annotated[User, Depends(require_any_permission(
     "assignment:ver", "assignment:ver_propio"
 ))]
+AssignmentLookup = Annotated[User, Depends(require_any_permission("assignment:crear_propio", "assignment:validar"))]
 
 # DispatchGuide
 DispatchGuideCreator = Annotated[User, Depends(require_permission("dispatch_guide:crear"))]
