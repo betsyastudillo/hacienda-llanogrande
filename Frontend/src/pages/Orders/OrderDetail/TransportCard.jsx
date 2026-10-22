@@ -365,7 +365,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   const canMakeGuide =
     canGuide && assignment?.validation_status === 'approved' &&
     order.status === 'transport_validated' && !dispatchGuide
-
+console.log({ canValidate, canDecide, validation_status: assignment.validation_status })
 
   return (
     <>

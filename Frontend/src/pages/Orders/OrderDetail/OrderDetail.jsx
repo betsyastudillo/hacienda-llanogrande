@@ -173,6 +173,13 @@ export default function OrderDetail() {
   const canEdit = hasPermission('order:editar_propio') && order.status === 'created' && !payment
   const canCancel = hasPermission('order:anular') && order.status === 'created'
 
+  const openCard = {
+    payment: order.status === 'created',
+    invoice: false,
+    transport: ['facturado', 'transport_validated'].includes(order.status),
+    guide: order.status === 'dispatch_guide_generated',
+  }
+
   return (
     <main className="detail-main">
       <button className="company-detail-back-btn" onClick={() => navigate('/orders')}>
@@ -291,11 +298,23 @@ export default function OrderDetail() {
               payment={payment}
               bankAccount={bankAccount}
               onChanged={reloadAll}
+              defaultOpen={openCard.payment}
             />
             
-            <InvoiceCard order={order} invoice={invoice} onChanged={reloadAll}/>
+            <InvoiceCard 
+              order={order} 
+              invoice={invoice} 
+              onChanged={reloadAll}
+              defaultOpen={openCard.invoice}
+            />
 
-            <TransportCard order={order} assignment={assignment} dispatchGuide={dispatchGuide} onChanged={reloadAll} />
+            <TransportCard 
+              order={order} 
+              assignment={assignment} 
+              dispatchGuide={dispatchGuide} 
+              onChanged={reloadAll}
+              defaultOpen={openCard.transport}
+            />
 
             <div className="detail-card detail-qr-card">
               <p className="detail-card-title">Guía de despacho</p>
