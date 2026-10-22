@@ -10,6 +10,11 @@
 }
 
 .detail-error-text {
+  background-color: var(--error-bg);
+  border-radius: 8px;
+  margin-top: 12px;
+  padding: 5px;
+  font-size: 14px;
   color: var(--error);
 }
 

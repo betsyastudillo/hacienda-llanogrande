@@ -15,11 +15,11 @@ from app.auth_dependencies import (
   AssignmentCreatorOwn,
 )
 from app.schemas.assignment import (
-  AssignmentCreate, AssignmentResubmit, AssignmentValidateRequest, AssignmentResponse, CarrierLookupResponse, VehicleLookupResponse,
+  AssignmentCreate, AssignmentResubmit, AssignmentValidateRequest, AssignmentResponse, CarrierLookupResponse, OwnerLookupResponse, VehicleLookupResponse,
 )
 from app.schemas.document import DocumentBase
 from app.services.assignment_service import (
-  create_assignment, lookup_carrier, lookup_vehicle, resubmit_assignment, validate_assignment,
+  create_assignment, lookup_carrier, lookup_owner, lookup_vehicle, resubmit_assignment, validate_assignment,
   get_assignment_detail_by_order, get_assignments,
   upload_transport_document, get_transport_document,
 )
@@ -30,6 +30,11 @@ router = APIRouter(prefix="/assignments", tags=["Assignments"])
 # Un pedido ajeno responde 404 y no 400, para no revelar que existe (regla del CLAUDE.md)
 def _error_status(error: ValueError) -> int:
   return 404 if str(error) == "Order not found" else 400
+
+
+@router.get("/lookup/owner", response_model=OwnerLookupResponse, summary="Busca al dueño de un vehículo por documento (ayuda del formulario)")
+def lookup_owner_endpoint(document_type: str, document_id: str, current_user: AssignmentLookup, db: Session = Depends(get_db)):
+  return lookup_owner(db, document_type, document_id, current_user)
 
 
 @router.get("/lookup/vehicle", response_model=VehicleLookupResponse, summary="Busca un vehículo por placa (ayuda del formulario)")

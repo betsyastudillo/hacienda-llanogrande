@@ -45,6 +45,12 @@ class AssignmentValidateRequest(BaseModel):
   blacklist_carrier: bool = False
 
 
+class OwnerLookupResponse(BaseModel):
+  status: Literal["found", "not_found", "blocked"]
+  owner_name: Optional[str] = None
+  owner_phone: Optional[str] = None
+
+  
 class VehicleLookupResponse(BaseModel):
   status: Literal["found", "not_found", "blocked"]
   subject: Optional[Literal["vehicle", "owner"]] = None   # qué está vetado

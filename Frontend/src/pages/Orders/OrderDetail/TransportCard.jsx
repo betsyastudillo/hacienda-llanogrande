@@ -43,8 +43,10 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   const [blacklist, setBlacklist] = useState(false)
   const [preview, setPreview] = useState(null)
   const [busy, setBusy] = useState(false)
-  const [hint, setHint] = useState({ vehicle: false, carrier: false })
-  const [blocked, setBlocked] = useState({ vehicle: null, carrier: false })
+  const [hint, setHint] = useState({ vehicle: false, carrier: false, owner: false })
+  const [blocked, setBlocked] = useState({ vehicle: null, carrier: false, owner: false })
+
+  const isBusy = busy !== null
 
   const set = (f) => (e) => setForm({ ...form, [f]: e.target.value })
   const setDigits = (f) => (e) => setForm({ ...form, [f]: e.target.value.replace(/\D/g, '') })
@@ -52,9 +54,9 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
   // Ejecuta una acción mostrando el resultado y recargando el pedido
   // onError: si se pasa, el error se muestra donde se indique (dentro de un modal) y no como popup.
-  async function run(action, okMessage, errorMessage, after, onError) {
-    setBusy(true)
-    
+  async function run(name, action, okMessage, errorMessage, after, onError) {
+    setBusy(name)
+    // Se coloca el nombre para distinguir qué se está haciendo, por el tema del botón de aprobar que solo cambie cuando se mande a aprobar y no cuando se están cargando los documentos
     try {
       await action()
       showToast(okMessage)
@@ -102,6 +104,31 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     }
 
     setShowForm(true)
+  }
+
+  async function lookupOwner() {
+    const id = form.owner_document_id.trim()
+    if (id.length < 5) return
+
+    try {
+      const { data } = await api.get('/assignments/lookup/owner', {
+        params: { document_type: form.owner_document_type, document_id: id },
+      })
+
+      if (data.status === 'blocked') {
+        setBlocked((b) => ({ ...b, owner: true }))
+        return setHint((h) => ({ ...h, owner: false }))
+      }
+      setBlocked((b) => ({ ...b, owner: false }))
+
+      if (data.status !== 'found') return setHint((h) => ({ ...h, owner: false }))
+
+      setForm((f) => ({ ...f, owner_name: data.owner_name || '', owner_phone: data.owner_phone || '' }))
+      setHint((h) => ({ ...h, owner: true }))
+    } catch {
+      setBlocked((b) => ({ ...b, owner: false }))
+      setHint((h) => ({ ...h, owner: false }))
+    }
   }
 
   async function lookupVehicle() {
@@ -204,7 +231,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       },
     }
 
-    run(
+    run( 'submit',
       () => (assignment 
         ? api.put(`/assignments/order/${order.id}/resubmit`, body)
         : api.post('/assignments/', { order_id: order.id, ...body })),
@@ -224,14 +251,14 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     formData.append('document_type', documentType)
     formData.append('file', file)
     
-    run(
+    run('upload',
       () => api.post(`/assignments/order/${order.id}/documents`, formData),
       'Documento subido.',
       'No se pudo subir el documento')
   }
 
-    function handleApprove() {
-    run(
+  function handleApprove() {
+    run('approve',
       () => api.patch(`/assignments/${assignment.id}/validate`, {
         decision: 'approved',
         rejection_reason: null,
@@ -245,7 +272,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   }
 
   function handleReject() {
-    run(
+    run('reject',
       () => api.patch(`/assignments/${assignment.id}/validate`, {
         decision: 'rejected',
         rejection_reason: reason.trim(),
@@ -259,7 +286,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   }
 
   function handleCreateGuide() {
-    run(
+    run('guide',
       () => api.post('/dispatch-guides/', { order_id: order.id }),
       'Guía de despacho generada.',
       'No se pudo generar la guía'
@@ -333,6 +360,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                 : 'Este transporte no está autorizado. Si tienes dudas, comunícate con Logística.'}
             </p>
           )}
+
           <div className="detail-info-list">
             <div className="detail-info-row">
               <span>Estado</span>
@@ -421,6 +449,8 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             </p>
           )}
 
+          {busy === 'upload' && <p className="detail-empty-inline pay-hint">Subiendo documento...</p>}
+
           {assignment.validation_status === 'pending' && !canValidate && missing.length === 0 && (
             <p className="detail-empty-inline pay-hint">En revisión por logística.</p>
           )}
@@ -448,7 +478,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                 onClick={handleApprove}
                 title={missing.length > 0 ? 'Faltan documentos' : undefined}
               >
-                {busy ? 'Aprobando...' : 'Aprobar'}
+                {busy === 'approve' ? 'Aprobando...' : 'Aprobar'}
               </button>
             </div>
           )}
@@ -483,7 +513,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                     setBlocked((b) => ({ ...b, vehicle: null }))
                   }}
                   onBlur={lookupVehicle}
-                  maxLength={7}
+                  maxLength={6}
                 />
               </label>
 
@@ -517,19 +547,46 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             </label>
             {!ownerIsCarrier && (
               <>
-                <label className="edit-field">Nombre o razón social
-                  <input value={form.owner_name} onChange={set('owner_name')} />
-                </label>
                 <div className="edit-row">
                   <label className="edit-field">Tipo de documento
-                    <select value={form.owner_document_type} onChange={set('owner_document_type')}>
+                    <select
+                      value={form.owner_document_type}
+                      onChange={(e) => {
+                        set('owner_document_type')(e)
+                        setHint((h) => ({ ...h, owner: false }))
+                        setBlocked((b) => ({ ...b, owner: false }))
+                      }}
+                      onBlur={lookupOwner}
+                    >
                       {OWNER_DOCUMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
                   </label>
                   <label className="edit-field">Número
-                    <input value={form.owner_document_id} onChange={set('owner_document_id')} />
+                    <input
+                      value={form.owner_document_id}
+                      onChange={(e) => {
+                        set('owner_document_id')(e)
+                        setHint((h) => ({ ...h, owner: false }))
+                        setBlocked((b) => ({ ...b, owner: false }))
+                      }}
+                      onBlur={lookupOwner}
+                    />
                   </label>
                 </div>
+
+                {hint.owner && (
+                  <p className="edit-note">Datos cargados de un registro anterior. Revísalos y corrígelos si algo cambió.</p>
+                )}
+                {blocked.owner && (
+                  <p className="pay-error">
+                    Este propietario no está autorizado para realizar el transporte. Si tienes dudas, comunícate con Logística.
+                  </p>
+                )}
+
+                <label className="edit-field">Nombre o razón social
+                  <input value={form.owner_name} onChange={set('owner_name')} />
+                </label>
+
                 <label className="edit-field">Teléfono (opcional)
                   <input value={form.owner_phone} onChange={setDigits('owner_phone')} maxLength={15} inputMode="numeric" />
                 </label>
@@ -582,13 +639,27 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             </div>
           </div>
 
-          {formError && <p className="pay-error">{formError}</p>}
+          {formError && <p className="detail-error-text">{formError}</p>}
 
           <div className="pay-actions">
-            <button type="button" className="pay-btn" onClick={() => setShowForm(false)} disabled={busy}>Cancelar</button>
-            <button type="button" className="pay-btn is-primary" onClick={handleSubmit} disabled={busy || Boolean(blocked.vehicle) || blocked.carrier}>
-              {busy ? 'Enviando...' : assignment ? 'Reenviar' : 'Enviar'}
+            <button 
+              type="button" 
+              className="pay-btn" 
+              onClick={() => setShowForm(false)} 
+              disabled={busy}
+            >
+              Cancelar
             </button>
+            
+            <button 
+              type="button" 
+              className="pay-btn is-primary" 
+              onClick={handleSubmit} 
+              disabled={busy || Boolean(blocked.vehicle) || blocked.carrier || blocked.owner}
+            >
+              {busy === 'submit' ? 'Enviando...' : assignment ? 'Reenviar' : 'Enviar'}
+            </button>
+          
           </div>
         </Modal>
       )}
@@ -612,7 +683,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                 'Transporte aprobado.', 'No se pudo aprobar el transporte', () => setShowApprove(false)
               )}
             >
-              {busy ? 'Aprobando...' : 'Aprobar'}
+              {busy === 'approve' ? 'Aprobando...' : 'Aprobar'}
             </button>
           </div>
         </Modal>
@@ -637,7 +708,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               disabled={!reason.trim() || busy}
               onClick={handleReject}
             >
-              {busy ? 'Rechazando...' : 'Rechazar'}
+              {busy === 'reject' ? 'Rechazando...' : 'Rechazar'}
             </button>
           </div>
         </Modal>

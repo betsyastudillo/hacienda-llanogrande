@@ -21,6 +21,7 @@ from app.constants.transport_requirements import (
 )
 from app.models.assignment import Assignment
 from app.models.carrier import Carrier
+from app.models.company import Company
 from app.models.document import Document
 from app.models.document_blacklist import DocumentBlacklist
 from app.models.order import Order
@@ -31,7 +32,7 @@ from app.services.order_service import can_access_order, CLIENT_ROLES
 
 
 PHONE_RE = re.compile(r"\d{7,15}")
-
+PLATE_RE = re.compile(r"[A-Z0-9]{5,6}")
 
 def is_owner_carrier(vehicle, carrier) -> bool:
   return bool(
@@ -141,6 +142,9 @@ def _ensure_not_blacklisted(db: Session, vehicle_data, carrier_data) -> None:
 
 def _validate_submission(vehicle_data, carrier_data) -> None:
   
+  if not PLATE_RE.fullmatch(normalize_plate(vehicle_data.plate)):
+    raise ValueError("The vehicle plate must have 5 or 6 letters and digits")
+
   if not normalize_plate(vehicle_data.plate):
     raise ValueError("The vehicle plate is required")
 
@@ -550,6 +554,68 @@ def _used_by_company(db: Session, company_id, vehicle_id=None, carrier_id=None) 
 
 
 # Búsqueda de ayuda para el formulario. Devuelve None si no existe, está inactivo, está vetado, o (para clientes) no lo ha usado su empresa: así no revela datos ajenos.
+def lookup_owner(db: Session, document_type: str, document_id: str, current_user) -> dict:
+  
+  document_id = (document_id or "").strip()
+  
+  if not document_id:
+    return {"status": "not_found"}
+
+  if is_document_blacklisted(db, document_type, document_id):
+    return {"status": "blocked"}
+
+  is_client = current_user.role in CLIENT_ROLES
+
+  # 1. Empresas registradas con ese documento
+  company_query = db.query(Company).filter(
+    Company.document_type == document_type,
+    Company.document_number == document_id,
+    Company.is_active == True,  # noqa: E712
+  )
+  
+  if is_client:
+    company_query = company_query.filter(Company.id == current_user.company_id)
+
+  company = company_query.first()
+  
+  if company:
+    return {"status": "found", "owner_name": company.legal_name, "owner_phone": company.phone}
+
+  # 2. Vehículos con ese dueño (a un cliente, solo los que usó su empresa)
+  query = db.query(Vehicle).filter(
+    Vehicle.owner_document_type == document_type, Vehicle.owner_document_id == document_id
+  )
+  
+  if is_client:
+    query = (
+      query.join(Assignment, Assignment.vehicle_id == Vehicle.id)
+      .join(Order, Order.id == Assignment.order_id)
+      .filter(Order.company_id == current_user.company_id)
+    )
+  
+  vehicle = query.order_by(Vehicle.created_at.desc()).first()
+  
+  if vehicle:
+    return {"status": "found", "owner_name": vehicle.owner_name, "owner_phone": vehicle.owner_phone}
+
+  # 3. Transportadores con ese documento
+  query = db.query(Carrier).filter(Carrier.document_type == document_type, Carrier.document_id == document_id)
+  
+  if is_client:
+    query = (
+      query.join(Assignment, Assignment.carrier_id == Carrier.id)
+      .join(Order, Order.id == Assignment.order_id)
+      .filter(Order.company_id == current_user.company_id)
+    )
+  
+  carrier = query.order_by(Carrier.created_at.desc()).first()
+  
+  if carrier:
+    return {"status": "found", "owner_name": carrier.full_name, "owner_phone": carrier.phone}
+
+  return {"status": "not_found"}
+
+
 def lookup_vehicle(db: Session, plate: str, current_user) -> Optional[Vehicle]:
   
   plate = normalize_plate(plate)
