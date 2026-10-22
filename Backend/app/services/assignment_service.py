@@ -91,7 +91,9 @@ def attach_transport_details(db: Session, assignments: List[Assignment]) -> List
       d for d in documents
       if d.vehicle_id == a.vehicle_id or d.carrier_id == a.carrier_id
     ]
-    a.missing_documents = compute_missing_documents(a.vehicle_id, a.carrier_id, a.documents, is_owner_carrier(a.vehicle, a.carrier))
+    a.missing_documents = compute_missing_documents(
+      a.vehicle_id, a.carrier_id, a.documents, is_owner_carrier(a.vehicle, a.carrier)
+    )
     
     # Depsués de calcula lo vetado, que los usa
     v, c = a.vehicle, a.carrier

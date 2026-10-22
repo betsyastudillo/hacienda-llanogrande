@@ -7,7 +7,7 @@ REQUIRED_CARRIER_DOCUMENTS = ("cedula", "licencia_conduccion")
 
 # Lo que se exige siempre
 REQUIRED_DOCUMENTS_BY_SUBJECT = {
-  "vehicle": REQUIRED_VEHICLE_DOCUMENTS + (OWNER_DOCUMENT,),
+  "vehicle": REQUIRED_VEHICLE_DOCUMENTS,
   "carrier": REQUIRED_CARRIER_DOCUMENTS,
 }
 

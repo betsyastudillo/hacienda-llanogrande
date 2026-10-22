@@ -42,7 +42,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   const [reason, setReason] = useState('')
   const [blacklist, setBlacklist] = useState(false)
   const [preview, setPreview] = useState(null)
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState(null)
   const [hint, setHint] = useState({ vehicle: false, carrier: false, owner: false })
   const [blocked, setBlocked] = useState({ vehicle: null, carrier: false, owner: false })
 
@@ -69,7 +69,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       else showToast(message, 'error')
     
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
@@ -334,6 +334,16 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     canGuide && assignment?.validation_status === 'approved' &&
     order.status === 'transport_validated' && !dispatchGuide
 
+console.log({
+  busy,
+  tipoBusy: typeof busy,
+  isBusy,
+  faltan: missing.length,
+  vetados: assignment?.blocked?.length,
+  docsPending: typeof docsPending === 'undefined' ? 'no existe' : docsPending,
+  missing
+})
+
   return (
     <div className="detail-card">
       <p className="detail-card-title">Transporte</p>
@@ -443,13 +453,13 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             ))}
           </div>
 
+          {busy === 'upload' && <p className="detail-empty-inline pay-hint">Subiendo documento...</p>}
+
           {canUpload && missing.length > 0 && (
             <p className="detail-empty-inline pay-hint">
               Sube los documentos que faltan (PDF o imagen, máximo 5 MB).
             </p>
           )}
-
-          {busy === 'upload' && <p className="detail-empty-inline pay-hint">Subiendo documento...</p>}
 
           {assignment.validation_status === 'pending' && !canValidate && missing.length === 0 && (
             <p className="detail-empty-inline pay-hint">En revisión por logística.</p>
@@ -472,13 +482,12 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               </button>
 
               <button
-              type='button'
                 className="pay-btn is-primary"
-                disabled={!checked || busy}
-                onClick={handleApprove}
+                onClick={() => { setChecked(false); setShowApprove(true) }}
+                disabled={isBusy || missing.length > 0 || assignment.blocked?.length > 0}
                 title={missing.length > 0 ? 'Faltan documentos' : undefined}
               >
-                {busy === 'approve' ? 'Aprobando...' : 'Aprobar'}
+                Aprobar
               </button>
             </div>
           )}
@@ -674,14 +683,10 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
           <div className="pay-actions">
             <button type="button" className="pay-btn" onClick={() => setShowApprove(false)} disabled={busy}>Cancelar</button>
             <button
-              type="button" className="pay-btn is-primary" disabled={!checked || busy}
-              onClick={() => run(
-                () => api_.validate(assignment.id, {
-                  decision: 'approved', rejection_reason: null,
-                  background_check_verified: true, blacklist_carrier: false,
-                }),
-                'Transporte aprobado.', 'No se pudo aprobar el transporte', () => setShowApprove(false)
-              )}
+              type="button"
+              className="pay-btn is-primary"
+              disabled={!checked || isBusy}
+              onClick={handleApprove}
             >
               {busy === 'approve' ? 'Aprobando...' : 'Aprobar'}
             </button>
