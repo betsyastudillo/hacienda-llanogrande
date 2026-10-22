@@ -18,6 +18,7 @@ from app.constants.transport_requirements import (
   VALID_VEHICLE_TYPES,
   compute_missing_documents,
   normalize_plate,
+  required_document_keys,
 )
 from app.models.assignment import Assignment
 from app.models.carrier import Carrier
@@ -453,6 +454,7 @@ def validate_assignment(
   blacklist_carrier: bool,
   current_user
 ) -> Assignment:
+  
   assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
 
   if not assignment:
@@ -461,11 +463,19 @@ def validate_assignment(
   if assignment.validation_status != "pending":
     raise ValueError(f"This submission was already {assignment.validation_status}")
 
+  if decision not in ("approved", "rejected"):
+    raise ValueError("rejection_reason is required when rejecting")
+
+  rejection_reason = (rejection_reason or "").strip()
+
   if decision == "rejected" and not rejection_reason:
     raise ValueError("rejection_reason is required when rejecting")
 
   order = db.query(Order).filter(Order.id == assignment.order_id).first()
-
+  
+  if not order:
+    raise ValueError("Order not found")
+  
   if decision == "approved":
     if not background_check_verified:
       raise ValueError("Must confirm background_check_verified before approving")
@@ -481,33 +491,17 @@ def validate_assignment(
     if detail.missing_documents:
       raise ValueError(f"Cannot approve: missing required documents: {', '.join(detail.missing_documents)}")
 
-    # Logística no tiene document:revisar, así que su aprobación cubre los documentos obligatorios
-    for doc in detail.documents:
-      allowed = ALLOWED_DOCUMENTS_BY_SUBJECT["vehicle" if doc.vehicle_id else "carrier"]
-
-      if doc.document_type in allowed and doc.status != "approved":
-        doc.status = "approved"
-        doc.updated_by_user_id = current_user.id
-
-    if attach_transport_details(db, [assignment])[0].blocked:
-      raise ValueError("Cannot approve: the vehicle, its owner or the carrier is on the blacklist")
+    # Cada documento obligatorio debe haber sido aprobado por logística, uno por uno
+    status_by_key = {
+      f"{'vehicle' if d.vehicle_id else 'carrier'}:{d.document_type}": d.status
+      for d in detail.documents
+    }
     
-    documents = (
-      db.query(Document)
-      .filter(or_(Document.vehicle_id == assignment.vehicle_id, Document.carrier_id == assignment.carrier_id))
-      .all()
-    )
-    missing = compute_missing_documents(assignment.vehicle_id, assignment.carrier_id, documents)
+    required = required_document_keys(is_owner_carrier(detail.vehicle, detail.carrier))
+    not_approved = [k for k in required if status_by_key.get(k) != "approved"]
 
-    if missing:
-      raise ValueError(f"Cannot approve: missing required documents: {', '.join(missing)}")
-    
-    # Logística no tiene document:revisar, así que su aprobación cubre los documentos obligatorios
-    for doc in documents:
-      required = REQUIRED_DOCUMENTS_BY_SUBJECT["vehicle" if doc.vehicle_id else "carrier"]
-      if doc.document_type in required and doc.status != "approved":
-        doc.status = "approved"
-        doc.updated_by_user_id = current_user.id
+    if not_approved:
+      raise ValueError(f"Cannot approve: these documents must be approved first: {', '.join(not_approved)}")
 
   assignment.validation_status = decision
   assignment.rejection_reason = rejection_reason if decision == "rejected" else None
@@ -525,14 +519,13 @@ def validate_assignment(
     existing_ban = is_document_blacklisted(db, carrier.document_type, carrier.document_id)
 
     if not existing_ban:
-      ban = DocumentBlacklist(
+      db.add(DocumentBlacklist(
         document_type=carrier.document_type,
         document_number=carrier.document_id,
         reason=rejection_reason or "Rechazado en validación de transporte",
-        created_by_user_id=current_user.id
-      )
+        created_by_user_id=current_user.id,
+      ))
 
-      db.add(ban)
     carrier.is_active = False
     carrier.updated_by_user_id = current_user.id
     
@@ -673,3 +666,29 @@ def lookup_carrier(db: Session, document_type: str, document_id: str, current_us
     return {"status": "not_found"}
 
   return {"status": "found", "carrier": carrier}
+
+
+def review_transport_document(db: Session, order_id: UUID, document_id: UUID, status: str, reason: Optional[str], current_user) -> Document:
+
+  assignment = get_assignment_by_order(db, order_id)
+  
+  if not assignment:
+    raise ValueError("Assignment not found for this order")
+  
+  if assignment.validation_status != "pending":
+    raise ValueError("Documents can only be reviewed while the transport is pending")
+
+  document = get_transport_document(db, order_id, document_id)
+
+  reason = (reason or "").strip()
+  if status == "rejected" and not reason:
+    raise ValueError("A reason is required when rejecting a document")
+
+  document.status = status
+  document.rejection_reason = reason.strip() if status == "rejected" else None
+  document.updated_by_user_id = current_user.id
+
+  db.commit()
+  db.refresh(document)
+  
+  return document

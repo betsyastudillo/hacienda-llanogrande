@@ -15,11 +15,11 @@ from app.auth_dependencies import (
   AssignmentCreatorOwn,
 )
 from app.schemas.assignment import (
-  AssignmentCreate, AssignmentResubmit, AssignmentValidateRequest, AssignmentResponse, CarrierLookupResponse, OwnerLookupResponse, VehicleLookupResponse,
+  AssignmentCreate, AssignmentResubmit, AssignmentValidateRequest, AssignmentResponse, CarrierLookupResponse, DocumentReview, OwnerLookupResponse, VehicleLookupResponse,
 )
 from app.schemas.document import DocumentBase
 from app.services.assignment_service import (
-  create_assignment, lookup_carrier, lookup_owner, lookup_vehicle, resubmit_assignment, validate_assignment,
+  create_assignment, lookup_carrier, lookup_owner, lookup_vehicle, resubmit_assignment, review_transport_document, validate_assignment,
   get_assignment_detail_by_order, get_assignments,
   upload_transport_document, get_transport_document,
 )
@@ -167,6 +167,22 @@ def validate(
       data.background_check_verified, data.blacklist_carrier, current_user,
     )
 
+  except ValueError as e:
+    db.rollback()
+    raise HTTPException(status_code=400, detail=str(e))
+  
+
+@router.patch("/order/{order_id}/documents/{document_id}/review", response_model=DocumentBase, summary="Aprueba o rechaza un documento de transporte",)
+def review_document(
+  order_id: UUID,
+  document_id: UUID,
+  data: DocumentReview,
+  current_user: AssignmentValidator,
+  db: Session = Depends(get_db),
+):
+  try:
+    return review_transport_document(db, order_id, document_id, data.status, data.reason, current_user)
+  
   except ValueError as e:
     db.rollback()
     raise HTTPException(status_code=400, detail=str(e))

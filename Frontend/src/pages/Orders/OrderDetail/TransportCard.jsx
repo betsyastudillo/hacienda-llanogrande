@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CircleCheck, CircleX, Clock, Eye, Upload } from 'lucide-react'
+import { CircleCheck, CircleX, Clock, Eye, Upload, Check, X } from 'lucide-react'
 import api from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
 import { useToast } from '../../../context/Toast/ToastContext'
@@ -24,6 +24,13 @@ const EMPTY_FORM = {
   full_name: '', document_type: 'CC', document_id: '', phone: '', address: '',
 }
 
+const DOC_STATUS = {
+  missing: { label: 'Falta', icon: null, bg: '#ece9e2', text: '#5f5e5a' },
+  pending: { label: 'En revisión', icon: Clock, bg: '#fdf1b8', text: '#7a5c00' },
+  approved: { label: 'Aprobado', icon: CircleCheck, bg: '#d9efdc', text: '#1f6b34' },
+  rejected: { label: 'Rechazado', icon: CircleX, bg: '#fbdcdc', text: '#a12a2a' },
+}
+
 export default function TransportCard({ order, assignment, dispatchGuide, onChanged }) {
   const { hasPermission } = useAuth()
   const { showToast } = useToast()
@@ -45,6 +52,9 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   const [busy, setBusy] = useState(null)
   const [hint, setHint] = useState({ vehicle: false, carrier: false, owner: false })
   const [blocked, setBlocked] = useState({ vehicle: null, carrier: false, owner: false })
+
+  const [docToReject, setDocToReject] = useState(null)   // { doc, label }
+  const [docReason, setDocReason] = useState('')
 
   const isBusy = busy !== null
 
@@ -203,10 +213,13 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
     if (!form.plate.trim() || !form.type || !(Number(form.capacity_m3) > 0))
       return setFormError('Completa la placa, el tipo y la capacidad del vehículo.')
+
     if (!owner.name.trim() || !owner.id.trim())
       return setFormError('Completa los datos del dueño del vehículo.')
+
     if (!form.full_name.trim() || !form.document_id.trim() || !form.address.trim())
       return setFormError('Completa el nombre, el documento y la dirección del transportador.')
+
     if (!/^\d{7,15}$/.test(form.phone))
       return setFormError('El teléfono del transportador debe tener entre 7 y 15 dígitos.')
 
@@ -258,7 +271,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   }
 
   function handleApprove() {
-    run('approve',
+    run('approved',
       () => api.patch(`/assignments/${assignment.id}/validate`, {
         decision: 'approved',
         rejection_reason: null,
@@ -269,6 +282,21 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       'No se pudo aprobar el transporte',
       () => setShowApprove(false)
     )
+  }
+
+  function handleReviewDoc(doc, status, reason = null) {
+    run(
+      'review',
+      () => api.patch(`/assignments/order/${order.id}/documents/${doc.id}/review`, { status, reason }),
+      status === 'approved' ? 'Documento aprobado.' : 'Documento rechazado.',
+      'No se pudo revisar el documento',
+      () => setDocToReject(null)
+    )
+  }
+
+  function openRejectDoc(doc, label) {
+    setDocReason('')
+    setDocToReject({ doc, label })
   }
 
   function handleReject() {
@@ -324,8 +352,11 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     const doc = assignment?.documents?.find(
       (d) => d.document_type === documentType && (subject === 'vehicle' ? d.vehicle_id : d.carrier_id)
     )
-    return { key, label, doc, isMissing: missing.includes(key) }
+    return { key, label, doc, status: doc ? doc.status : 'missing' }
   })
+
+  // Falta algún documento o alguno no está aprobado todavía
+  const docsUnapproved = docRows.some((r) => r.status !== 'approved')
 
   const canFix = canSubmit && assignment?.validation_status === 'rejected'
   const canUpload = canSubmit && assignment && assignment?.validation_status !== 'approved'
@@ -334,15 +365,6 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     canGuide && assignment?.validation_status === 'approved' &&
     order.status === 'transport_validated' && !dispatchGuide
 
-console.log({
-  busy,
-  tipoBusy: typeof busy,
-  isBusy,
-  faltan: missing.length,
-  vetados: assignment?.blocked?.length,
-  docsPending: typeof docsPending === 'undefined' ? 'no existe' : docsPending,
-  missing
-})
 
   return (
     <div className="detail-card">
@@ -421,44 +443,84 @@ console.log({
           <p className="detail-card-title" style={{ marginTop: 14 }}>Documentos</p>
           <div className="detail-info-list">
 
-            {docRows.map(({ key, label, doc, isMissing }) => (
-              <div key={key} className="detail-info-row">
-                <span>{label}</span>
-                <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {docRows.map(({ key, label, doc, status }) => {
+              const s = DOC_STATUS[status]
+              const canReview = canValidate && assignment.validation_status === ' pending' && Boolean(doc)
 
-                  {isMissing ? <em>Falta</em> : <CircleCheck size={14} />}
-                  {doc && (
-                    <button
-                      type="button" 
-                      className="pay-link" 
-                      title="Ver documento"
-                      onClick={() => openPreview(label, doc)}
-                    >
-                      <Eye size={14} />
-                    </button>
-                  )}
+              // Quien revisa solo sube cuando falta o fue rechazado; el cliente puede reemplazar mientras no esté aprobado
+              const showUpload = canUpload && status !== 'approved' && (!canValidate || status === 'missing' || status === 'rejected')
+              const fileId = `transport-doc-file-${key}`
 
-                  {canUpload && (
-                    <label className="pay-link" title={doc ? 'Reemplazar' : 'Subir'}>
-                      <Upload size={14} />
-                      <input
-                        type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.webp"
-                        onChange={(e) => { handleUpload(key, e.target.files[0]); e.target.value = '' }}
-                      />
-                    </label>
-                  )}
+              return (
+                <div key={key} className='transport-doc'>
+                  <span className='transport-doc-label'>{label}</span>
 
-                </span>
+                  <div className="transport-doc-row">
+                    <StatusBadge 
+                      // label={s.label} 
+                      bgColor={s.bg} 
+                      textColor={s.text} 
+                      icon={s.icon || undefined} 
+                    />
+
+                    <div className='transport-doc-actions'>
+                      {doc && (
+                        <button
+                          type='button' className='pay-link' title='Ver documento'
+                          onClick={() => openPreview(label, doc)}
+                        >
+                          <Eye size={14} />
+                        </button>
+                      )}
+
+                    {showUpload && (
+                      <>
+                        <input
+                          id={fileId} type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.webp"
+                          onChange={(e) => { handleUpload(key, e.target.files[0]); e.target.value = '' }}
+                        />
+                        <button type="button" className="transport-doc-btn" title={doc ? 'Reemplazar' : 'Subir'}
+                          aria-label={doc ? 'Reemplazar documento' : 'Subir documento'} disabled={isBusy}
+                          onClick={() => document.getElementById(fileId).click()}>
+                          <Upload size={15} />
+                        </button>
+                      </>
+                    )}
+
+                    {canReview && status !== 'approved' && (
+                      <button type="button" className="transport-doc-btn is-ok" title="Aprobar documento" aria-label="Aprobar documento"
+                        disabled={isBusy} onClick={() => handleReviewDoc(doc, 'approved')}>
+                        <Check size={15} />
+                      </button>
+                    )}
+
+                    {canReview && status !== 'rejected' && (
+                      <button type="button" className="transport-doc-btn is-no" title="Rechazar documento" aria-label="Rechazar documento"
+                        disabled={isBusy} onClick={() => openRejectDoc(doc, label)}>
+                        <X size={15} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {status === 'rejected' && doc?.rejection_reason && (
+                  <p className="pay-error transport-doc-reason">Motivo: {doc.rejection_reason}</p>
+                )}
               </div>
-            ))}
-          </div>
+            )
+          })}
+        </div>
 
           {busy === 'upload' && <p className="detail-empty-inline pay-hint">Subiendo documento...</p>}
 
-          {canUpload && missing.length > 0 && (
-            <p className="detail-empty-inline pay-hint">
-              Sube los documentos que faltan (PDF o imagen, máximo 5 MB).
-            </p>
+          {canUpload && docRows.some((r) => r.status === 'rejected') && (
+            <p className="detail-empty-inline pay-hint">Reemplaza los documentos rechazados; el área encargada los revisará de nuevo.</p>
+          )}
+          {canUpload && missing.length > 0 && !docRows.some((r) => r.status === 'rejected') && (
+            <p className="detail-empty-inline pay-hint">Sube los documentos que faltan (PDF o imagen, máximo 5 MB).</p>
+          )}
+          {canDecide && docsUnapproved && missing.length === 0 && (
+            <p className="detail-empty-inline pay-hint">Revisa cada documento con ✓ o ✕ antes de aprobar el transporte.</p>
           )}
 
           {assignment.validation_status === 'pending' && !canValidate && missing.length === 0 && (
@@ -484,8 +546,8 @@ console.log({
               <button
                 className="pay-btn is-primary"
                 onClick={() => { setChecked(false); setShowApprove(true) }}
-                disabled={isBusy || missing.length > 0 || assignment.blocked?.length > 0}
-                title={missing.length > 0 ? 'Faltan documentos' : undefined}
+                disabled={isBusy || docsUnapproved || assignment.blocked?.length > 0}
+                title={docsUnapproved ? 'Aprueba cada documento primero' : undefined}
               >
                 Aprobar
               </button>
@@ -688,7 +750,7 @@ console.log({
               disabled={!checked || isBusy}
               onClick={handleApprove}
             >
-              {busy === 'approve' ? 'Aprobando...' : 'Aprobar'}
+              {busy === 'approved' ? 'Aprobando...' : 'Aprobar'}
             </button>
           </div>
         </Modal>
@@ -714,6 +776,25 @@ console.log({
               onClick={handleReject}
             >
               {busy === 'reject' ? 'Rechazando...' : 'Rechazar'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {docToReject && (
+        <Modal title={`Rechazar: ${docToReject.label}`} onClose={() => setDocToReject(null)}>
+          <label className="pay-label" htmlFor="doc-reason">Motivo (lo verá el cliente)</label>
+          <textarea
+            id="doc-reason" className="pay-textarea" rows={3} value={docReason}
+            onChange={(e) => setDocReason(e.target.value)} placeholder="Ej: la imagen no se lee"
+          />
+          <div className="pay-actions">
+            <button type="button" className="pay-btn" onClick={() => setDocToReject(null)} disabled={isBusy}>Cancelar</button>
+            <button
+              type="button" className="pay-btn is-danger" disabled={!docReason.trim() || isBusy}
+              onClick={() => handleReviewDoc(docToReject.doc, 'rejected', docReason.trim())}
+            >
+              {busy === 'review' ? 'Rechazando...' : 'Rechazar documento'}
             </button>
           </div>
         </Modal>

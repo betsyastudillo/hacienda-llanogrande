@@ -62,3 +62,10 @@ def compute_missing_documents(vehicle_id, carrier_id, documents, owner_is_carrie
 # Deja la placa en mayúsculas y sin espacios ni guiones: "abc-123" -> "ABC123"
 def normalize_plate(plate: str) -> str:
   return "".join(ch for ch in (plate or "") if ch.isalnum()).upper()
+
+
+def required_document_keys(owner_is_carrier: bool) -> list[str]:
+  keys = [f"{subject}:{t}" for subject, types in REQUIRED_DOCUMENTS_BY_SUBJECT.items() for t in types]
+  if not owner_is_carrier:
+    keys.append(f"vehicle:{OWNER_DOCUMENT}")
+  return keys

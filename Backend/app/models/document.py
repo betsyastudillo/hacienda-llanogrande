@@ -16,3 +16,4 @@ class Document(Base, AuditMixin):
     document_type = Column(String, nullable=False)
     document_url = Column(String, nullable=False)
     status = Column(String, nullable=False, default="pending")
+    rejection_reason = Column(String, nullable=True)

@@ -362,6 +362,71 @@
   resize: vertical;
 }
 
+/* Transporte */
+.transport-doc { 
+  padding: 8px 0; 
+  border-bottom: 1px solid #ece9e2; 
+}
+
+.transport-doc:last-child {
+  border-bottom: 0;
+}
+
+.transport-doc-label {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.transport-doc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.transport-doc-actions { 
+  display: flex; 
+  gap: 6px; 
+}
+
+.transport-doc-reason { 
+  margin: 6px 0 0; 
+}
+
+.transport-doc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--text-black);
+  background: var(--white-bg);
+  border: 1px solid #d9d5cb;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.transport-doc-btn:hover { 
+  background: #f1f0ea; 
+}
+
+.transport-doc-btn:disabled { 
+  opacity: 0.5; 
+  cursor: not-allowed; 
+}
+
+.transport-doc-btn.is-ok { 
+  color: var(--green); 
+  border-color: var(--green); 
+}
+
+.transport-doc-btn.is-no { 
+  color: var(--error); 
+  border-color: var(--error); 
+}
+
 /* QR */
 .detail-qr-card {
   text-align: center;

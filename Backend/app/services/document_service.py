@@ -105,7 +105,8 @@ def replace_document_file(db: Session, document_id: UUID, new_file: UploadFile, 
   # Actualiza el registro del documento con la nueva ruta del archivo
   document.document_url = new_file_path
   document.status = "pending"  # Reinicia el estado a "pending" 
-
+  document.rejection_reason = None
+  
   if current_user:
     document.updated_by_user_id = current_user.id
 
