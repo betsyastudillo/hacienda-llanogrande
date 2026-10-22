@@ -1,0 +1,36 @@
+.cc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.cc-title { 
+  flex: 1; 
+  margin: 0; 
+  text-align: left; 
+}
+
+.cc-summary { 
+  font-size: 12px; 
+  color: var(--text-footer); 
+}
+
+.cc-chevron { 
+  flex-shrink: 0; 
+  transition: transform 0.15s; 
+}
+
+.cc-chevron.is-open { 
+  transform: rotate(180deg); 
+}
+
+.cc-body { 
+  margin-top: 12px; 
+}

@@ -11,11 +11,12 @@ import { formatCurrency } from '../../../utils/formatCurrency'
 import { formatDate } from '../../../utils/formatDate'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
 import { formatAccountNumber } from '../../../utils/formatAccountNumber'
+import CollapsibleCard from '../../../components/CollapsibleCard/CollapsibleCard'
 
 const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.webp']
 const MAX_SIZE = 5 * 1024 * 1024
 
-export default function PaymentCard({ order, payment, bankAccount, onChanged }) {
+export default function PaymentCard({ order, payment, bankAccount, onChanged, defaultOpen }) {
   const { hasPermission } = useAuth()
   const { showToast } = useToast()
   const fail = (message) => showToast(message, 'error')
@@ -107,181 +108,195 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
   // Sin proforma
   if (!payment) {
     return (
-      <div className="detail-card">
-        <p className="detail-card-title">Pago</p>
-        <p className="detail-empty-inline">Aún no se ha generado la proforma de pago.</p>
+      <>
+        <CollapsibleCard
+        title="Pago"
+        summary={payment ? PAYMENT_STATUS_LABELS[payment.status] : "Sin proforma"}
+        defaultOpen={defaultOpen}
+        >
+          <div className="detail-card">
+            <p className="detail-card-title">Pago</p>
+            <p className="detail-empty-inline">Aún no se ha generado la proforma de pago.</p>
 
-        {order.status === 'created' && canCreate && (
-          <button className="pay-btn is-primary" onClick={openCreate}>
-            Elegir medio de pago
-          </button>
-        )}
+            {order.status === 'created' && canCreate && (
+              <button className="pay-btn is-primary" onClick={openCreate}>
+                Elegir medio de pago
+              </button>
+            )}
 
-        {showCreate && (
-          <Modal title="Elige la cuenta para consignar" onClose={() => setShowCreate(false)}>
-            <div className="pay-account-list">
-              {accounts.length === 0 && <p className="detail-empty-inline">No hay cuentas disponibles.</p>}
-              {accounts.map((a) => (
-                <label
-                  key={a.id}
-                  className={`pay-account-option ${selectedAccountId === a.id ? 'is-selected' : ''}`}
-                >
-                  <input
-                    type="radio"
-                    name="bank-account"
-                    checked={selectedAccountId === a.id}
-                    onChange={() => setSelectedAccountId(a.id)}
-                  />
-                  <span className='pay-account-number'>
-                    <strong>{a.bank_name.toUpperCase()} · CUENTA {a.account_type.toUpperCase()}</strong>
-                    <br />
-                    {a.agreement_number ? (
-                      <p>
-                        Convenio: {a.agreement_number}
-                      </p>
-                      ) : ( 
-                        <p>
-                          Cuenta:                           {formatAccountNumber(a.account_number)}
-                        </p>
-                      )}
-                  </span>
-                </label>
-              ))}
-            </div>
-            <div className="pay-actions">
-              <button className="pay-btn" onClick={() => setShowCreate(false)} disabled={busy}>
-                Cancelar
-              </button>
-              <button className="pay-btn is-primary" onClick={handleCreate} disabled={!selectedAccountId || busy}>
-                {busy ? 'Generando...' : 'Generar proforma'}
-              </button>
-            </div>
-          </Modal>
-        )}
-      </div>
+            {showCreate && (
+              <Modal title="Elige la cuenta para consignar" onClose={() => setShowCreate(false)}>
+                <div className="pay-account-list">
+                  {accounts.length === 0 && <p className="detail-empty-inline">No hay cuentas disponibles.</p>}
+                  {accounts.map((a) => (
+                    <label
+                      key={a.id}
+                      className={`pay-account-option ${selectedAccountId === a.id ? 'is-selected' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="bank-account"
+                        checked={selectedAccountId === a.id}
+                        onChange={() => setSelectedAccountId(a.id)}
+                      />
+                      <span className='pay-account-number'>
+                        <strong>{a.bank_name.toUpperCase()} · CUENTA {a.account_type.toUpperCase()}</strong>
+                        <br />
+                        {a.agreement_number ? (
+                          <p>
+                            Convenio: {a.agreement_number}
+                          </p>
+                          ) : ( 
+                            <p>
+                              Cuenta:                           {formatAccountNumber(a.account_number)}
+                            </p>
+                          )}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <div className="pay-actions">
+                  <button className="pay-btn" onClick={() => setShowCreate(false)} disabled={busy}>
+                    Cancelar
+                  </button>
+                  <button className="pay-btn is-primary" onClick={handleCreate} disabled={!selectedAccountId || busy}>
+                    {busy ? 'Generando...' : 'Generar proforma'}
+                  </button>
+                </div>
+              </Modal>
+            )}
+          </div> 
+        </CollapsibleCard>
+      </>
     )
   }
 
   const awaitingReceipt = payment.status === 'pending' || payment.status === 'failed'
 
   return (
-    <div className="detail-card">
-      <p className="detail-card-title">Pago</p>
-
-      <div className="detail-info-list">
-        <div className="detail-info-row">
-          <span>Referencia</span>
-          <span>{payment.proforma_number}</span>
-        </div>
-
-        <div className="detail-info-row">
-          <span>Valor</span>
-          <span>{formatCurrency(payment.amount)}</span>
-        </div>
-        <div className="detail-info-row">
-          <span>Estado</span>
-          <StatusBadge
-            label={PAYMENT_STATUS_LABELS[payment.status]}
-            bgColor={PAYMENT_STATUS_COLORS[payment.status].bgColor}
-            textColor={PAYMENT_STATUS_COLORS[payment.status].textColor}
-            icon={PAYMENT_STATUS_ICONS[payment.status]}
-          />
-        </div>
-
-        {bankAccount && awaitingReceipt && (
-          <>
-            <div className="detail-info-row"><span>Titular</span><span>{bankAccount.account_holder_name}</span></div>
-            <div className="detail-info-row"><span>Banco</span><span>{bankAccount.bank_name}</span></div>
-            <div className="detail-info-row"><span>Tipo</span><span>{bankAccount.account_type}</span></div>
-            {bankAccount.agreement_number ? (
-              <div className="detail-info-row"><span>Convenio</span><span>{bankAccount.agreement_number}</span></div>
-            ) : (
-              <div className="detail-info-row"><span>Cuenta</span><span>{bankAccount.account_number}</span></div>
-            )}
-          </>
-        )}
-
-        {payment.pdf_url && (
-          <div className='detail-info-row'>
-            <span>Proforma</span>
-            <button
-              type="button"
-              className="pay-link"
-              onClick={openProforma}
-            >
-              Ver archivo
-            </button>
-          </div>
-        )}
-
-        {payment.status === 'failed' && payment.rejection_reason && (
+    <>
+      <CollapsibleCard
+        title="Pago"
+        summary={payment ? PAYMENT_STATUS_LABELS[payment.status] : "Con proforma"}
+        defaultOpen={defaultOpen}
+      >
+        <div className="detail-info-list">
           <div className="detail-info-row">
-            <span>Motivo</span>
-            <span className="pay-reason">{payment.rejection_reason}</span>
+            <span>Referencia</span>
+            <span>{payment.proforma_number}</span>
           </div>
-        )}
 
-        {payment.status === 'confirmed' && payment.confirmed_at && (
           <div className="detail-info-row">
-            <span>Confirmado el</span>
-            <span>{formatDate(payment.confirmed_at)}</span>
+            <span>Valor</span>
+            <span>{formatCurrency(payment.amount)}</span>
           </div>
-        )}
-
-        {payment.receipt_url && (
           <div className="detail-info-row">
-            <span>Comprobante</span>
-            <button
-              type="button"
-              className="pay-link"
-              onClick={() => setPreview({ title: 'Comprobante de pago', fileUrl: payment.receipt_url })}
-            >
-              Ver archivo
-            </button>
-          </div>
-        )}
-      </div>
-
-      {payment.status === 'pending' && !payment.receipt_url && canUpload && (
-        <p className="detail-empty-inline pay-hint">
-          Consigna el valor exacto a la cuenta indicada y sube aquí el comprobante.
-        </p>
-      )}
-      {payment.status === 'pending' && payment.receipt_url && !canConfirm && (
-        <p className="detail-empty-inline pay-hint">Comprobante recibido, en revisión por cartera.</p>
-      )}
-
-      <div className="pay-actions">
-        {awaitingReceipt && canUpload && (
-          <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png,.webp"
-              hidden
-              onChange={handleFileChange}
+            <span>Estado</span>
+            <StatusBadge
+              label={PAYMENT_STATUS_LABELS[payment.status]}
+              bgColor={PAYMENT_STATUS_COLORS[payment.status].bgColor}
+              textColor={PAYMENT_STATUS_COLORS[payment.status].textColor}
+              icon={PAYMENT_STATUS_ICONS[payment.status]}
             />
-            <button
-              className={'pay-btn is-primary'}
-              onClick={() => fileInputRef.current?.click()}
-              disabled={busy}
-            >
-              {busy ? 'Subiendo...' : payment.receipt_url ? 'Reemplazar comprobante' : 'Subir comprobante'}
-            </button>
-          </>
+          </div>
+
+          {bankAccount && awaitingReceipt && (
+            <>
+              <div className="detail-info-row"><span>Titular</span><span>{bankAccount.account_holder_name}</span></div>
+              <div className="detail-info-row"><span>Banco</span><span>{bankAccount.bank_name}</span></div>
+              <div className="detail-info-row"><span>Tipo</span><span>{bankAccount.account_type}</span></div>
+              {bankAccount.agreement_number ? (
+                <div className="detail-info-row"><span>Convenio</span><span>{bankAccount.agreement_number}</span></div>
+              ) : (
+                <div className="detail-info-row"><span>Cuenta</span><span>{bankAccount.account_number}</span></div>
+              )}
+            </>
+          )}
+
+          {payment.pdf_url && (
+            <div className='detail-info-row'>
+              <span>Proforma</span>
+              <button
+                type="button"
+                className="pay-link"
+                onClick={openProforma}
+              >
+                Ver archivo
+              </button>
+            </div>
+          )}
+
+          {payment.status === 'failed' && payment.rejection_reason && (
+            <div className="detail-info-row">
+              <span>Motivo</span>
+              <span className="pay-reason">{payment.rejection_reason}</span>
+            </div>
+          )}
+
+          {payment.status === 'confirmed' && payment.confirmed_at && (
+            <div className="detail-info-row">
+              <span>Confirmado el</span>
+              <span>{formatDate(payment.confirmed_at)}</span>
+            </div>
+          )}
+
+          {payment.receipt_url && (
+            <div className="detail-info-row">
+              <span>Comprobante</span>
+              <button
+                type="button"
+                className="pay-link"
+                onClick={() => setPreview({ title: 'Comprobante de pago', fileUrl: payment.receipt_url })}
+              >
+                Ver archivo
+              </button>
+            </div>
+          )}
+        </div>
+
+        {payment.status === 'pending' && !payment.receipt_url && canUpload && (
+          <p className="detail-empty-inline pay-hint">
+            Consigna el valor exacto a la cuenta indicada y sube aquí el comprobante.
+          </p>
         )}
 
-        {payment.status === 'pending' && payment.receipt_url && canConfirm && (
-          <div className='pay-decision'>
-            <button className="pay-btn is-danger" onClick={() => setShowReject(true)} disabled={busy}>
-              Rechazar
-            </button>
-            <button className="pay-btn is-confirm" onClick={() => setShowConfirm(true)} disabled={busy}>
-              Confirmar
-            </button>
-          </div>
+        {payment.status === 'pending' && payment.receipt_url && !canConfirm && (
+          <p className="detail-empty-inline pay-hint">Comprobante recibido, en revisión por cartera.</p>
         )}
-      </div>
+
+        <div className="pay-actions">
+          {awaitingReceipt && canUpload && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                hidden
+                onChange={handleFileChange}
+              />
+              <button
+                className={'pay-btn is-primary'}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={busy}
+              >
+                {busy ? 'Subiendo...' : payment.receipt_url ? 'Reemplazar comprobante' : 'Subir comprobante'}
+              </button>
+            </>
+          )}
+
+          {payment.status === 'pending' && payment.receipt_url && canConfirm && (
+            <div className='pay-decision'>
+              <button className="pay-btn is-danger" onClick={() => setShowReject(true)} disabled={busy}>
+                Rechazar
+              </button>
+              <button className="pay-btn is-confirm" onClick={() => setShowConfirm(true)} disabled={busy}>
+                Confirmar
+              </button>
+            </div>
+          )}
+        </div>
+
+      </CollapsibleCard>
 
       {showConfirm && (
         <ConfirmModal
@@ -294,7 +309,7 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
           onCancel={() => setShowConfirm(false)}
         />
       )}
-
+      
       {showReject && (
         <Modal title="Rechazar pago" onClose={() => setShowReject(false)}>
           <label className="pay-label" htmlFor="reject-reason">
@@ -322,8 +337,9 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged }) 
           </div>
         </Modal>
       )}
-
+      
       {preview && <FilePreviewModal {...preview} onClose={() => setPreview(null)} />}
-    </div>
+
+    </>
   )
 }

@@ -10,6 +10,7 @@ import { getErrorMessage } from '../../../utils/getErrorMessage'
 import { 
     TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES, VEHICLE_TYPES, vehicleTypeLabel, 
 } from '../../../constants/transport'
+import CollapsibleCard from '../../../components/CollapsibleCard/CollapsibleCard'
 
 
 const STATUS = {
@@ -31,7 +32,7 @@ const DOC_STATUS = {
   rejected: { label: 'Rechazado', icon: CircleX, bg: '#fbdcdc', text: '#a12a2a' },
 }
 
-export default function TransportCard({ order, assignment, dispatchGuide, onChanged }) {
+export default function TransportCard({ order, assignment, dispatchGuide, onChanged, defaultOpen }) {
   const { hasPermission } = useAuth()
   const { showToast } = useToast()
 
@@ -367,213 +368,217 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
 
   return (
-    <div className="detail-card">
-      <p className="detail-card-title">Transporte</p>
-
-      {!assignment ? (
-        <>
-          <p className="detail-empty-inline">
-            {order.status === 'facturado'
-              ? 'Aún no se ha enviado la información de transporte.'
-              : 'El transporte se envía una vez el pedido esté facturado.'}
-          </p>
-          {order.status === 'facturado' && canSubmit && (
-            <div className="pay-actions">
-              <button className="pay-btn is-primary" onClick={openForm}>Enviar datos de transporte</button>
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          {assignment.blocked?.length > 0 && assignment.validation_status !== 'approved' && (
-            <p className="pay-error">
-              {canValidate
-                ? 'Atención: el vehículo, su dueño o el transportador están en la lista de vetados. No se puede aprobar este transporte.'
-                : 'Este transporte no está autorizado. Si tienes dudas, comunícate con Logística.'}
+    <>
+      <CollapsibleCard
+        title="Transporte"
+        summary={status ? status.label : 'Sin enviar'}
+        defaultOpen={defaultOpen}
+      >
+        {!assignment ? (
+          <>
+            <p className="detail-empty-inline">
+              {order.status === 'facturado'
+                ? 'Aún no se ha enviado la información de transporte.'
+                : 'El transporte se envía una vez el pedido esté facturado.'}
             </p>
-          )}
-
-          <div className="detail-info-list">
-            <div className="detail-info-row">
-              <span>Estado</span>
-              <StatusBadge label={status.label} bgColor={status.bg} textColor={status.text} icon={status.icon} />
-            </div>
-            <div className="detail-info-row">
-              <span>Placa</span>
-              <span>{assignment.vehicle.plate}</span>
-            </div>
-            <div className="detail-info-row">
-              <span>Tipo</span>
-              <span>{vehicleTypeLabel(assignment.vehicle.type)}</span>
-            </div>
-            <div className="detail-info-row">
-              <span>Capacidad</span>
-              <span>{assignment.vehicle.capacity_m3}</span>
-            </div>
-
-            {sameOwner ? (
-              <>
-                <div className="detail-info-row"><span>Transportador y dueño</span><span>{c.full_name}</span></div>
-                <div className="detail-info-row"><span>Documento</span><span>{c.document_type} {c.document_id}</span></div>
-                <div className="detail-info-row"><span>Teléfono</span><span>{c.phone}</span></div>
-              </>
-            ) : (
-              <>
-                <div className="detail-info-row"><span>Dueño</span><span>{v.owner_name || '—'}</span></div>
-                <div className="detail-info-row">
-                  <span>Documento del dueño</span>
-                  <span>{v.owner_document_type ? `${v.owner_document_type} ${v.owner_document_id}` : '—'}</span>
-                </div>
-                {v.owner_phone && (
-                  <div className="detail-info-row"><span>Teléfono del dueño</span><span>{v.owner_phone}</span></div>
-                )}
-                <div className="detail-info-row"><span>Transportador</span><span>{c.full_name}</span></div>
-                <div className="detail-info-row"><span>Documento</span><span>{c.document_type} {c.document_id}</span></div>
-                <div className="detail-info-row"><span>Teléfono</span><span>{c.phone}</span></div>
-              </>
-            )}
-
-            {assignment.validation_status === 'rejected' && assignment.rejection_reason && (
-              <div className="detail-info-row">
-                <span>Motivo</span><span className="pay-reason">{assignment.rejection_reason}</span>
+            {order.status === 'facturado' && canSubmit && (
+              <div className="pay-actions">
+                <button className="pay-btn is-primary" onClick={openForm}>Enviar datos de transporte</button>
               </div>
             )}
-          </div>
-
-          <p className="detail-card-title" style={{ marginTop: 14 }}>Documentos</p>
-          <div className="detail-info-list">
-
-            {docRows.map(({ key, label, doc, status }) => {
-              const s = DOC_STATUS[status]
-              const canReview = canValidate && assignment.validation_status === ' pending' && Boolean(doc)
-
-              // Quien revisa solo sube cuando falta o fue rechazado; el cliente puede reemplazar mientras no esté aprobado
-              const showUpload = canUpload && status !== 'approved' && (!canValidate || status === 'missing' || status === 'rejected')
-              const fileId = `transport-doc-file-${key}`
-
-              return (
-                <div key={key} className='transport-doc'>
-                  <span className='transport-doc-label'>{label}</span>
-
-                  <div className="transport-doc-row">
-                    <StatusBadge 
-                      // label={s.label} 
-                      bgColor={s.bg} 
-                      textColor={s.text} 
-                      icon={s.icon || undefined} 
-                    />
-
-                    <div className='transport-doc-actions'>
-                      {doc && (
-                        <button
-                          type='button' className='pay-link' title='Ver documento'
-                          onClick={() => openPreview(label, doc)}
-                        >
-                          <Eye size={14} />
+          </>
+        ) : (
+          <>
+            {assignment.blocked?.length > 0 && assignment.validation_status !== 'approved' && (
+              <p className="pay-error">
+                {canValidate
+                  ? 'Atención: el vehículo, su dueño o el transportador están en la lista de vetados. No se puede aprobar este transporte.'
+                  : 'Este transporte no está autorizado. Si tienes dudas, comunícate con Logística.'}
+              </p>
+            )}
+  
+            <div className="detail-info-list">
+              <div className="detail-info-row">
+                <span>Estado</span>
+                <StatusBadge label={status.label} bgColor={status.bg} textColor={status.text} icon={status.icon} />
+              </div>
+              <div className="detail-info-row">
+                <span>Placa</span>
+                <span>{assignment.vehicle.plate}</span>
+              </div>
+              <div className="detail-info-row">
+                <span>Tipo</span>
+                <span>{vehicleTypeLabel(assignment.vehicle.type)}</span>
+              </div>
+              <div className="detail-info-row">
+                <span>Capacidad</span>
+                <span>{assignment.vehicle.capacity_m3}</span>
+              </div>
+  
+              {sameOwner ? (
+                <>
+                  <div className="detail-info-row"><span>Transportador y dueño</span><span>{c.full_name}</span></div>
+                  <div className="detail-info-row"><span>Documento</span><span>{c.document_type} {c.document_id}</span></div>
+                  <div className="detail-info-row"><span>Teléfono</span><span>{c.phone}</span></div>
+                </>
+              ) : (
+                <>
+                  <div className="detail-info-row"><span>Dueño</span><span>{v.owner_name || '—'}</span></div>
+                  <div className="detail-info-row">
+                    <span>Documento del dueño</span>
+                    <span>{v.owner_document_type ? `${v.owner_document_type} ${v.owner_document_id}` : '—'}</span>
+                  </div>
+                  {v.owner_phone && (
+                    <div className="detail-info-row"><span>Teléfono del dueño</span><span>{v.owner_phone}</span></div>
+                  )}
+                  <div className="detail-info-row"><span>Transportador</span><span>{c.full_name}</span></div>
+                  <div className="detail-info-row"><span>Documento</span><span>{c.document_type} {c.document_id}</span></div>
+                  <div className="detail-info-row"><span>Teléfono</span><span>{c.phone}</span></div>
+                </>
+              )}
+  
+              {assignment.validation_status === 'rejected' && assignment.rejection_reason && (
+                <div className="detail-info-row">
+                  <span>Motivo</span><span className="pay-reason">{assignment.rejection_reason}</span>
+                </div>
+              )}
+            </div>
+  
+            <p className="detail-card-title" style={{ marginTop: 14 }}>Documentos</p>
+            <div className="detail-info-list">
+  
+              {docRows.map(({ key, label, doc, status }) => {
+                const s = DOC_STATUS[status]
+                const canReview = canValidate && assignment.validation_status === ' pending' && Boolean(doc)
+  
+                // Quien revisa solo sube cuando falta o fue rechazado; el cliente puede reemplazar mientras no esté aprobado
+                const showUpload = canUpload && status !== 'approved' && (!canValidate || status === 'missing' || status === 'rejected')
+                const fileId = `transport-doc-file-${key}`
+  
+                return (
+                  <div key={key} className='transport-doc'>
+                    <span className='transport-doc-label'>{label}</span>
+  
+                    <div className="transport-doc-row">
+                      <StatusBadge 
+                        // label={s.label} 
+                        bgColor={s.bg} 
+                        textColor={s.text} 
+                        icon={s.icon || undefined} 
+                      />
+  
+                      <div className='transport-doc-actions'>
+                        {doc && (
+                          <button
+                            type='button' className='pay-link' title='Ver documento'
+                            onClick={() => openPreview(label, doc)}
+                          >
+                            <Eye size={14} />
+                          </button>
+                        )}
+  
+                      {showUpload && (
+                        <>
+                          <input
+                            id={fileId} type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.webp"
+                            onChange={(e) => { handleUpload(key, e.target.files[0]); e.target.value = '' }}
+                          />
+                          <button type="button" className="transport-doc-btn" title={doc ? 'Reemplazar' : 'Subir'}
+                            aria-label={doc ? 'Reemplazar documento' : 'Subir documento'} disabled={isBusy}
+                            onClick={() => document.getElementById(fileId).click()}>
+                            <Upload size={15} />
+                          </button>
+                        </>
+                      )}
+  
+                      {canReview && status !== 'approved' && (
+                        <button type="button" className="transport-doc-btn is-ok" title="Aprobar documento" aria-label="Aprobar documento"
+                          disabled={isBusy} onClick={() => handleReviewDoc(doc, 'approved')}>
+                          <Check size={15} />
                         </button>
                       )}
-
-                    {showUpload && (
-                      <>
-                        <input
-                          id={fileId} type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.webp"
-                          onChange={(e) => { handleUpload(key, e.target.files[0]); e.target.value = '' }}
-                        />
-                        <button type="button" className="transport-doc-btn" title={doc ? 'Reemplazar' : 'Subir'}
-                          aria-label={doc ? 'Reemplazar documento' : 'Subir documento'} disabled={isBusy}
-                          onClick={() => document.getElementById(fileId).click()}>
-                          <Upload size={15} />
+  
+                      {canReview && status !== 'rejected' && (
+                        <button type="button" className="transport-doc-btn is-no" title="Rechazar documento" aria-label="Rechazar documento"
+                          disabled={isBusy} onClick={() => openRejectDoc(doc, label)}>
+                          <X size={15} />
                         </button>
-                      </>
-                    )}
-
-                    {canReview && status !== 'approved' && (
-                      <button type="button" className="transport-doc-btn is-ok" title="Aprobar documento" aria-label="Aprobar documento"
-                        disabled={isBusy} onClick={() => handleReviewDoc(doc, 'approved')}>
-                        <Check size={15} />
-                      </button>
-                    )}
-
-                    {canReview && status !== 'rejected' && (
-                      <button type="button" className="transport-doc-btn is-no" title="Rechazar documento" aria-label="Rechazar documento"
-                        disabled={isBusy} onClick={() => openRejectDoc(doc, label)}>
-                        <X size={15} />
-                      </button>
-                    )}
+                      )}
+                    </div>
                   </div>
+  
+                  {status === 'rejected' && doc?.rejection_reason && (
+                    <p className="pay-error transport-doc-reason">Motivo: {doc.rejection_reason}</p>
+                  )}
                 </div>
-
-                {status === 'rejected' && doc?.rejection_reason && (
-                  <p className="pay-error transport-doc-reason">Motivo: {doc.rejection_reason}</p>
-                )}
+              )
+            })}
+          </div>
+  
+            {busy === 'upload' && <p className="detail-empty-inline pay-hint">Subiendo documento...</p>}
+  
+            {canUpload && docRows.some((r) => r.status === 'rejected') && (
+              <p className="detail-empty-inline pay-hint">Reemplaza los documentos rechazados; el área encargada los revisará de nuevo.</p>
+            )}
+            {canUpload && missing.length > 0 && !docRows.some((r) => r.status === 'rejected') && (
+              <p className="detail-empty-inline pay-hint">Sube los documentos que faltan (PDF o imagen, máximo 5 MB).</p>
+            )}
+            {canDecide && docsUnapproved && missing.length === 0 && (
+              <p className="detail-empty-inline pay-hint">Revisa cada documento con ✓ o ✕ antes de aprobar el transporte.</p>
+            )}
+  
+            {assignment.validation_status === 'pending' && !canValidate && missing.length === 0 && (
+              <p className="detail-empty-inline pay-hint">En revisión por logística.</p>
+            )}
+  
+            {canFix && (
+              <div className="pay-actions">
+                <button className="pay-btn is-primary" onClick={openForm}>Corregir datos</button>
               </div>
-            )
-          })}
-        </div>
-
-          {busy === 'upload' && <p className="detail-empty-inline pay-hint">Subiendo documento...</p>}
-
-          {canUpload && docRows.some((r) => r.status === 'rejected') && (
-            <p className="detail-empty-inline pay-hint">Reemplaza los documentos rechazados; el área encargada los revisará de nuevo.</p>
-          )}
-          {canUpload && missing.length > 0 && !docRows.some((r) => r.status === 'rejected') && (
-            <p className="detail-empty-inline pay-hint">Sube los documentos que faltan (PDF o imagen, máximo 5 MB).</p>
-          )}
-          {canDecide && docsUnapproved && missing.length === 0 && (
-            <p className="detail-empty-inline pay-hint">Revisa cada documento con ✓ o ✕ antes de aprobar el transporte.</p>
-          )}
-
-          {assignment.validation_status === 'pending' && !canValidate && missing.length === 0 && (
-            <p className="detail-empty-inline pay-hint">En revisión por logística.</p>
-          )}
-
-          {canFix && (
-            <div className="pay-actions">
-              <button className="pay-btn is-primary" onClick={openForm}>Corregir datos</button>
-            </div>
-          )}
-
-          {canDecide && (
-            <div className="pay-decision">
-              <button 
-                className="pay-btn is-danger" 
-                onClick={() => { setReason(''); setBlacklist(false); setShowReject(true) }}
-                disabled={busy}
-              >
-                Rechazar
-              </button>
-
-              <button
-                className="pay-btn is-primary"
-                onClick={() => { setChecked(false); setShowApprove(true) }}
-                disabled={isBusy || docsUnapproved || assignment.blocked?.length > 0}
-                title={docsUnapproved ? 'Aprueba cada documento primero' : undefined}
-              >
-                Aprobar
-              </button>
-            </div>
-          )}
-
-          {canMakeGuide && (
-            <div className="pay-actions">
-              <button
-                type='button'
-                className="pay-btn is-primary" 
-                disabled={busy}
-                onClick={handleCreateGuide}
-              >
-                Generar guía de despacho
-              </button>
-            </div>
-          )}
-        </>
-      )}
+            )}
+  
+            {canDecide && (
+              <div className="pay-decision">
+                <button 
+                  className="pay-btn is-danger" 
+                  onClick={() => { setReason(''); setBlacklist(false); setShowReject(true) }}
+                  disabled={busy}
+                >
+                  Rechazar
+                </button>
+  
+                <button
+                  className="pay-btn is-primary"
+                  onClick={() => { setChecked(false); setShowApprove(true) }}
+                  disabled={isBusy || docsUnapproved || assignment.blocked?.length > 0}
+                  title={docsUnapproved ? 'Aprueba cada documento primero' : undefined}
+                >
+                  Aprobar
+                </button>
+              </div>
+            )}
+  
+            {canMakeGuide && (
+              <div className="pay-actions">
+                <button
+                  type='button'
+                  className="pay-btn is-primary" 
+                  disabled={busy}
+                  onClick={handleCreateGuide}
+                >
+                  Generar guía de despacho
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </CollapsibleCard>
 
       {showForm && (
         <Modal title={assignment ? 'Corregir datos de transporte' : 'Datos de transporte'} onClose={() => setShowForm(false)}>
           <div className="edit-form">
             <p className="edit-section">Vehículo</p>
-
+      
             <div className="edit-row">
               <label className="edit-field">Placa
                 <input
@@ -587,7 +592,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                   maxLength={6}
                 />
               </label>
-
+      
               <label className="edit-field">Tipo
                 <select value={form.type} onChange={set('type')}>
                   <option value="">Selecciona</option>
@@ -595,22 +600,22 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                 </select>
               </label>
             </div>
-
+      
             {hint.vehicle && (
               <p className="edit-note">Datos cargados de un registro anterior. Revísalos y corrígelos si algo cambió.</p>
             )}
-
+      
             {blocked.vehicle && (
               <p className="pay-error">
                 {blocked.vehicle === 'owner' ? 'El dueño de este vehículo' : 'Este vehículo'} no está autorizado para
                 realizar el transporte. Si tienes dudas, comunícate con Logística.
               </p>
             )}
-
+      
             <label className="edit-field">Capacidad (m³)
               <input type="number" min="0" value={form.capacity_m3} onChange={set('capacity_m3')} />
             </label>
-
+      
             <p className="edit-section">Dueño del vehículo</p>
             <label style={{ display: 'flex', gap: 8, fontSize: 13 }}>
               <input type="checkbox" checked={ownerIsCarrier} onChange={(e) => setOwnerIsCarrier(e.target.checked)} />
@@ -644,7 +649,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                     />
                   </label>
                 </div>
-
+      
                 {hint.owner && (
                   <p className="edit-note">Datos cargados de un registro anterior. Revísalos y corrígelos si algo cambió.</p>
                 )}
@@ -653,17 +658,17 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                     Este propietario no está autorizado para realizar el transporte. Si tienes dudas, comunícate con Logística.
                   </p>
                 )}
-
+      
                 <label className="edit-field">Nombre o razón social
                   <input value={form.owner_name} onChange={set('owner_name')} />
                 </label>
-
+      
                 <label className="edit-field">Teléfono (opcional)
                   <input value={form.owner_phone} onChange={setDigits('owner_phone')} maxLength={15} inputMode="numeric" />
                 </label>
               </>
             )}
-
+      
             <p className="edit-section">Transportador</p>
             <div className="edit-row">
               <label className="edit-field">Tipo de documento
@@ -692,11 +697,11 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                 </p>
               )}
             </div>
-
+      
             {hint.carrier && (
               <p className="edit-note">Datos cargados de un registro anterior. Revísalos y corrígelos si algo cambió.</p>
             )}
-
+      
             <label className="edit-field">Nombre completo
               <input value={form.full_name} onChange={set('full_name')} />
             </label>
@@ -709,9 +714,9 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               </label>
             </div>
           </div>
-
+      
           {formError && <p className="detail-error-text">{formError}</p>}
-
+      
           <div className="pay-actions">
             <button 
               type="button" 
@@ -734,7 +739,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
           </div>
         </Modal>
       )}
-
+      
       {showApprove && (
         <Modal title="Aprobar transporte" onClose={() => setShowApprove(false)}>
           <label style={{ display: 'flex', gap: 8, fontSize: 13 }}>
@@ -755,7 +760,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
           </div>
         </Modal>
       )}
-
+      
       {showReject && (
         <Modal title="Rechazar transporte" onClose={() => setShowReject(false)}>
           <label className="pay-label" htmlFor="transport-reason">Motivo (lo verá el cliente)</label>
@@ -780,7 +785,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
           </div>
         </Modal>
       )}
-
+      
       {docToReject && (
         <Modal title={`Rechazar: ${docToReject.label}`} onClose={() => setDocToReject(null)}>
           <label className="pay-label" htmlFor="doc-reason">Motivo (lo verá el cliente)</label>
@@ -799,8 +804,8 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
           </div>
         </Modal>
       )}
-
+      
       {preview && <FilePreviewModal {...preview} onClose={() => setPreview(null)} />}
-    </div>
+    </>
   )
 }
