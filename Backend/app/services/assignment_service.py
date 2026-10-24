@@ -20,6 +20,7 @@ from app.constants.transport_requirements import (
   normalize_plate,
   required_document_keys,
 )
+from app.dependencies import user_has_permission
 from app.models.assignment import Assignment
 from app.models.carrier import Carrier
 from app.models.company import Company
@@ -386,6 +387,10 @@ def upload_transport_document(
   if order.status != "facturado":
     raise ValueError("Transport documents can only be uploaded while the order is 'facturado'")
 
+  # Quien revisa los documentos no los sube: así la revisión no puede sustituir lo que evalúa
+  if user_has_permission(current_user, "assignment:validar"):
+    raise ValueError("Quien valida el transporte no puede subir ni reemplazar sus documentos")
+  
   assignment = get_assignment_by_order(db, order_id)
 
   if not assignment:
@@ -680,6 +685,12 @@ def review_transport_document(db: Session, order_id: UUID, document_id: UUID, st
 
   document = get_transport_document(db, order_id, document_id)
 
+  if document.status != "pending":
+    raise ValueError(
+      f"This document was already {document.status}. "
+      "It can be reviewed again only after the client replaces it"
+    )
+  
   reason = (reason or "").strip()
   if status == "rejected" and not reason:
     raise ValueError("A reason is required when rejecting a document")

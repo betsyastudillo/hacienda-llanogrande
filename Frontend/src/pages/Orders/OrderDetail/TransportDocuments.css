@@ -1,0 +1,135 @@
+.td { 
+  margin-top: 14px; 
+  text-align: left; 
+}
+
+.td-head { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  gap: 8px; 
+  flex-wrap: wrap; 
+  margin-bottom: 8px; 
+}
+
+.td-title { 
+  margin: 0; 
+  font-size: 14px; 
+  font-weight: 600; 
+}
+
+.td-list { 
+  list-style: none; 
+  margin: 0; 
+  padding: 0; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 8px; 
+}
+
+.td-item {
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #d9d5cb;
+  border-left: 4px solid #d9d5cb;
+  border-radius: 10px;
+}
+
+.td-item.is-pending { 
+  border-left-color: #e0b800; 
+}
+
+.td-item.is-approved { 
+  border-left-color: #1f6b34; 
+}
+
+.td-item.is-rejected { 
+  border-left-color: #a12a2a; 
+}
+
+.td-top { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  gap: 8px; 
+}
+
+.td-name { 
+  font-size: 13px; 
+  font-weight: 500; 
+  text-align: left; 
+}
+
+.td-state { 
+  padding: 3px 9px; 
+  font-size: 12px; 
+  white-space: nowrap; 
+  border-radius: 999px; 
+}
+
+.td-state.is-missing { 
+  color: #5f5e5a; 
+  background: #ece9e2; 
+}
+
+.td-state.is-pending { 
+  color: #7a5c00; 
+  background: #fdf1b8; 
+}
+
+.td-state.is-approved { 
+  color: #1f6b34; 
+  background: #d9efdc; 
+}
+
+.td-state.is-rejected { 
+  color: #a12a2a; 
+  background: #fbdcdc; 
+}
+
+.td-reason { 
+  margin: 6px 0 0; 
+  font-size: 12px; 
+  color: #a12a2a; 
+  text-align: left; 
+}
+
+.td-actions { 
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: 6px; 
+  margin-top: 8px; 
+}
+
+.td-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: auto;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: #222222;
+  background: #ffffff;
+  border: 1px solid #d9d5cb;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.td-btn:hover { 
+  background: #f1f0ea; 
+}
+
+.td-btn:disabled { 
+  opacity: 0.5; 
+  cursor: not-allowed; 
+}
+
+.td-btn.is-ok { 
+  color: var(--green); 
+  border-color: var(--green); 
+}
+
+.td-btn.is-no { 
+  color: var(--red); 
+  border-color: var(--red); 
+}
