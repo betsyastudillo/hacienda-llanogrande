@@ -68,7 +68,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   canGuide && assignment?.validation_status === 'approved' &&
   order.status === 'transport_validated' && !dispatchGuide
   const canUpload = canSubmit && !canValidate && assignment && assignment.validation_status !== 'approved'
-  
+
   // Ejecuta una acción mostrando el resultado y recargando el pedido
   // onError: si se pasa, el error se muestra donde se indique (dentro de un modal) y no como popup.
   async function run(name, action, okMessage, errorMessage, after, onError) {
@@ -120,7 +120,11 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
     // Se reinician siempre al abrir el formulario
     setHint({vehicle: false, carrier: false, owner: false})
-    setBlocked({ vehicle: null, carrier: false })
+    setBlocked({
+      vehicle: vehicleBlocked ? 'vehicle' : null,
+      carrier: carrierBlocked,
+      owner: ownerBlocked,
+    })
     setShowForm(true)
   }
 
@@ -150,10 +154,12 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   }
 
   async function lookupVehicle() {
+    
     const plate = form.plate.trim()
+    
     if (plate.length < 5) return
     // Al corregir un rechazo, si la placa no cambió, ya está cargada
-    if (assignment && plate === assignment.vehicle.plate) return
+    if (assignment && !vehicleBlocked && plate === assignment.vehicle.plate) return
 
     try {
       const { data } = await api.get('/assignments/lookup/vehicle', { params: { plate } })
@@ -186,9 +192,10 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   }
 
   async function lookupCarrier() {
+  
     const id = form.document_id.trim()
     if (id.length < 5) return
-    if (assignment && id === assignment.carrier.document_id && form.document_type === assignment.carrier.document_type) return
+    if (assignment && !carrierBlocked && id === assignment.carrier.document_id && form.document_type === assignment.carrier.document_type) return
 
     try {
       const { data } = await api.get('/assignments/lookup/carrier', {
@@ -357,6 +364,18 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
   const v = assignment?.vehicle
   const c = assignment?.carrier
+  
+  const blockedList = assignment?.blocked || []
+  const carrierBlocked = blockedList.includes('carrier')
+  const vehicleBlocked = blockedList.includes('vehicle')
+  const ownerBlocked = blockedList.includes('owner')
+
+  // Qué está vetado, en palabras (sin el motivo del veto, que es interno)
+  const blockedWhat = [
+    vehicleBlocked && 'el vehículo',
+    ownerBlocked && 'su propietario',
+    carrierBlocked && 'el transportador',
+  ].filter(Boolean).join(', ')
 
   // El dueño y el transportador son la misma persona si tienen el mismo documento
   const sameOwner = Boolean(
@@ -410,8 +429,8 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             {assignment.blocked?.length > 0 && assignment.validation_status !== 'approved' && (
               <p className="detail-error-text">
                 {canValidate
-                  ? 'Atención: el vehículo, su dueño o el transportador están en la lista de vetados. No se puede aprobar este transporte.'
-                  : 'Este transporte no está autorizado. Si tienes dudas, comunícate con Logística.'}
+                  ? `Atención: ${blockedWhat} figura en la lista de vetados. No se puede aprobar este transporte.`
+                  : `No está autorizado: ${blockedWhat}. Corrige los datos y reenvía, o comunícate con el área de Logística.`}
               </p>
             )}
   
@@ -661,8 +680,8 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             </div>
 
             {blocked.carrier && (
-              <p className="pay-error">
-                Este transportador no está autorizado para realizar el transporte. Si tienes dudas, comunícate con Logística.
+              <p className="detail-error-text">
+                Este transportador no está autorizado para realizar el transporte. Si tienes dudas, comunícate con el área de Logística.
               </p>
             )}
       

@@ -135,46 +135,46 @@ def get_assignment_detail_by_order(db: Session, order_id: UUID) -> Optional[Assi
 def _ensure_not_blacklisted(db: Session, vehicle_data, carrier_data) -> None:
   
   if is_document_blacklisted(db, PLATE_BLACKLIST_TYPE, normalize_plate(vehicle_data.plate)):
-    raise ValueError("This vehicle is not authorized to enter the plant")
+    raise ValueError("Este vehículo no está autorizado para ingresar a la planta. Si tienes dudas, comunícate con el área de Logística.")
 
   if is_document_blacklisted(db, carrier_data.document_type, carrier_data.document_id.strip()):
-    raise ValueError("This carrier is not authorized to enter the plant")
+    raise ValueError("Este transportador no está autorizado para ingresar a la planta. Si tienes dudas, comunícate con el área de Logística.")
 
   if is_document_blacklisted(db, vehicle_data.owner_document_type, vehicle_data.owner_document_id.strip()):
-    raise ValueError("The vehicle owner is not authorized to enter the plant")
+    raise ValueError("El propietario del vehículo no está autorizado para ingresar a la planta. Si tienes dudas, comunícate con Logística.")
 
 
 def _validate_submission(vehicle_data, carrier_data) -> None:
   
   if not PLATE_RE.fullmatch(normalize_plate(vehicle_data.plate)):
-    raise ValueError("The vehicle plate must have 5 or 6 letters and digits")
+    raise ValueError("La placa debe tener 5 o 6 letras y números.")
 
   if not normalize_plate(vehicle_data.plate):
-    raise ValueError("The vehicle plate is required")
+    raise ValueError("La placa del vehículo es obligatoria.")
 
   if vehicle_data.type not in VALID_VEHICLE_TYPES:
-    raise ValueError(f"Vehicle type must be one of: {', '.join(VALID_VEHICLE_TYPES)}")
+    raise ValueError(f"El tipo de vehículo debería ser uno de: {', '.join(VALID_VEHICLE_TYPES)}")
 
   if vehicle_data.capacity_m3 <= 0:
-    raise ValueError("The vehicle capacity must be greater than zero")
+    raise ValueError("La capacidad del vehículo debe ser mayor a 0.")
 
   if not vehicle_data.owner_name.strip() or not vehicle_data.owner_document_id.strip():
-    raise ValueError("The vehicle owner name and document number are required")
+    raise ValueError("El nombre y número de documento del propietario del vehículo son obligatorios.")
 
   if vehicle_data.owner_document_type not in VALID_OWNER_DOCUMENT_TYPES:
-    raise ValueError(f"Owner document type must be one of: {', '.join(VALID_OWNER_DOCUMENT_TYPES)}")
+    raise ValueError(f"El tipo de documento del propietario debería ser uno de: {', '.join(VALID_OWNER_DOCUMENT_TYPES)}")
 
   if carrier_data.document_type not in VALID_CARRIER_DOCUMENT_TYPES:
-    raise ValueError(f"Carrier document type must be one of: {', '.join(VALID_CARRIER_DOCUMENT_TYPES)}")
+    raise ValueError(f"El tipo de documento del transportador debería ser uno de: {', '.join(VALID_CARRIER_DOCUMENT_TYPES)}")
 
   if not carrier_data.document_id.strip() or not carrier_data.full_name.strip():
-    raise ValueError("The carrier name and document number are required")
+    raise ValueError("El nombre y documento del transportador son obligatorios.")
 
   if not PHONE_RE.fullmatch((carrier_data.phone or "").strip()):
-    raise ValueError("The carrier phone must have between 7 and 15 digits")
+    raise ValueError("El teléfono del transportador debe tener entre 7 y 15 dígitos.")
 
   if not (carrier_data.address or "").strip():
-    raise ValueError("The carrier address is required")
+    raise ValueError("La dirección del transportador es obligatoria.")
 
 
 # Se reutiliza entre pedidos por placa)
@@ -195,7 +195,7 @@ def _find_or_create_vehicle(db: Session, data, current_user) -> Vehicle:
 
   if vehicle:
     if not vehicle.is_active:
-      raise ValueError("This vehicle is inactive and cannot be used")
+      raise ValueError("Este vehículo está inactivo y no se puede usar.")
         
     owner_changed = (
       (vehicle.owner_document_type, vehicle.owner_document_id)
@@ -242,7 +242,7 @@ def _find_or_create_carrier(db: Session, data, current_user) -> Carrier:
 
   if carrier:
     if not carrier.is_active:
-      raise ValueError("This carrier is inactive and cannot be used")
+      raise ValueError("Este transportador está inactivo y no se puede usar.")
     
     if any(getattr(carrier, k) != v for k, v in fields.items()):
       for k, v in fields.items():
@@ -281,8 +281,7 @@ def create_assignment(db: Session, data, current_user) -> Assignment:
 
   if existing:
     raise ValueError(
-      "This order already has a transport submission. "
-      "If it was rejected, use the resubmit endpoint instead."
+      "Este pedido ya tiene un transporte enviado. Si fue rechazado, corrígelo y reenvíalo."
     )
 
   _validate_submission(data.vehicle, data.carrier)
