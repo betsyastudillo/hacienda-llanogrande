@@ -27,4 +27,12 @@ export const VEHICLE_TYPES = [
   { value: 'volqueta', label: 'Volqueta' },
 ]
 
+export const TRANSPORT_CHECK_LABELS = {
+  simit: 'SIMIT (multas)',
+  listas_vinculantes: 'Listas vinculantes (ONU, OFAC/Lista Clinton)',
+  antecedentes_judiciales: 'Antecedentes judiciales (Policía Nacional)',
+}
+
+export const TRANSPORT_CHECK_SUBJECTS = { vehicle: 'Vehículo', owner: 'Propietario', carrier: 'Transportador' }
+
 export const vehicleTypeLabel = (value) => VEHICLE_TYPES.find((t) => t.value === value)?.label || value

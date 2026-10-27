@@ -7,6 +7,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from app.constants.transport_requirements import (
   ALLOWED_DOCUMENTS_BY_SUBJECT,
+  BLOCKING_TRANSPORT_CHECKS,
   EDITABLE_ASSIGNMENT_STATUSES,
   OWNER_DOCUMENT,
   PLATE_BLACKLIST_TYPE,
@@ -19,6 +20,7 @@ from app.constants.transport_requirements import (
   compute_missing_documents,
   normalize_plate,
   required_document_keys,
+  required_transport_checks,
 )
 from app.dependencies import user_has_permission
 from app.models.assignment import Assignment
@@ -27,6 +29,7 @@ from app.models.company import Company
 from app.models.document import Document
 from app.models.document_blacklist import DocumentBlacklist
 from app.models.order import Order
+from app.models.transport_check import TransportCheck
 from app.models.vehicle import Vehicle
 from app.services.document_blacklist_service import is_document_blacklisted
 from app.services.document_service import create_document, replace_document_file
@@ -85,6 +88,12 @@ def attach_transport_details(db: Session, assignments: List[Assignment]) -> List
     )
     listed = {(r[0], r[1]) for r in rows}
 
+  all_checks = (
+    db.query(TransportCheck)
+    .filter(TransportCheck.assignment_id.in_([a.id for a in assignments]))
+    .all()
+  )
+
   for a in assignments:
     # Primero se asignan los atributos...
     a.vehicle = vehicles.get(a.vehicle_id)
@@ -97,9 +106,15 @@ def attach_transport_details(db: Session, assignments: List[Assignment]) -> List
       a.vehicle_id, a.carrier_id, a.documents, is_owner_carrier(a.vehicle, a.carrier)
     )
     
-    # Depsués de calcula lo vetado, que los usa
+    # Después de calcula lo vetado, que los usa
     v, c = a.vehicle, a.carrier
     a.blocked = []
+    
+    a.checks = [ch for ch in all_checks if ch.assignment_id == a.id]
+    a.required_checks = [
+      f"{s}:{k}" for s, k in required_transport_checks(is_owner_carrier(a.vehicle, a.carrier))
+    ]
+
     if v and (PLATE_BLACKLIST_TYPE, v.plate) in listed:
       a.blocked.append("vehicle")
     if v and v.owner_document_id and (v.owner_document_type, v.owner_document_id) in listed:
@@ -456,7 +471,8 @@ def validate_assignment(
   rejection_reason: Optional[str],
   background_check_verified: bool,
   blacklist_carrier: bool,
-  current_user
+  current_user,
+  checks = None,
 ) -> Assignment:
   
   assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
@@ -481,8 +497,25 @@ def validate_assignment(
     raise ValueError("Order not found")
   
   if decision == "approved":
-    if not background_check_verified:
-      raise ValueError("Must confirm background_check_verified before approving")
+    # Todas las consultas deben estar registradas, y los hallazgos llevar descripción
+    submitted = {(ch.subject, ch.check_key): ch for ch in (checks or [])}
+    required = required_transport_checks(is_owner_carrier(detail.vehicle, detail.carrier))
+
+    missing_checks = [f"{s}:{k}" for s, k in required if (s, k) not in submitted]
+    
+    if missing_checks:
+      raise ValueError(f"Faltan consultas por registrar: {', '.join(missing_checks)}")
+
+    for (s, k), ch in submitted.items():
+    
+      if (s, k) not in required:
+        raise ValueError(f"Consulta no válida: {s}:{k}")
+    
+      if ch.has_findings and not (ch.note or "").strip():
+        raise ValueError("Los hallazgos requieren una descripción")
+    
+      if ch.has_findings and k in BLOCKING_TRANSPORT_CHECKS:
+        raise ValueError("Hay un hallazgo que impide aprobar este transporte")
 
     if order.status != "facturado":
       raise ValueError(f"The order must be 'facturado' to approve its transport (current: {order.status})")
@@ -509,14 +542,25 @@ def validate_assignment(
 
   assignment.validation_status = decision
   assignment.rejection_reason = rejection_reason if decision == "rejected" else None
-  assignment.background_check_verified = background_check_verified if decision == "approved" else False
+  assignment.background_check_verified = decision == "approved"
   assignment.validated_at = datetime.now(timezone.utc)
   assignment.validated_by_user_id = current_user.id
   assignment.updated_by_user_id = current_user.id
 
+  submitted = {} # Para que no dé error en la línea 557
+
   if decision == "approved":
     order.status = "transport_validated"
     order.updated_by_user_id = current_user.id
+
+    db.query(TransportCheck).filter(TransportCheck.assignment_id == assignment.id).delete()
+    for (s, k), ch in submitted.items():
+      db.add(TransportCheck(
+        assignment_id=assignment.id, subject=s, check_key=k,
+        has_findings=ch.has_findings,
+        note=(ch.note or "").strip() if ch.has_findings else None,
+        created_by_user_id=current_user.id,
+      ))
 
   if decision == "rejected" and blacklist_carrier:
     carrier = db.query(Carrier).filter(Carrier.id == assignment.carrier_id).first()

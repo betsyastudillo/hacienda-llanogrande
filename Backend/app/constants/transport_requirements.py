@@ -28,6 +28,16 @@ PLATE_BLACKLIST_TYPE = "PLACA"
 TRANSPORT_ALLOWED_EXTENSIONS = (".pdf", ".jpg", ".jpeg", ".png", ".webp")
 TRANSPORT_MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 
+# Lo que se va a consultar de cada sujeto
+TRANSPORT_CHECKS = {
+  "vehicle": ("simit",),
+  "owner": ("listas_vinculantes", "simit"),
+  "carrier": ("listas_vinculantes", "antecedentes_judiciales", "simit"),
+}
+
+# Consultas cuyo hallazgo impide aprobar. Hoy ninguna: se registra y se avisa al cliente.
+BLOCKING_TRANSPORT_CHECKS = ()
+
 # Estados de la asignación en los que el cliente todavía puede subir o reemplazar documentos
 EDITABLE_ASSIGNMENT_STATUSES = ("pending", "rejected")
 
@@ -68,4 +78,12 @@ def required_document_keys(owner_is_carrier: bool) -> list[str]:
   keys = [f"{subject}:{t}" for subject, types in REQUIRED_DOCUMENTS_BY_SUBJECT.items() for t in types]
   if not owner_is_carrier:
     keys.append(f"vehicle:{OWNER_DOCUMENT}")
+
   return keys
+
+
+# Si el transportador es el dueño, no se consulta dos veces a la misma persona
+def required_transport_checks(owner_is_carrier: bool) -> list[tuple[str, str]]:
+  subjects = ["vehicle", "carrier"] if owner_is_carrier else ["vehicle", "owner", "carrier"]
+
+  return [(s, k) for s in subjects for k in TRANSPORT_CHECKS[s]]

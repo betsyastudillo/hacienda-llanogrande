@@ -8,10 +8,11 @@ import StatusBadge from '../../../components/StatusBadge/StatusBadge'
 import FilePreviewModal from '../../../components/FilePreviewModal/FilePreviewModal'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
 import { 
-    TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES, VEHICLE_TYPES, vehicleTypeLabel, 
+    TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES, VEHICLE_TYPES, vehicleTypeLabel, TRANSPORT_CHECK_LABELS, TRANSPORT_CHECK_SUBJECTS
 } from '../../../constants/transport'
 import CollapsibleCard from '../../../components/CollapsibleCard/CollapsibleCard'
 import TransportDocuments from './TransportDocuments'
+import ComplianceTable from '../../../components/ComplianceTable/ComplianceTable'
 
 
 const STATUS = {
@@ -33,6 +34,9 @@ const DOC_STATUS = {
   rejected: { label: 'Rechazado', icon: CircleX, bg: '#fbdcdc', text: '#a12a2a' },
 }
 
+const SUBJECT_ORDER = ['vehicle', 'owner', 'carrier']
+
+
 export default function TransportCard({ order, assignment, dispatchGuide, onChanged, defaultOpen }) {
   const { hasPermission } = useAuth()
   const { showToast } = useToast()
@@ -53,7 +57,8 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   
   const [docToReject, setDocToReject] = useState(null)   // { doc, label }
   const [docReason, setDocReason] = useState('')
-  
+  const [checkValues, setCheckValues] = useState({})   // { 'vehicle:simit': { has_findings, note } }
+
   const isBusy = busy !== null
   
   const set = (f) => (e) => setForm({ ...form, [f]: e.target.value })
@@ -292,6 +297,10 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
         rejection_reason: null,
         background_check_verified: true,
         blacklist_carrier: false,
+        checks: Object.entries(checkValues).map(([full, val]) => {
+          const [subject, check_key] = full.split(':')
+          return { subject, check_key, has_findings: val.has_findings, note: val.note?.trim() || null }
+        }),
       }),
       'Transporte aprobado.',
       'No se pudo aprobar el transporte',
@@ -400,6 +409,28 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     )
     return { key, label, doc, status: doc ? doc.status : 'missing' }
   })
+
+  const checkItems = (assignment?.required_checks || []).map((full) => {
+    const [subject, key] = full.split(':')
+    return { full, subject, key }
+  })
+
+  // Qué dato se consulta en cada portal, para copiarlo
+  const checkTarget = {
+    vehicle: v ? `Placa ${v.plate}` : '',
+    owner: v ? `${v.owner_document_type} ${v.owner_document_id}` : '',
+    carrier: c ? `${c.document_type} ${c.document_id}` : '',
+  }
+
+  const checksComplete = checkItems.every(({ full }) => {
+    const val = checkValues[full]
+    return val && typeof val.has_findings === 'boolean' && (!val.has_findings || val.note?.trim())
+  })
+
+  const hasFindings = Object.values(checkValues).some((val) => val.has_findings)
+
+  // Hallazgos ya registrados: los ve también el cliente
+  const findings = (assignment?.checks || []).filter((ch) => ch.has_findings)
 
   // Falta algún documento o alguno no está aprobado todavía
   const docsUnapproved = docRows.some((r) => r.status !== 'approved')
@@ -535,11 +566,11 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   
                 <button
                   className="pay-btn is-primary"
-                  onClick={() => { setChecked(false); setShowApprove(true) }}
+                  onClick={() => { setCheckValues({}); setShowApprove(true) }}
                   disabled={isBusy || docsUnapproved || assignment.blocked?.length > 0}
                   title={docsUnapproved ? 'Aprueba cada documento primero' : undefined}
                 >
-                  Aprobar
+                  Siguiente
                 </button>
               </div>
             )}
@@ -728,21 +759,39 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       )}
       
       {showApprove && (
-        <Modal title="Aprobar transporte" onClose={() => setShowApprove(false)}>
-          <label style={{ display: 'flex', gap: 8, fontSize: 13 }}>
-            <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
-            Confirmo que consulté los antecedentes del transportador y que los datos del dueño y los
-            documentos coinciden con la tarjeta de propiedad.
-          </label>
+        <Modal title="Verificar y aprobar transporte" onClose={() => setShowApprove(false)}>
+          <p className="edit-note">
+            Consulta cada fuente con el dato indicado y registra el resultado. Los hallazgos no bloquean la
+            aprobación, pero quedan registrados y el cliente los verá.
+          </p>
+
+          {SUBJECT_ORDER.map((s) => {
+            const items = checkItems
+              .filter((i) => i.subject === s)
+              .map((i) => ({ key: i.full, label: TRANSPORT_CHECK_LABELS[i.key] || i.key }))
+
+            if (items.length === 0) return null
+
+            return (
+              <ComplianceTable
+                key={s}
+                group={s}
+                title={`${TRANSPORT_CHECK_SUBJECTS[s]} · ${checkTarget[s]}`}
+                items={items}
+                values={checkValues}
+                onChange={(key, patch) => setCheckValues((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }))}
+              />
+            )
+          })}
+
+          {hasFindings && (
+            <p className="detail-empty-inline pay-hint">Hay hallazgos: se registrarán y se le avisará al cliente.</p>
+          )}
+
           <div className="pay-actions">
             <button type="button" className="pay-btn" onClick={() => setShowApprove(false)} disabled={isBusy}>Cancelar</button>
-            <button
-              type="button"
-              className="pay-btn is-primary"
-              disabled={!checked || isBusy}
-              onClick={handleApprove}
-            >
-              {busy === 'approved' ? 'Aprobando...' : 'Aprobar'}
+            <button type="button" className="pay-btn is-primary" disabled={!checksComplete || isBusy} onClick={handleApprove}>
+              {busy === 'approved' ? 'Aprobando...' : 'Aprobar transporte'}
             </button>
           </div>
         </Modal>

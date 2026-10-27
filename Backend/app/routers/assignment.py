@@ -164,7 +164,7 @@ def validate(
   try:
     return validate_assignment(
       db, assignment_id, data.decision, data.rejection_reason,
-      data.background_check_verified, data.blacklist_carrier, current_user,
+      data.background_check_verified, data.blacklist_carrier, current_user, checks= data.checks,
     )
 
   except ValueError as e:

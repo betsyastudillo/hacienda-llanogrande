@@ -27,6 +27,22 @@ class CarrierSubmission(BaseModel):
   address: str
 
 
+class TransportCheckInput(BaseModel):
+  subject: Literal["vehicle", "owner", "carrier"]
+  check_key: str
+  has_findings: bool
+  note: Optional[str] = None
+
+
+class TransportCheckResponse(BaseModel):
+  subject: str
+  check_key: str
+  has_findings: bool
+  note: Optional[str] = None
+
+  class Config:
+    from_attributes = True
+
 class AssignmentCreate(BaseModel):
   order_id: UUID
   vehicle: VehicleSubmission
@@ -43,6 +59,7 @@ class AssignmentValidateRequest(BaseModel):
   rejection_reason: Optional[str] = None
   background_check_verified: bool = False
   blacklist_carrier: bool = False
+  checks: List[TransportCheckInput] = []
 
 
 class DocumentReview(BaseModel):
@@ -87,6 +104,8 @@ class AssignmentResponse(AuditResponseMixin):
   # Documentos obligatorios que faltan o fueron rechazados, p. ej. "vehicle:soat"
   missing_documents: List[str] = []
   blocked: List[str] = []   # subconjunto de "vehicle", "owner", "carrier"
+  checks: List[TransportCheckResponse] = []
+  required_checks: List[str] = []   # "vehicle:simit", "carrier:listas_vinculantes"...
 
   class Config:
     from_attributes = True
