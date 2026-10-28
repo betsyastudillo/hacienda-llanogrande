@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import or_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, joinedload
-from app.constants.transport_requirements import compute_missing_documents
+from app.constants.transport_requirements import compute_missing_documents, is_owner_carrier
 from app.models.assignment import Assignment
 from app.models.company import Company
 from app.models.document import Document
@@ -16,6 +16,8 @@ from app.models.order_counter import OrderCounter
 from app.models.payment import Payment
 from app.models.product import Product
 from app.models.user import User
+from app.models.vehicle import Vehicle
+from app.models.carrier import Carrier
 from app.schemas.order import OrderCreate
 from app.services.inventory_service import get_sellable_stock, register_order_deduction
 
@@ -300,10 +302,11 @@ def cancel_order(db: Session, order_id: UUID, reason: str, current_user) -> Opti
 # Sirve cuando requiere acción para el pago o el transporte
 def attach_needs_action(db: Session, orders: List[Order], current_user: User) -> List[Order]:
   
+  payments, assignments, transport_documents = {}, {}, []
+  vehicles, carriers = {}, {}
+
   role = current_user.role
   ids = [o.id for o in orders]
-
-  payments, assignments, transport_documents = {}, {}, []
 
   if ids:
 
@@ -321,6 +324,10 @@ def attach_needs_action(db: Session, orders: List[Order], current_user: User) ->
     carrier_ids = {a.carrier_id for a in assignments.values()}
 
     if assignments:
+
+      vehicles = {v.id: v for v in db.query(Vehicle).filter(Vehicle.id.in_(vehicle_ids)).all()}
+      carriers = {c.id: c for c in db.query(Carrier).filter(Carrier.id.in_(carrier_ids)).all()}
+
       transport_documents = (
         db.query(Document)
         .filter(or_(Document.vehicle_id.in_(vehicle_ids), Document.carrier_id.in_(carrier_ids)))
@@ -341,7 +348,9 @@ def attach_needs_action(db: Session, orders: List[Order], current_user: User) ->
     # Un transporte pendiente solo se puede revisar cuando ya están todos los documentos obligatorios
     transport_docs_missing = bool(
       assignment
-      and compute_missing_documents(assignment.vehicle_id, assignment.carrier_id, transport_documents)
+      and compute_missing_documents(
+        assignment.vehicle_id, assignment.carrier_id, transport_documents,
+        is_owner_carrier(vehicles.get(assignment.vehicle_id), carriers.get(assignment.carrier_id)))
     )
 
     # Decide según el rol de quien consulta:

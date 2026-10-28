@@ -21,6 +21,7 @@ from app.constants.transport_requirements import (
   normalize_plate,
   required_document_keys,
   required_transport_checks,
+  is_owner_carrier
 )
 from app.dependencies import user_has_permission
 from app.models.assignment import Assignment
@@ -38,14 +39,6 @@ from app.services.order_service import can_access_order, CLIENT_ROLES
 
 PHONE_RE = re.compile(r"\d{7,15}")
 PLATE_RE = re.compile(r"[A-Z0-9]{5,6}")
-
-def is_owner_carrier(vehicle, carrier) -> bool:
-  return bool(
-    vehicle and carrier and vehicle.owner_document_id
-    and vehicle.owner_document_id == carrier.document_id
-    and vehicle.owner_document_type == carrier.document_type
-  )
-
 
 # Adjunta a cada asignación su vehículo, transportador, documentos y los documentos que faltan.
 # Son atributos temporales (no columnas), igual que needs_action en los pedidos.
@@ -496,32 +489,16 @@ def validate_assignment(
   if not order:
     raise ValueError("Order not found")
   
+  # Las consultas se llenan solo al aprobar; se inicializa aquí para que exista en toda la función
+  submitted = {} 
+
   if decision == "approved":
-    # Todas las consultas deben estar registradas, y los hallazgos llevar descripción
-    submitted = {(ch.subject, ch.check_key): ch for ch in (checks or [])}
-    required = required_transport_checks(is_owner_carrier(detail.vehicle, detail.carrier))
-
-    missing_checks = [f"{s}:{k}" for s, k in required if (s, k) not in submitted]
     
-    if missing_checks:
-      raise ValueError(f"Faltan consultas por registrar: {', '.join(missing_checks)}")
-
-    for (s, k), ch in submitted.items():
-    
-      if (s, k) not in required:
-        raise ValueError(f"Consulta no válida: {s}:{k}")
-    
-      if ch.has_findings and not (ch.note or "").strip():
-        raise ValueError("Los hallazgos requieren una descripción")
-    
-      if ch.has_findings and k in BLOCKING_TRANSPORT_CHECKS:
-        raise ValueError("Hay un hallazgo que impide aprobar este transporte")
-
     if order.status != "facturado":
       raise ValueError(f"The order must be 'facturado' to approve its transport (current: {order.status})")
-
+    
     detail = attach_transport_details(db, [assignment])[0]
-
+    
     if detail.blocked:
       raise ValueError("Cannot approve: the vehicle, its owner or the carrier is on the blacklist")
 
@@ -535,10 +512,30 @@ def validate_assignment(
     }
     
     required = required_document_keys(is_owner_carrier(detail.vehicle, detail.carrier))
-    not_approved = [k for k in required if status_by_key.get(k) != "approved"]
+    docs_not_approved = [k for k in required if status_by_key.get(k) != "approved"]
 
-    if not_approved:
-      raise ValueError(f"Cannot approve: these documents must be approved first: {', '.join(not_approved)}")
+    if docs_not_approved:
+      raise ValueError(f"Cannot approve: these documents must be approved first: {', '.join(docs_not_approved)}")
+    
+    # Todas las consultas deben estar registradas, y los hallazgos llevar descripción
+    submitted = {(ch.subject, ch.check_key): ch for ch in (checks or [])}
+    required_checks = required_transport_checks(is_owner_carrier(detail.vehicle, detail.carrier))
+
+    missing_checks = [f"{s}:{k}" for s, k in required_checks if (s, k) not in submitted]
+    
+    if missing_checks:
+      raise ValueError(f"Faltan consultas por registrar: {', '.join(missing_checks)}")
+
+    for (s, k), ch in submitted.items():
+    
+      if (s, k) not in required_checks:
+        raise ValueError(f"Consulta no válida: {s}:{k}")
+    
+      if ch.has_findings and not (ch.note or "").strip():
+        raise ValueError("Los hallazgos requieren una descripción")
+    
+      if ch.has_findings and k in BLOCKING_TRANSPORT_CHECKS:
+        raise ValueError("Hay un hallazgo que impide aprobar este transporte")
 
   assignment.validation_status = decision
   assignment.rejection_reason = rejection_reason if decision == "rejected" else None
@@ -547,13 +544,13 @@ def validate_assignment(
   assignment.validated_by_user_id = current_user.id
   assignment.updated_by_user_id = current_user.id
 
-  submitted = {} # Para que no dé error en la línea 557
-
   if decision == "approved":
     order.status = "transport_validated"
     order.updated_by_user_id = current_user.id
 
+    # Se reemplazan las consultas anteriores de este envío (si las hay) por las nuevas
     db.query(TransportCheck).filter(TransportCheck.assignment_id == assignment.id).delete()
+
     for (s, k), ch in submitted.items():
       db.add(TransportCheck(
         assignment_id=assignment.id, subject=s, check_key=k,

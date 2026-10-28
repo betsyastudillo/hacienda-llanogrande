@@ -87,3 +87,11 @@ def required_transport_checks(owner_is_carrier: bool) -> list[tuple[str, str]]:
   subjects = ["vehicle", "carrier"] if owner_is_carrier else ["vehicle", "owner", "carrier"]
 
   return [(s, k) for s in subjects for k in TRANSPORT_CHECKS[s]]
+
+
+def is_owner_carrier(vehicle, carrier) -> bool:
+  return bool(
+    vehicle and carrier and vehicle.owner_document_id
+    and vehicle.owner_document_id == carrier.document_id
+    and vehicle.owner_document_type == carrier.document_type
+  )

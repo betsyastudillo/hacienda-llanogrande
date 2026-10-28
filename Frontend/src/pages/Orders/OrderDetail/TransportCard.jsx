@@ -464,7 +464,20 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                   : `No está autorizado: ${blockedWhat}. Corrige los datos y reenvía, o comunícate con el área de Logística.`}
               </p>
             )}
-  
+
+            {findings.length > 0 && (
+              <div className="detail-error-text">
+                <strong>Hallazgos en la verificación:</strong>
+                <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                  {findings.map((ch) => (
+                    <li key={`${ch.subject}:${ch.check_key}`}>
+                      {TRANSPORT_CHECK_SUBJECTS[ch.subject]} · {TRANSPORT_CHECK_LABELS[ch.check_key]}: {ch.note}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="detail-info-list">
               <div className="detail-info-row">
                 <span>Estado</span>
@@ -638,14 +651,17 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               <input type="checkbox" checked={ownerIsCarrier} onChange={(e) => setOwnerIsCarrier(e.target.checked)} />
               El transportador es el dueño del vehículo
             </label>
+
             {!ownerIsCarrier && (
               <>
                 <div className="edit-row">
                   <label className="edit-field">Tipo de documento
                     <select
                       value={form.owner_document_type}
+                      placeholder={form.owner_document_type === 'NIT' ? 'NIT sin dígito de verificación' : ''}
                       onChange={(e) => {
-                        set('owner_document_type')(e)
+                        const value = form.owner_document_type === 'NIT' ? e.target.value.replace(/\D/g, '') : e.target.value
+                        setForm({...form, owner_document_id: value})
                         setHint((h) => ({ ...h, owner: false }))
                         setBlocked((b) => ({ ...b, owner: false }))
                       }}
@@ -761,8 +777,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       {showApprove && (
         <Modal title="Verificar y aprobar transporte" onClose={() => setShowApprove(false)}>
           <p className="edit-note">
-            Consulta cada fuente con el dato indicado y registra el resultado. Los hallazgos no bloquean la
-            aprobación, pero quedan registrados y el cliente los verá.
+            Consulta cada fuente con el dato indicado y registra el resultado.
           </p>
 
           {SUBJECT_ORDER.map((s) => {
@@ -785,7 +800,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
           })}
 
           {hasFindings && (
-            <p className="detail-empty-inline pay-hint">Hay hallazgos: se registrarán y se le avisará al cliente.</p>
+            <p className="detail-empty-inline pay-hint">Si hay hallazgos: se registran y se le avisará al cliente.</p>
           )}
 
           <div className="pay-actions">
