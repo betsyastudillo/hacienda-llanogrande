@@ -588,7 +588,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             )}
   
             {assignment.validation_status === 'pending' && !canValidate && missing.length === 0 && (
-              <p className="detail-empty-inline pay-hint">En revisión por logística.</p>
+              <p className="detail-empty-inline pay-hint">En revisión por el área de logística.</p>
             )}
   
             {canFix && (
@@ -609,7 +609,11 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   
                 <button
                   className="pay-btn is-primary"
-                  onClick={() => { setCheckValues({}); setShowApprove(true) }}
+                  onClick={() => { 
+                    setCheckValues({}); 
+                    setBlockReason('Transporte no autorizado por el área de cumplimiento.')
+                    setBlockBlacklist(false)
+                    setShowApprove(true) }}
                   disabled={isBusy || docsUnapproved || assignment.blocked?.length > 0}
                   title={docsUnapproved ? 'Aprueba cada documento primero' : undefined}
                 >
@@ -666,7 +670,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             )}
       
             {blocked.vehicle && (
-              <p className="pay-error">
+              <p className="detail-error-text">
                 {blocked.vehicle === 'owner' ? 'El dueño de este vehículo' : 'Este vehículo'} no está autorizado para
                 realizar el transporte. Si tienes dudas, comunícate con Logística.
               </p>
@@ -717,7 +721,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                   <p className="edit-note">Datos cargados de un registro anterior. Revísalos y corrígelos si algo cambió.</p>
                 )}
                 {blocked.owner && (
-                  <p className="pay-error">
+                  <p className="detail-error-text">
                     Este propietario no está autorizado para realizar el transporte. Si tienes dudas, comunícate con Logística.
                   </p>
                 )}
@@ -831,7 +835,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
           {blockingHit ? (
             <>
-              <p className="pay-error">
+              <p className="detail-error-text">
                 Hay un hallazgo en listas vinculantes: este transporte no se puede aprobar. Se rechazará y la consulta
                 quedará registrada.
               </p>
@@ -873,12 +877,6 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             </>
           )}
 
-          <div className="pay-actions">
-            <button type="button" className="pay-btn" onClick={() => setShowApprove(false)} disabled={isBusy}>Cancelar</button>
-            <button type="button" className="pay-btn is-primary" disabled={!checksComplete || isBusy} onClick={handleApprove}>
-              {busy === 'approved' ? 'Aprobando...' : 'Aprobar transporte'}
-            </button>
-          </div>
         </Modal>
       )}
       
