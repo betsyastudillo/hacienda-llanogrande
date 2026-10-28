@@ -36,7 +36,7 @@ TRANSPORT_CHECKS = {
 }
 
 # Consultas cuyo hallazgo impide aprobar. Hoy ninguna: se registra y se avisa al cliente.
-BLOCKING_TRANSPORT_CHECKS = ()
+BLOCKING_TRANSPORT_CHECKS = ("listas_vinculantes",)
 
 # Estados de la asignación en los que el cliente todavía puede subir o reemplazar documentos
 EDITABLE_ASSIGNMENT_STATUSES = ("pending", "rejected")

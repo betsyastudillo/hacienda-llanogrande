@@ -19,7 +19,7 @@ from app.schemas.assignment import (
 )
 from app.schemas.document import DocumentBase
 from app.services.assignment_service import (
-  create_assignment, lookup_carrier, lookup_owner, lookup_vehicle, resubmit_assignment, review_transport_document, validate_assignment,
+  create_assignment, hide_sensitive_checks, lookup_carrier, lookup_owner, lookup_vehicle, resubmit_assignment, review_transport_document, validate_assignment,
   get_assignment_detail_by_order, get_assignments,
   upload_transport_document, get_transport_document,
 )
@@ -75,7 +75,7 @@ def get_assignment_by_order_id(
   if not assignment:
     raise HTTPException(status_code=404, detail="Assignment not found for this order")
 
-  return assignment
+  return hide_sensitive_checks(assignment, current_user)
 
 
 @router.post("/", response_model=AssignmentResponse, summary="Registra una asignación")

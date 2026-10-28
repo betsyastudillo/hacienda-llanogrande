@@ -13,6 +13,7 @@ from app.constants.transport_requirements import (
   PLATE_BLACKLIST_TYPE,
   REQUIRED_DOCUMENTS_BY_SUBJECT,
   TRANSPORT_ALLOWED_EXTENSIONS,
+  TRANSPORT_CHECKS,
   TRANSPORT_MAX_FILE_SIZE,
   VALID_CARRIER_DOCUMENT_TYPES,
   VALID_OWNER_DOCUMENT_TYPES,
@@ -489,8 +490,17 @@ def validate_assignment(
   if not order:
     raise ValueError("Order not found")
   
-  # Las consultas se llenan solo al aprobar; se inicializa aquí para que exista en toda la función
-  submitted = {} 
+  # Las consultas llegan al aprobar y también al rechazar por un hallazgo: así queda la evidencia
+  submitted = {(ch.subject, ch.check_key): ch for ch in (checks or [])}
+  valid_checks = {(s, k) for s, keys in TRANSPORT_CHECKS.items() for k in keys}
+
+  for (s, k), ch in submitted.items():
+    
+    if (s, k) not in valid_checks:
+      raise ValueError(f"Consulta no válida: {s}:{k}")
+    
+    if ch.has_findings and not (ch.note or "").strip():
+      raise ValueError("Los hallazgos requieren una descripción")
 
   if decision == "approved":
     
@@ -518,9 +528,7 @@ def validate_assignment(
       raise ValueError(f"Cannot approve: these documents must be approved first: {', '.join(docs_not_approved)}")
     
     # Todas las consultas deben estar registradas, y los hallazgos llevar descripción
-    submitted = {(ch.subject, ch.check_key): ch for ch in (checks or [])}
     required_checks = required_transport_checks(is_owner_carrier(detail.vehicle, detail.carrier))
-
     missing_checks = [f"{s}:{k}" for s, k in required_checks if (s, k) not in submitted]
     
     if missing_checks:
@@ -528,12 +536,9 @@ def validate_assignment(
 
     for (s, k), ch in submitted.items():
     
-      if (s, k) not in required_checks:
-        raise ValueError(f"Consulta no válida: {s}:{k}")
-    
-      if ch.has_findings and not (ch.note or "").strip():
-        raise ValueError("Los hallazgos requieren una descripción")
-    
+      if ch.has_findings and k in BLOCKING_TRANSPORT_CHECKS:
+        raise ValueError("Hay un hallazgo que impide aprobar este transporte: rechaza el transporte y registra la consulta")
+          
       if ch.has_findings and k in BLOCKING_TRANSPORT_CHECKS:
         raise ValueError("Hay un hallazgo que impide aprobar este transporte")
 
@@ -548,7 +553,8 @@ def validate_assignment(
     order.status = "transport_validated"
     order.updated_by_user_id = current_user.id
 
-    # Se reemplazan las consultas anteriores de este envío (si las hay) por las nuevas
+  # Se guardan las consultas que lleguen, en cualquiera de las dos decisiones
+  if submitted:
     db.query(TransportCheck).filter(TransportCheck.assignment_id == assignment.id).delete()
 
     for (s, k), ch in submitted.items():
@@ -743,3 +749,13 @@ def review_transport_document(db: Session, order_id: UUID, document_id: UUID, st
   db.refresh(document)
   
   return document
+
+
+# Para información sensible (hallazgos en listas vinculantes no se muestran al cliente)
+def hide_sensitive_checks(assignment: Assignment, current_user) -> Assignment:
+
+  if current_user.role in CLIENT_ROLES:
+
+    assignment.checks = [ch for ch in assignment.checks if ch.check_key not in BLOCKING_TRANSPORT_CHECKS]
+
+  return assignment
