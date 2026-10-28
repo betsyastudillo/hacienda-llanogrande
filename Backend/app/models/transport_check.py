@@ -14,7 +14,7 @@ class TransportCheck(Base, AuditMixin):
   check_key = Column(String, nullable=False)     # simit | listas_vinculantes | antecedentes_judiciales
   has_findings = Column(Boolean, nullable=False)
   note = Column(String, nullable=True)
-
+  subject_ref = Column(String, nullable=True)   # placa, o tipo y número del documento."
   __table_args__ = (
     UniqueConstraint("assignment_id", "subject", "check_key", name="uq_transport_check"),
   )

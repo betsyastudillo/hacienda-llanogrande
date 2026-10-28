@@ -502,12 +502,12 @@ def validate_assignment(
     if ch.has_findings and not (ch.note or "").strip():
       raise ValueError("Los hallazgos requieren una descripción")
 
+  detail = attach_transport_details(db, [assignment])[0]
+
   if decision == "approved":
     
     if order.status != "facturado":
       raise ValueError(f"The order must be 'facturado' to approve its transport (current: {order.status})")
-    
-    detail = attach_transport_details(db, [assignment])[0]
     
     if detail.blocked:
       raise ValueError("Cannot approve: the vehicle, its owner or the carrier is on the blacklist")
@@ -553,6 +553,13 @@ def validate_assignment(
     order.status = "transport_validated"
     order.updated_by_user_id = current_user.id
 
+  # Se arma la referencia de cada sujeto
+  refs = {
+    "vehicle": detail.vehicle.plate,
+    "owner": f"{detail.vehicle.owner_document_type} {detail.vehicle.owner_document_id}",
+    "carrier": f"{detail.carrier.document_type} {detail.carrier.document_id}",
+  }
+
   # Se guardan las consultas que lleguen, en cualquiera de las dos decisiones
   if submitted:
     db.query(TransportCheck).filter(TransportCheck.assignment_id == assignment.id).delete()
@@ -560,6 +567,7 @@ def validate_assignment(
     for (s, k), ch in submitted.items():
       db.add(TransportCheck(
         assignment_id=assignment.id, subject=s, check_key=k,
+        subject_ref=refs[s],
         has_findings=ch.has_findings,
         note=(ch.note or "").strip() if ch.has_findings else None,
         created_by_user_id=current_user.id,

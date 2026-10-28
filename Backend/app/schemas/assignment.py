@@ -39,6 +39,7 @@ class TransportCheckResponse(BaseModel):
   check_key: str
   has_findings: bool
   note: Optional[str] = None
+  subject_ref: Optional[str]
 
   class Config:
     from_attributes = True

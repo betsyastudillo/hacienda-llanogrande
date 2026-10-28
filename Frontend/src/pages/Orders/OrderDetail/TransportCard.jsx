@@ -64,8 +64,8 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
   const isBusy = busy !== null
   
-  const set = (f) => (e) => setForm({ ...form, [f]: e.target.value })
-  const setDigits = (f) => (e) => setForm({ ...form, [f]: e.target.value.replace(/\D/g, '') })
+  const set = (f) => (e) => { setForm({ ...form, [f]: e.target.value }); setFormError('') }
+  const setDigits = (f) => (e) => { setForm({ ...form, [f]: e.target.value.replace(/\D/g, '') }); setFormError('') }
   
   const canValidate = hasPermission('assignment:validar')
   const canGuide = hasPermission('dispatch_guide:crear')
@@ -450,6 +450,17 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     return val && typeof val.has_findings === 'boolean' && (!val.has_findings || val.note?.trim())
   })
 
+  // Referencia vigente de cada sujeto, con el mismo formato que guarda el backend
+  const currentRef = {
+    vehicle: v?.plate,
+    owner: v ? `${v.owner_document_type} ${v.owner_document_id}` : null,
+    carrier: c ? `${c.document_type} ${c.document_id}` : null,
+  }
+
+  const allFindings = (assignment?.checks || []).filter(
+    (ch) => ch.has_findings && (canValidate || !BLOCKING_TRANSPORT_CHECKS.includes(ch.check_key))
+  )
+
   const hasFindings = Object.values(checkValues).some((val) => val.has_findings)
 
   const blockingHit = Object.entries(checkValues).some(
@@ -458,13 +469,16 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   const findingsHaveNotes = Object.values(checkValues).every((val) => !val.has_findings || val.note?.trim())
 
   // El cliente no ve los hallazgos bloqueantes
-  const findings = (assignment?.checks || []).filter(
-    (ch) => ch.has_findings && (canValidate || !BLOCKING_TRANSPORT_CHECKS.includes(ch.check_key))
-  )
+  const findings = allFindings.filter((ch) => ch.subject_ref === currentRef[ch.subject])   // de quien está hoy
 
+  const pastFindings = allFindings.filter((ch) => ch.subject_ref !== currentRef[ch.subject]) // de quien ya no está
+
+  // El dueño solo cuenta si su sección está visible; si es el transportador, ya lo cubre el aviso del transportador
+  const formBlocked = Boolean(blocked.vehicle) || blocked.carrier || (!ownerIsCarrier && blocked.owner)
+  
   // Falta algún documento o alguno no está aprobado todavía
   const docsUnapproved = docRows.some((r) => r.status !== 'approved')
-  
+  console.log({ blocked, ownerIsCarrier, isBusy })
   return (
     <>
       <CollapsibleCard
@@ -506,6 +520,13 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                   ))}
                 </ul>
               </div>
+            )}
+
+            {canValidate && pastFindings.length > 0 && (
+              <p className="detail-empty-inline pay-hint">
+                Hubo hallazgos en una versión anterior de este envío, sobre {pastFindings.map((ch) => ch.subject_ref).join(', ')}.
+                Los datos actuales son distintos.
+              </p>
             )}
 
             <div className="detail-info-list">
@@ -649,6 +670,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                   value={form.plate}
                   onChange={(e) => {
                     setForm({ ...form, plate: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })
+                    setFormError('')
                     setHint((h) => ({ ...h, vehicle: false }))
                     setBlocked((b) => ({ ...b, vehicle: null }))
                   }}
@@ -682,7 +704,14 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       
             <p className="edit-section">Dueño del vehículo</p>
             <label style={{ display: 'flex', gap: 8, fontSize: 13 }}>
-              <input type="checkbox" checked={ownerIsCarrier} onChange={(e) => setOwnerIsCarrier(e.target.checked)} />
+              <input 
+                type="checkbox" 
+                checked={ownerIsCarrier} 
+                onChange={(e) => { 
+                  setOwnerIsCarrier(e.target.checked)
+                  if (e.target.checked) { setBlocked((b) => ({ ...b, owner: false })); setHint((h) => ({ ...h, owner: false })) }
+                  setFormError('')}}
+              />
               El transportador es el dueño del vehículo
             </label>
 
@@ -696,6 +725,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                       onChange={(e) => {
                         const value = form.owner_document_type === 'NIT' ? e.target.value.replace(/\D/g, '') : e.target.value
                         setForm({...form, owner_document_id: value})
+                        setFormError('')
                         setHint((h) => ({ ...h, owner: false }))
                         setBlocked((b) => ({ ...b, owner: false }))
                       }}
@@ -783,8 +813,10 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             </div>
           </div>
       
-          {formError && <p className="detail-error-text">{formError}</p>}
-      
+          {formError && ! blocked.vehicle && !blocked.carrier && !blocked.owner && (
+            <p className="detail-error-text">{formError}</p>
+          )}   
+            
           <div className="pay-actions">
             <button 
               type="button" 
@@ -799,7 +831,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               type="button" 
               className="pay-btn is-primary" 
               onClick={handleSubmit} 
-              disabled={busy || Boolean(blocked.vehicle) || blocked.carrier || blocked.owner}
+              disabled={busy || formBlocked}
             >
               {busy === 'submit' ? 'Enviando...' : assignment ? 'Reenviar' : 'Enviar'}
             </button>
@@ -895,7 +927,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             <button type="button" className="pay-btn" onClick={() => setShowReject(false)} disabled={busy}>Cancelar</button>
             <button
               type="button" 
-              className="pay-btn is-danger" 
+              className="pay-btn is-primary" 
               disabled={!reason.trim() || isBusy}
               onClick={handleReject}
             >
@@ -915,7 +947,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
           <div className="pay-actions">
             <button type="button" className="pay-btn" onClick={() => setDocToReject(null)} disabled={isBusy}>Cancelar</button>
             <button
-              type="button" className="pay-btn is-danger" disabled={!docReason.trim() || isBusy}
+              type="button" className="pay-btn is-primary" disabled={!docReason.trim() || isBusy}
               onClick={() => handleReviewDoc(docToReject.doc, 'rejected', docReason.trim())}
             >
               {busy === 'review' ? 'Rechazando...' : 'Rechazar documento'}
