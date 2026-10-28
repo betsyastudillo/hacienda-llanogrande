@@ -35,4 +35,6 @@ export const TRANSPORT_CHECK_LABELS = {
 
 export const TRANSPORT_CHECK_SUBJECTS = { vehicle: 'Vehículo', owner: 'Propietario', carrier: 'Transportador' }
 
+export const BLOCKING_TRANSPORT_CHECKS = ['listas_vinculantes']
+
 export const vehicleTypeLabel = (value) => VEHICLE_TYPES.find((t) => t.value === value)?.label || value

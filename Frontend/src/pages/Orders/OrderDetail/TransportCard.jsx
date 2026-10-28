@@ -8,7 +8,7 @@ import StatusBadge from '../../../components/StatusBadge/StatusBadge'
 import FilePreviewModal from '../../../components/FilePreviewModal/FilePreviewModal'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
 import { 
-    TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES, VEHICLE_TYPES, vehicleTypeLabel, TRANSPORT_CHECK_LABELS, TRANSPORT_CHECK_SUBJECTS
+    TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES, VEHICLE_TYPES, vehicleTypeLabel, TRANSPORT_CHECK_LABELS, TRANSPORT_CHECK_SUBJECTS, BLOCKING_TRANSPORT_CHECKS
 } from '../../../constants/transport'
 import CollapsibleCard from '../../../components/CollapsibleCard/CollapsibleCard'
 import TransportDocuments from './TransportDocuments'
@@ -27,12 +27,12 @@ const EMPTY_FORM = {
   full_name: '', document_type: 'CC', document_id: '', phone: '', address: '',
 }
 
-const DOC_STATUS = {
-  missing: { label: 'Falta', icon: null, bg: '#ece9e2', text: '#5f5e5a' },
-  pending: { label: 'En revisión', icon: Clock, bg: '#fdf1b8', text: '#7a5c00' },
-  approved: { label: 'Aprobado', icon: CircleCheck, bg: '#d9efdc', text: '#1f6b34' },
-  rejected: { label: 'Rechazado', icon: CircleX, bg: '#fbdcdc', text: '#a12a2a' },
-}
+// const DOC_STATUS = {
+//   missing: { label: 'Falta', icon: null, bg: '#ece9e2', text: '#5f5e5a' },
+//   pending: { label: 'En revisión', icon: Clock, bg: '#fdf1b8', text: '#7a5c00' },
+//   approved: { label: 'Aprobado', icon: CircleCheck, bg: '#d9efdc', text: '#1f6b34' },
+//   rejected: { label: 'Rechazado', icon: CircleX, bg: '#fbdcdc', text: '#a12a2a' },
+// }
 
 const SUBJECT_ORDER = ['vehicle', 'owner', 'carrier']
 
@@ -52,9 +52,12 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   const [blacklist, setBlacklist] = useState(false)
   const [preview, setPreview] = useState(null)
   const [busy, setBusy] = useState(null)
+
   const [hint, setHint] = useState({ vehicle: false, carrier: false, owner: false })
   const [blocked, setBlocked] = useState({ vehicle: null, carrier: false, owner: false })
-  
+  const [blockReason, setBlockReason] = useState('')
+  const [blockBlacklist, setBlockBlacklist] = useState(false)
+
   const [docToReject, setDocToReject] = useState(null)   // { doc, label }
   const [docReason, setDocReason] = useState('')
   const [checkValues, setCheckValues] = useState({})   // { 'vehicle:simit': { has_findings, note } }
@@ -94,6 +97,14 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       setBusy(null)
     }
   }
+
+  const buildChecksPayload = () =>
+    Object.entries(checkValues)
+      .filter(([, val]) => typeof val.has_findings === 'boolean')
+      .map(([full, val]) => {
+        const [subject, check_key] = full.split(':')
+        return { subject, check_key, has_findings: val.has_findings, note: val.note?.trim() || null }
+      })
 
   function openForm() {
     setFormError('')
@@ -297,10 +308,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
         rejection_reason: null,
         background_check_verified: true,
         blacklist_carrier: false,
-        checks: Object.entries(checkValues).map(([full, val]) => {
-          const [subject, check_key] = full.split(':')
-          return { subject, check_key, has_findings: val.has_findings, note: val.note?.trim() || null }
-        }),
+        checks: buildChecksPayload(),
       }),
       'Transporte aprobado.',
       'No se pudo aprobar el transporte',
@@ -353,6 +361,21 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       'Transporte rechazado.',
       'No se pudo rechazar el transporte',
       () => setShowReject(false)
+    )
+  }
+
+  function handleRejectForFinding() {
+    run('reject-finding',
+      () => api.patch(`/assignments/${assignment.id}/validate`, {
+        decision: 'rejected',
+        rejection_reason: blockReason.trim(),
+        background_check_verified: false,
+        blacklist_carrier: blockBlacklist,
+        checks: buildChecksPayload(),
+      }),
+      'Transporte rechazado. La consulta quedó registrada.',
+      'No se pudo rechazar el transporte',
+      () => setShowApprove(false)
     )
   }
 
@@ -429,8 +452,15 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
   const hasFindings = Object.values(checkValues).some((val) => val.has_findings)
 
-  // Hallazgos ya registrados: los ve también el cliente
-  const findings = (assignment?.checks || []).filter((ch) => ch.has_findings)
+  const blockingHit = Object.entries(checkValues).some(
+    ([full, val]) => val.has_findings && BLOCKING_TRANSPORT_CHECKS.includes(full.split(':')[1])
+  )
+  const findingsHaveNotes = Object.values(checkValues).every((val) => !val.has_findings || val.note?.trim())
+
+  // El cliente no ve los hallazgos bloqueantes
+  const findings = (assignment?.checks || []).filter(
+    (ch) => ch.has_findings && (canValidate || !BLOCKING_TRANSPORT_CHECKS.includes(ch.check_key))
+  )
 
   // Falta algún documento o alguno no está aprobado todavía
   const docsUnapproved = docRows.some((r) => r.status !== 'approved')
@@ -777,7 +807,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       {showApprove && (
         <Modal title="Verificar y aprobar transporte" onClose={() => setShowApprove(false)}>
           <p className="edit-note">
-            Consulta cada fuente con el dato indicado y registra el resultado.
+            Consulta cada fuente con el dato indicado y registra el resultado. Marca "Sí" solo si confirmaste que el documento coincide: los homónimos son frecuentes. Un hallazgo en listas vinculantes impide aprobar; las multas y antecedentes se registran y se le avisan al cliente.
           </p>
 
           {SUBJECT_ORDER.map((s) => {
@@ -799,8 +829,48 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             )
           })}
 
-          {hasFindings && (
-            <p className="detail-empty-inline pay-hint">Si hay hallazgos: se registran y se le avisará al cliente.</p>
+          {blockingHit ? (
+            <>
+              <p className="pay-error">
+                Hay un hallazgo en listas vinculantes: este transporte no se puede aprobar. Se rechazará y la consulta
+                quedará registrada.
+              </p>
+
+              <label className="pay-label" htmlFor="block-reason">Motivo del rechazo (lo verá el cliente)</label>
+              <textarea
+                id="block-reason" className="pay-textarea" rows={2} value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+              />
+              <p className="edit-note">Escribe un motivo general: el detalle de la coincidencia no debe verlo el cliente.</p>
+
+              <label style={{ display: 'flex', gap: 8, fontSize: 13, marginTop: 8 }}>
+                <input type="checkbox" checked={blockBlacklist} onChange={(e) => setBlockBlacklist(e.target.checked)} />
+                Vetar al transportador: no podrá volver a ingresar a la planta
+              </label>
+
+              <div className="pay-actions">
+                <button type="button" className="pay-btn" onClick={() => setShowApprove(false)} disabled={isBusy}>Cancelar</button>
+                <button
+                  type="button" className="pay-btn is-danger"
+                  disabled={!blockReason.trim() || !findingsHaveNotes || isBusy}
+                  onClick={handleRejectForFinding}
+                >
+                  {busy === 'reject-finding' ? 'Rechazando...' : 'Rechazar transporte'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              {hasFindings && (
+                <p className="detail-empty-inline pay-hint">Hay hallazgos: se registrarán y se le avisará al cliente.</p>
+              )}
+              <div className="pay-actions">
+                <button type="button" className="pay-btn" onClick={() => setShowApprove(false)} disabled={isBusy}>Cancelar</button>
+                <button type="button" className="pay-btn is-primary" disabled={!checksComplete || isBusy} onClick={handleApprove}>
+                  {busy === 'approved' ? 'Aprobando...' : 'Aprobar transporte'}
+                </button>
+              </div>
+            </>
           )}
 
           <div className="pay-actions">
