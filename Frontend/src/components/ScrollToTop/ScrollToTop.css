@@ -1,0 +1,19 @@
+.scroll-top-btn {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 900;              /* por debajo de los modales y del aviso emergente */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: #ffffff;
+  background: #2f5d3a;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+.scroll-top-btn:hover { background: #254a2e; }

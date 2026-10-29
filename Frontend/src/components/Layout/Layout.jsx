@@ -4,6 +4,7 @@ import Header from '../Header/Header'
 import Sidebar from '../Sidebar/Sidebar'
 import './Layout.css'
 import SessionGuard from '../SessionGuard/SessionGuard'
+import ScrollToTop from '../ScrollToTop/ScrollToTop'
 
 export default function Layout() {
   // Responsividad, no abre el sidebar si está en vista mobile
@@ -19,6 +20,7 @@ export default function Layout() {
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="layout-content">
           <Outlet />
+          <ScrollToTop />
         </div>
       </div>
     </div>
