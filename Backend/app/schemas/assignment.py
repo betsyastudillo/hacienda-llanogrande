@@ -60,6 +60,8 @@ class AssignmentValidateRequest(BaseModel):
   rejection_reason: Optional[str] = None
   background_check_verified: bool = False
   blacklist_carrier: bool = False
+  blacklist_vehicle: bool = False
+  blacklist_owner: bool = False
   checks: List[TransportCheckInput] = []
 
 

@@ -457,6 +457,15 @@ def get_transport_document(db: Session, order_id: UUID, document_id: UUID) -> Do
   return document
 
 
+# Helper para la lista de vetados
+def _blacklist(db: Session, document_type: str, document_number: str, reason: str, current_user) -> None:
+  if not is_document_blacklisted(db, document_type, document_number):
+    db.add(DocumentBlacklist(
+      document_type=document_type, document_number=document_number,
+      reason=reason, created_by_user_id=current_user.id,
+    ))
+
+
 # Validación de la asignación
 def validate_assignment(
   db: Session,
@@ -466,7 +475,9 @@ def validate_assignment(
   background_check_verified: bool,
   blacklist_carrier: bool,
   current_user,
-  checks = None,
+  checks = None, 
+  blacklist_vehicle: bool = False, 
+  blacklist_owner: bool = False
 ) -> Assignment:
   
   assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
@@ -573,20 +584,23 @@ def validate_assignment(
         created_by_user_id=current_user.id,
       ))
 
-  if decision == "rejected" and blacklist_carrier:
+  if decision == "rejected":
+    ban_reason = rejection_reason or "Rechazado en validación de transporte"
+    vehicle = db.query(Vehicle).filter(Vehicle.id == assignment.vehicle_id).first()
     carrier = db.query(Carrier).filter(Carrier.id == assignment.carrier_id).first()
-    existing_ban = is_document_blacklisted(db, carrier.document_type, carrier.document_id)
 
-    if not existing_ban:
-      db.add(DocumentBlacklist(
-        document_type=carrier.document_type,
-        document_number=carrier.document_id,
-        reason=rejection_reason or "Rechazado en validación de transporte",
-        created_by_user_id=current_user.id,
-      ))
+    if blacklist_carrier:
+      _blacklist(db, carrier.document_type, carrier.document_id, ban_reason, current_user)
+      carrier.is_active = False
+      carrier.updated_by_user_id = current_user.id
 
-    carrier.is_active = False
-    carrier.updated_by_user_id = current_user.id
+    if blacklist_vehicle:
+      _blacklist(db, PLATE_BLACKLIST_TYPE, vehicle.plate, ban_reason, current_user)
+      vehicle.is_active = False
+      vehicle.updated_by_user_id = current_user.id
+
+    if blacklist_owner and vehicle.owner_document_id:
+      _blacklist(db, vehicle.owner_document_type, vehicle.owner_document_id, ban_reason, current_user)
     
   db.commit()
   db.refresh(assignment)

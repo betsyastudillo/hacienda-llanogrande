@@ -57,6 +57,8 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   const [blocked, setBlocked] = useState({ vehicle: null, carrier: false, owner: false })
   const [blockReason, setBlockReason] = useState('')
   const [blockBlacklist, setBlockBlacklist] = useState(false)
+  const [blacklistVehicle, setBlacklistVehicle] = useState(false)
+  const [blacklistOwner, setBlacklistOwner] = useState(false)
 
   const [docToReject, setDocToReject] = useState(null)   // { doc, label }
   const [docReason, setDocReason] = useState('')
@@ -357,6 +359,8 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
         rejection_reason: reason.trim(),
         background_check_verified: false,
         blacklist_carrier: blacklist,
+        blacklist_vehicle: blacklistVehicle,
+        blacklist_owner: blacklistOwner,
       }),
       'Transporte rechazado.',
       'No se pudo rechazar el transporte',
@@ -371,6 +375,8 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
         rejection_reason: blockReason.trim(),
         background_check_verified: false,
         blacklist_carrier: blockBlacklist,
+        blacklist_vehicle: blacklistVehicle,
+        blacklist_owner: blacklistOwner,
         checks: buildChecksPayload(),
       }),
       'Transporte rechazado. La consulta quedó registrada.',
@@ -478,7 +484,21 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   
   // Falta algún documento o alguno no está aprobado todavía
   const docsUnapproved = docRows.some((r) => r.status !== 'approved')
-  console.log({ blocked, ownerIsCarrier, isBusy })
+
+  const vehicleBanBox = (
+    <label style={{ display: 'flex', gap: 8, fontSize: 13, marginTop: 8 }}>
+      <input type="checkbox" checked={blacklistVehicle} onChange={(e) => setBlacklistVehicle(e.target.checked)} />
+      Vetar el vehículo ({v?.plate}): solo si el vehículo es el problema (robo, placa clonada, documentos falsos)
+    </label>
+  )
+
+  const ownerBanBox = !sameOwner && (
+    <label style={{ display: 'flex', gap: 8, fontSize: 13, marginTop: 8 }}>
+      <input type="checkbox" checked={blacklistOwner} onChange={(e) => setBlacklistOwner(e.target.checked)} />
+      Vetar al propietario ({v?.owner_name}): si la persona está en listas; el vehículo podrá usarse con otro dueño
+    </label>
+  )
+
   return (
     <>
       <CollapsibleCard
@@ -622,7 +642,10 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               <div className="pay-decision">
                 <button 
                   className="pay-btn is-danger" 
-                  onClick={() => { setReason(''); setBlacklist(false); setShowReject(true) }}
+                  onClick={() => { 
+                    setReason(''); setBlacklist(false); 
+                    setBlacklistVehicle(false); setBlacklistOwner(false)
+                    setShowReject(true) }}
                   disabled={isBusy}
                 >
                   Rechazar
@@ -634,6 +657,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                     setCheckValues({}); 
                     setBlockReason('Transporte no autorizado por el área de cumplimiento.')
                     setBlockBlacklist(false)
+                    setBlacklistVehicle(false); setBlacklistOwner(false)
                     setShowApprove(true) }}
                   disabled={isBusy || docsUnapproved || assignment.blocked?.length > 0}
                   title={docsUnapproved ? 'Aprueba cada documento primero' : undefined}
@@ -884,6 +908,9 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                 Vetar al transportador: no podrá volver a ingresar a la planta
               </label>
 
+              {vehicleBanBox}
+              {ownerBanBox}
+
               <div className="pay-actions">
                 <button type="button" className="pay-btn" onClick={() => setShowApprove(false)} disabled={isBusy}>Cancelar</button>
                 <button
@@ -923,6 +950,10 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             <input type="checkbox" checked={blacklist} onChange={(e) => setBlacklist(e.target.checked)} />
             Vetar al transportador: no podrá volver a ingresar a la planta
           </label>
+
+          {vehicleBanBox}
+          {ownerBanBox}
+
           <div className="pay-actions">
             <button type="button" className="pay-btn" onClick={() => setShowReject(false)} disabled={busy}>Cancelar</button>
             <button
