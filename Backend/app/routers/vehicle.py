@@ -54,8 +54,9 @@ def upload_vehicle_document(
     document_type: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    expires_at=None,
 ):
-    return create_document(db, document_type, file, vehicle_id=vehicle_id)
+    return create_document(db, document_type, file, vehicle_id=vehicle_id, current_user=current_user, expires_at=expires_at)
 
 
 @router.get("/{vehicle_id}/documents", response_model=list[DocumentBase], summary="Lista los documentos del vehículo autorizado para ingresar.")

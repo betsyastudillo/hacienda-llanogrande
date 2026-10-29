@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Optional
 from pydantic import BaseModel
 from uuid import UUID
@@ -12,6 +13,8 @@ class DocumentBase(AuditResponseMixin):
   document_url: str
   status: str
   rejection_reason: Optional[str] = None
+  expires_at: Optional[date] = None
+  is_expired: bool = False
 
   class Config:
     from_attributes = True

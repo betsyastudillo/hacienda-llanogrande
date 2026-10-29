@@ -1,5 +1,5 @@
 import os, re
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional, List
 from uuid import UUID
 from fastapi import UploadFile
@@ -10,6 +10,8 @@ from app.constants.transport_requirements import (
   ALLOWED_DOCUMENTS_BY_SUBJECT,
   BLOCKING_TRANSPORT_CHECKS,
   EDITABLE_ASSIGNMENT_STATUSES,
+  MAX_EXPIRY_YEARS,
+  MIN_VALIDITY_DAYS,
   OWNER_DOCUMENT,
   PLATE_BLACKLIST_TYPE,
   REQUIRED_DOCUMENTS_BY_SUBJECT,
@@ -20,10 +22,13 @@ from app.constants.transport_requirements import (
   VALID_OWNER_DOCUMENT_TYPES,
   VALID_VEHICLE_TYPES,
   compute_missing_documents,
+  document_is_expired,
+  is_expiring_type,
   normalize_plate,
   required_document_keys,
   required_transport_checks,
-  is_owner_carrier
+  is_owner_carrier,
+  today_co
 )
 from app.dependencies import user_has_permission
 from app.models.assignment import Assignment
@@ -62,6 +67,12 @@ def attach_transport_details(db: Session, assignments: List[Assignment]) -> List
     .all()
   )
 
+  all_checks = (
+    db.query(TransportCheck)
+    .filter(TransportCheck.assignment_id.in_([a.id for a in assignments]))
+    .all()
+  )
+
   # Documentos vetados entre todos los envíos, en una sola consulta
   numbers = set()
   
@@ -83,11 +94,7 @@ def attach_transport_details(db: Session, assignments: List[Assignment]) -> List
     )
     listed = {(r[0], r[1]) for r in rows}
 
-  all_checks = (
-    db.query(TransportCheck)
-    .filter(TransportCheck.assignment_id.in_([a.id for a in assignments]))
-    .all()
-  )
+  today = today_co()
 
   for a in assignments:
     # Primero se asignan los atributos...
@@ -97,18 +104,17 @@ def attach_transport_details(db: Session, assignments: List[Assignment]) -> List
       d for d in documents
       if d.vehicle_id == a.vehicle_id or d.carrier_id == a.carrier_id
     ]
+
+    for d in a.documents:
+      d.is_expired = document_is_expired(d, today)
+
     a.missing_documents = compute_missing_documents(
       a.vehicle_id, a.carrier_id, a.documents, is_owner_carrier(a.vehicle, a.carrier)
     )
     
-    # Después de calcula lo vetado, que los usa
+    # Después de calcula lo vetado, que los usa vehicle y carrier
     v, c = a.vehicle, a.carrier
     a.blocked = []
-    
-    a.checks = [ch for ch in all_checks if ch.assignment_id == a.id]
-    a.required_checks = [
-      f"{s}:{k}" for s, k in required_transport_checks(is_owner_carrier(a.vehicle, a.carrier))
-    ]
 
     if v and (PLATE_BLACKLIST_TYPE, v.plate) in listed:
       a.blocked.append("vehicle")
@@ -116,6 +122,11 @@ def attach_transport_details(db: Session, assignments: List[Assignment]) -> List
       a.blocked.append("owner")
     if c and (c.document_type, c.document_id) in listed:
       a.blocked.append("carrier")
+    
+    a.checks = [ch for ch in all_checks if ch.assignment_id == a.id]
+    a.required_checks = [
+      f"{s}:{k}" for s, k in required_transport_checks(is_owner_carrier(a.vehicle, a.carrier))
+    ]
 
   return assignments
 
@@ -391,7 +402,9 @@ def upload_transport_document(
     document_type: str,
     file: UploadFile,
     current_user,
+    expires_at: Optional[date] = None
   ) -> Document:
+
   order = db.query(Order).filter(Order.id == order_id).first()
 
   if not order or not can_access_order(order, current_user):
@@ -419,6 +432,23 @@ def upload_transport_document(
     allowed = ", ".join(ALLOWED_DOCUMENTS_BY_SUBJECT[subject])
     raise ValueError(f"Document type for {subject} must be one of: {allowed}")
 
+  # Fechas de vencimiento: SOAT y licencias
+  if is_expiring_type(subject, document_type):
+    if expires_at is None:
+      raise ValueError("Este documento requiere fecha de vencimiento")
+
+    today = today_co()
+    
+    if expires_at < today + timedelta(days=MIN_VALIDITY_DAYS):
+      raise ValueError("El documento está vencido o su vigencia es insuficiente")
+    
+    if expires_at > today + timedelta(days=365 * MAX_EXPIRY_YEARS):
+      raise ValueError("La fecha de vencimiento no es válida")
+  
+  else:
+    expires_at = None
+    
+
   _validate_transport_file(file)
 
   owner_column = Document.vehicle_id if subject == "vehicle" else Document.carrier_id
@@ -432,12 +462,12 @@ def upload_transport_document(
   )
 
   if existing:
-    return replace_document_file(db, existing.id, file, current_user=current_user)
+    return replace_document_file(db, existing.id, file, current_user=current_user, expires_at=expires_at)
 
   if subject == "vehicle":
-    return create_document(db, document_type, file, vehicle_id=owner_id, current_user=current_user)
+    return create_document(db, document_type, file, vehicle_id=owner_id, current_user=current_user, expires_at=expires_at)
 
-  return create_document(db, document_type, file, carrier_id=owner_id, current_user=current_user)
+  return create_document(db, document_type, file, carrier_id=owner_id, current_user=current_user, expires_at=expires_at)
 
 
 # Ruta del archivo de un documento de transporte, solo si pertenece al vehículo o transportador del pedido.
@@ -767,6 +797,9 @@ def review_transport_document(db: Session, order_id: UUID, document_id: UUID, st
     raise ValueError("Documents can only be reviewed while the transport is pending")
 
   document = get_transport_document(db, order_id, document_id)
+
+  if status == "approved" and document_is_expired(document):
+    raise ValueError("El documento está vencido o no tiene fecha de vencimiento")
 
   if document.status != "pending":
     raise ValueError(

@@ -21,3 +21,5 @@ export function formatDateOnly(value) {
   const [year, month, day] = value.split('-')
   return `${day}/ ${MONTHS_SHORT[Number(month) - 1]} /${year.slice(-2)}`
 }
+
+export const todayISO = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })

@@ -1,4 +1,6 @@
 import { Check, Eye, Upload, X } from 'lucide-react'
+import { formatDateOnly, } from '../../../utils/formatDate'
+import { EXPIRY_WARNING_DAYS } from '../../../constants/transport'
 import './TransportDocuments.css'
 
 const STATE_LABEL = {
@@ -6,13 +8,16 @@ const STATE_LABEL = {
   pending: 'En revisión',
   approved: 'Aprobado',
   rejected: 'Rechazado',
+  expired: 'Vencido'
 }
 
 export default function TransportDocuments({
   rows, canReview, canUpload, isBusy, busy,
   onView, onUpload, onApprove, onReject, onApproveAll,
 }) {
+
   const pendingCount = rows.filter((r) => r.status === 'pending').length
+  const daysLeft = (iso) => Math.ceil((new Date(`${iso}T00:00:00-05:00`) - new Date()) / 86400000)
 
   return (
     <div className="td">
@@ -37,6 +42,18 @@ export default function TransportDocuments({
             <li key={key} className={`td-item is-${status}`}>
               <div className="td-top">
                 <span className="td-name">{label}</span>
+
+                {doc?.expires_at && (
+                  <p className={`td-expiry ${status === 'expired' ? 'is-expired' : ''}`}>
+                    Vence: {formatDateOnly(doc.expires_at)}
+                    {status !== 'expired' &&
+                      daysLeft(doc.expires_at) >= 0 &&
+                      daysLeft(doc.expires_at) <= EXPIRY_WARNING_DAYS &&
+                      ' · vence pronto'}
+                  </p>
+                )}
+                {status === 'expired' && !doc?.expires_at && <p className="td-expiry is-expired">Sin fecha de vencimiento registrada</p>}
+
                 <span className={`td-state is-${status}`}>{STATE_LABEL[status]}</span>
               </div>
 

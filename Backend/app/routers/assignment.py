@@ -1,13 +1,11 @@
-import mimetypes
-import os
+import mimetypes, os
+from datetime import date
 from typing import Literal, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from uuid import UUID
 from app.database import get_db
-from app.schemas.carrier import CarrierResponse
-from app.schemas.vehicle import VehicleResponse
 from app.services.order_service import can_access_order, get_order_by_id
 from app.dependencies import user_has_permission
 from app.auth_dependencies import (
@@ -98,11 +96,12 @@ def upload_document(
   current_user: AssignmentCreatorOwn,
   subject: Literal["vehicle", "carrier"] = Form(...),
   document_type: str = Form(...),
+  expires_at: Optional[date] = Form(None),
   file: UploadFile = File(...),
   db: Session = Depends(get_db),
 ):
   try:
-    return upload_transport_document(db, order_id, subject, document_type, file, current_user)
+    return upload_transport_document(db, order_id, subject, document_type, file, current_user, expires_at)
 
   except ValueError as e:
     db.rollback()

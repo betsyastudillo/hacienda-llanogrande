@@ -7,11 +7,11 @@ import Modal from '../../../components/Modal/Modal'
 import StatusBadge from '../../../components/StatusBadge/StatusBadge'
 import FilePreviewModal from '../../../components/FilePreviewModal/FilePreviewModal'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
-import { formatDate } from '../../../utils/formatDate'
+import { formatDate, todayISO } from '../../../utils/formatDate'
 import { isValidAddress, MIN_ADDRESS_LENGTH } from '../../../utils/validators'
 import { formatCapacity } from '../../../utils/formatNumber'
 import { 
-    TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES, VEHICLE_TYPES, vehicleTypeLabel, TRANSPORT_CHECK_LABELS, TRANSPORT_CHECK_SUBJECTS, BLOCKING_TRANSPORT_CHECKS, OTHER_REASON, rejectionReasonsFor
+    TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES, VEHICLE_TYPES, vehicleTypeLabel, TRANSPORT_CHECK_LABELS, TRANSPORT_CHECK_SUBJECTS, BLOCKING_TRANSPORT_CHECKS, OTHER_REASON, rejectionReasonsFor, EXPIRING_TRANSPORT_DOCS
 } from '../../../constants/transport'
 import CollapsibleCard from '../../../components/CollapsibleCard/CollapsibleCard'
 import TransportDocuments from './TransportDocuments'
@@ -66,6 +66,9 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   const [docReason, setDocReason] = useState('')
   const [docReasonChoice, setDocReasonChoice] = useState('')   // para rechazo de documentos
   const [checkValues, setCheckValues] = useState({})   // { 'vehicle:simit': { has_findings, note } }
+  const [pendingUpload, setPendingUpload] = useState(null)   // { key, file, label }
+  const [expiryDate, setExpiryDate] = useState('')
+  const [uploadError, setUploadError] = useState('')
 
   const isBusy = busy !== null
   
@@ -301,19 +304,33 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     )
   }
 
-  function handleUpload(key, file) {
+  function handleUpload(key, file, expiresAt = null) {
+
     if (!file) return
+
+    // Los documentos que vencen piden la fecha antes de subirse
+    if (EXPIRING_TRANSPORT_DOCS.includes(key) && !expiresAt) {
+      setExpiryDate('')
+      setUploadError('')
+      setPendingUpload({ key, file, label: TRANSPORT_DOCS[key] })
+      return
+    }
+
     const [subject, documentType] = key.split(':')
 
     const formData = new FormData()
     formData.append('subject', subject)
     formData.append('document_type', documentType)
     formData.append('file', file)
+    if (expiresAt) formData.append('expires_at', expiresAt)
     
     run('upload',
       () => api.post(`/assignments/order/${order.id}/documents`, formData),
       'Documento subido.',
-      'No se pudo subir el documento')
+      'No se pudo subir el documento',
+      () => { setPendingUpload(null); setExpiryDate(''); setUploadError('') },    
+      pendingUpload ? setUploadError : undefined       
+    )
   }
 
   function handleApprove() {
@@ -450,7 +467,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     const doc = assignment?.documents?.find(
       (d) => d.document_type === documentType && (subject === 'vehicle' ? d.vehicle_id : d.carrier_id)
     )
-    return { key, label, doc, status: doc ? doc.status : 'missing' }
+    return { key, label, doc, status: doc ? (doc.is_expired ? 'expired' : doc.status) : 'missing' }
   })
 
   const checkItems = (assignment?.required_checks || []).map((full) => {
@@ -652,11 +669,16 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               <p className="detail-empty-inline pay-hint">Sube los documentos que faltan (PDF o imagen, máximo 5 MB).</p>
             )}
 
+            {canUpload && docRows.some((r) => r.status === 'expired') && (
+              <p className="detail-empty-inline pay-hint">Hay documentos vencidos: sube la versión vigente.</p>
+            )}
+
             {canDecide && docRows.some((r) => r.status === 'rejected') && (
               <p className="detail-empty-inline pay-hint">
                 Hay documentos rechazados: el cliente debe reemplazarlos para poder aprobar el transporte.
               </p>
             )}
+
             {canDecide && !docRows.some((r) => r.status === 'rejected') && docsUnapproved && missing.length === 0 && (
               <p className="detail-empty-inline pay-hint">Aprueba o rechaza cada documento antes de aprobar el transporte.</p>
             )}
@@ -1038,6 +1060,27 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
         </Modal>
       )}
       
+      {pendingUpload && (
+        <Modal title={`Subir: ${pendingUpload.label}`} onClose={() => setPendingUpload(null)}>
+          <p className="edit-note">Archivo: {pendingUpload.file.name}</p>
+
+          <label className="edit-field">Fecha de vencimiento (la que figura en el documento)
+            <input type="date" min={todayISO()} value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
+          </label>
+          <p className="edit-note">Logística la comparará con el documento: si no coincide, se rechaza.</p>
+
+          <div className="pay-actions">
+            <button type="button" className="pay-btn" onClick={() => setPendingUpload(null)} disabled={isBusy}>Cancelar</button>
+            <button
+              type="button" className="pay-btn is-primary" disabled={!expiryDate || isBusy}
+              onClick={() => handleUpload(pendingUpload.key, pendingUpload.file, expiryDate)}
+            >
+              {busy === 'upload' ? 'Subiendo...' : 'Subir'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {preview && <FilePreviewModal {...preview} onClose={() => setPreview(null)} />}
     </>
   )

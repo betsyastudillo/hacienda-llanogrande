@@ -27,8 +27,9 @@ def upload_document(
     document_type: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    expires_at=None,
 ):
-    return create_document(db, document_type, file, company_id=company_id, current_user=current_user)
+    return create_document(db, document_type, file, company_id=company_id, current_user=current_user, expires_at=expires_at)
 
 
 @router.patch("/{document_id}/status", response_model=DocumentBase, summary="Cambia el estado de los documentos, de pendiente a aprobado, después de una revisión.")
@@ -51,8 +52,9 @@ def update_document_file(
     current_user: DocumentUploader,
     new_file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    expires_at=None
 ):
-    document = replace_document_file(db, document_id, new_file, current_user=current_user)
+    document = replace_document_file(db, document_id, new_file, current_user=current_user, expires_at=expires_at)
     
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")

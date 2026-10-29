@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey
+from sqlalchemy import Column, Date, String, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
@@ -7,13 +7,14 @@ from app.models.mixins import AuditMixin
 
 
 class Document(Base, AuditMixin):
-    __tablename__ = "documents"
+  __tablename__ = "documents"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=True, index=True)
-    vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"), nullable=True)
-    carrier_id = Column(UUID(as_uuid=True), ForeignKey("carriers.id"), nullable=True)
-    document_type = Column(String, nullable=False)
-    document_url = Column(String, nullable=False)
-    status = Column(String, nullable=False, default="pending")
-    rejection_reason = Column(String, nullable=True)
+  id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+  company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=True, index=True)
+  vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"), nullable=True)
+  carrier_id = Column(UUID(as_uuid=True), ForeignKey("carriers.id"), nullable=True)
+  document_type = Column(String, nullable=False)
+  document_url = Column(String, nullable=False)
+  status = Column(String, nullable=False, default="pending")
+  rejection_reason = Column(String, nullable=True)
+  expires_at = Column(Date, nullable=True)

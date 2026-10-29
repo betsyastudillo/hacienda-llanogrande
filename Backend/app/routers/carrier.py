@@ -52,8 +52,9 @@ def upload_carrier_document(
     document_type: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    expires_at=None
 ):
-    return create_document(db, document_type, file, carrier_id=carrier_id)
+    return create_document(db, document_type, file, carrier_id=carrier_id, expires_at=expires_at)
 
 
 @router.get("/{carrier_id}/documents", response_model=list[DocumentBase], summary="Lista los documentos del transportador.")

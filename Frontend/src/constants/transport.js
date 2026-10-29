@@ -71,6 +71,10 @@ const REJECTION_REASONS_BY_DOCUMENT = {
   ],
 }
 
+// Debe coincidir con EXPIRING_DOCUMENTS del backend
+export const EXPIRING_TRANSPORT_DOCS = ['vehicle:soat', 'carrier:licencia_conduccion']
+export const EXPIRY_WARNING_DAYS = 30
+
 export const rejectionReasonsFor = (documentType) => [
   ...(REJECTION_REASONS_BY_DOCUMENT[documentType] || []),
   ...GENERAL_REJECTION_REASONS,

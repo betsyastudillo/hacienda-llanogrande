@@ -45,6 +45,7 @@ def create_document(
     vehicle_id: Optional[UUID] = None, 
     carrier_id: Optional[UUID] = None, 
     current_user=None,
+    expires_at=None,
   ) -> Document:
 
   owners = [company_id, vehicle_id, carrier_id]
@@ -64,6 +65,7 @@ def create_document(
     document_url=file_path,
     status="pending",
     created_by_user_id=current_user.id if current_user else None,
+    expires_at=expires_at
   )
 
   db.add(new_document)
@@ -88,7 +90,7 @@ def update_document_status(db: Session, document_id: UUID, new_status: str, curr
   return document
 
 
-def replace_document_file(db: Session, document_id: UUID, new_file: UploadFile, current_user=None) -> Optional[Document]:
+def replace_document_file(db: Session, document_id: UUID, new_file: UploadFile, current_user=None, expires_at=None) -> Optional[Document]:
   document = db.query(Document).filter(Document.id == document_id).first()
   
   if not document:
@@ -106,6 +108,7 @@ def replace_document_file(db: Session, document_id: UUID, new_file: UploadFile, 
   document.document_url = new_file_path
   document.status = "pending"  # Reinicia el estado a "pending" 
   document.rejection_reason = None
+  document.expires_at = expires_at
   
   if current_user:
     document.updated_by_user_id = current_user.id

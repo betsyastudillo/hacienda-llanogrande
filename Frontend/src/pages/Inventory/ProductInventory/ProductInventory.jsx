@@ -7,7 +7,7 @@ import { useToast } from '../../../context/Toast/ToastContext'
 import Modal from '../../../components/Modal/Modal'
 import { ADJUSTMENT_CATEGORIES } from '../../../constants/inventoryReasons'
 import { formatCurrency } from '../../../utils/formatCurrency'
-import { formatDate, formatDateOnly } from '../../../utils/formatDate'
+import { formatDate, formatDateOnly, todayISO } from '../../../utils/formatDate'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
 import './ProductInventory.css'
 
@@ -27,11 +27,6 @@ function KardexCard({ label, value, price, valueClass = '', sign = '', isFinal =
       <span className="inventory-kardex-total">{formatCurrency(total)}</span>
     </div>
   )
-}
-
-function todayISO() {
-  // en-CA entrega el formato AAAA-MM-DD; se calcula en hora de Colombia, no en UTC
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
 }
 
 const PAGE_SIZE = 10

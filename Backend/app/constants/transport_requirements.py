@@ -1,6 +1,12 @@
+
 # Reglas de negocio del transporte (vehículo y transportador).
 
 # Documentos obligatorios por sujeto
+from datetime import date, datetime, timedelta
+from typing import Optional
+from zoneinfo import ZoneInfo
+
+
 REQUIRED_VEHICLE_DOCUMENTS = ("soat", "tarjeta_propiedad")
 OWNER_DOCUMENT = "documento_propietario"
 REQUIRED_CARRIER_DOCUMENTS = ("cedula", "licencia_conduccion")
@@ -42,13 +48,41 @@ BLOCKING_TRANSPORT_CHECKS = ("listas_vinculantes",)
 EDITABLE_ASSIGNMENT_STATUSES = ("pending", "rejected")
 
 
+# DOCUMENTOS QUE SE VENCEN
+EXPIRING_DOCUMENTS = {
+  "vehicle": ("soat",),
+  "carrier": ("licencia_conduccion",),
+}
+
+MIN_VALIDITY_DAYS = 0     # margen exigido: 0 = basta con que esté vigente hoy
+MAX_EXPIRY_YEARS = 10     # evita errores de digitación (2206 en vez de 2026)
+
+def today_co() -> date:
+  return datetime.now(ZoneInfo("America/Bogota")).date()
+
+
+def is_expiring_type(subject: str, document_type: str) -> bool:
+  return document_type in EXPIRING_DOCUMENTS.get(subject, ())
+
+
+def document_is_expired(doc, today: Optional[date] = None) -> bool:
+  subject = "vehicle" if doc.vehicle_id else "carrier"
+  if not is_expiring_type(subject, doc.document_type):
+    return False
+
+  today = today or today_co()
+  # Sin fecha registrada no se puede confirmar que esté vigente
+  return doc.expires_at is None or doc.expires_at < today + timedelta(days=MIN_VALIDITY_DAYS)
+
+
 # Documentos obligatorios que faltan para un vehículo y un transportador, como "vehicle:soat".
 # Un documento rechazado cuenta como faltante. `documents` es cualquier lista de objetos con vehicle_id, carrier_id, document_type y status (modelo Document), por eso no se importa el modelo aquí.
 def compute_missing_documents(vehicle_id, carrier_id, documents, owner_is_carrier: bool = False) -> list[str]:
   have = set()
+  today = today_co()
 
   for d in documents:
-    if d.status == "rejected":
+    if d.status == "rejected" or document_is_expired(d, today):
       continue
     if d.vehicle_id is not None and d.vehicle_id == vehicle_id:
       have.add(("vehicle", d.document_type))

@@ -29,7 +29,7 @@
 
 .td-item {
   padding: 10px 12px;
-  background: #ffffff;
+  background: var(--white-bg);
   border: 1px solid #d9d5cb;
   border-left: 4px solid #d9d5cb;
   border-radius: 10px;
@@ -44,7 +44,26 @@
 }
 
 .td-item.is-rejected { 
-  border-left-color: #a12a2a; 
+  border-left-color: var(--red); 
+}
+
+.td-item.is-expired { 
+  border-left-color: var(--red); 
+}
+
+.td-state.is-expired { 
+  color: var(--red); 
+  background: #fbdcdc; 
+}
+
+.td-expiry { 
+  margin: 4px 0 0; 
+  font-size: 12px; 
+  color: #5f5e5a; 
+}
+
+.td-expiry.is-expired { 
+  color: var(--red); 
 }
 
 .td-top { 
@@ -83,14 +102,14 @@
 }
 
 .td-state.is-rejected { 
-  color: #a12a2a; 
+  color: var(--red); 
   background: #fbdcdc; 
 }
 
 .td-reason { 
   margin: 6px 0 0; 
   font-size: 12px; 
-  color: #a12a2a; 
+  color: var(--red); 
   text-align: left; 
 }
 
