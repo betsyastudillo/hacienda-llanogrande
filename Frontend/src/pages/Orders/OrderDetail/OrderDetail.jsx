@@ -210,7 +210,7 @@ export default function OrderDetail() {
                 className="pay-btn is-danger"
                 onClick={() => { setCancelReason(''); setShowCancel(true) }}
               >
-                < CircleX size={18}/>
+                Anular pedido
               </button>
             )}
           </div>

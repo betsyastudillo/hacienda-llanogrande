@@ -7,8 +7,9 @@ import Modal from '../../../components/Modal/Modal'
 import StatusBadge from '../../../components/StatusBadge/StatusBadge'
 import FilePreviewModal from '../../../components/FilePreviewModal/FilePreviewModal'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
+import { formatDate } from '../../../utils/formatDate'
 import { 
-    TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES, VEHICLE_TYPES, vehicleTypeLabel, TRANSPORT_CHECK_LABELS, TRANSPORT_CHECK_SUBJECTS, BLOCKING_TRANSPORT_CHECKS
+    TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES, VEHICLE_TYPES, vehicleTypeLabel, TRANSPORT_CHECK_LABELS, TRANSPORT_CHECK_SUBJECTS, BLOCKING_TRANSPORT_CHECKS, OTHER_REASON, rejectionReasonsFor
 } from '../../../constants/transport'
 import CollapsibleCard from '../../../components/CollapsibleCard/CollapsibleCard'
 import TransportDocuments from './TransportDocuments'
@@ -62,6 +63,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
   const [docToReject, setDocToReject] = useState(null)   // { doc, label }
   const [docReason, setDocReason] = useState('')
+  const [docReasonChoice, setDocReasonChoice] = useState('')   // un motivo de la lista, o OTHER_REASON para rechazo de documentos
   const [checkValues, setCheckValues] = useState({})   // { 'vehicle:simit': { has_findings, note } }
 
   const isBusy = busy !== null
@@ -72,7 +74,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   const canValidate = hasPermission('assignment:validar')
   const canGuide = hasPermission('dispatch_guide:crear')
   const canSubmit = hasPermission('assignment:crear_propio') && !hasPermission('assignment:validar')
-  const canFix = canSubmit && assignment?.validation_status === 'rejected'
+  const canFix = canSubmit && ['pending', 'rejected'].includes(assignment?.validation_status)  
   const canDecide = canValidate && assignment?.validation_status === 'pending'
   const canMakeGuide =
   canGuide && assignment?.validation_status === 'approved' &&
@@ -105,7 +107,14 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       .filter(([, val]) => typeof val.has_findings === 'boolean')
       .map(([full, val]) => {
         const [subject, check_key] = full.split(':')
-        return { subject, check_key, has_findings: val.has_findings, note: val.note?.trim() || null }
+        
+        return { 
+          subject, 
+          check_key,
+          subject_ref: currentRef[subject], 
+          has_findings: val.has_findings, 
+          note: val.note?.trim() || null 
+        }
       })
 
   function openForm() {
@@ -348,6 +357,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   }
 
   function openRejectDoc(doc, label) {
+    setDocReasonChoice('')
     setDocReason('')
     setDocToReject({ doc, label })
   }
@@ -474,10 +484,14 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   )
   const findingsHaveNotes = Object.values(checkValues).every((val) => !val.has_findings || val.note?.trim())
 
-  // El cliente no ve los hallazgos bloqueantes
-  const findings = allFindings.filter((ch) => ch.subject_ref === currentRef[ch.subject])   // de quien está hoy
+  // El cliente no ve los hallazgos bloqueantes. Estos son los hallazgos presentes de quien figura
+  const findings = allFindings.filter((ch) => ch.subject_ref === currentRef[ch.subject])  
 
-  const pastFindings = allFindings.filter((ch) => ch.subject_ref !== currentRef[ch.subject]) // de quien ya no está
+  // Hallazgos de la persona anterior (si cambian de sujeto, avisa por qué se había rechazado el anterior)
+  const pastFindings = allFindings.filter((ch) => ch.subject_ref !== currentRef[ch.subject]) 
+
+  // Solo para quien revisa: por si el cliente corrigió los datos mientras el transporte estaba pendiente
+  const correctedByClient = canValidate && assignment?.validation_status === 'pending' && Boolean(assignment?.updated_at)
 
   // El dueño solo cuenta si su sección está visible; si es el transportador, ya lo cubre el aviso del transportador
   const formBlocked = Boolean(blocked.vehicle) || blocked.carrier || (!ownerIsCarrier && blocked.owner)
@@ -485,6 +499,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   // Falta algún documento o alguno no está aprobado todavía
   const docsUnapproved = docRows.some((r) => r.status !== 'approved')
 
+  // Aviso para vetar el vehiculo
   const vehicleBanBox = (
     <label style={{ display: 'flex', gap: 8, fontSize: 13, marginTop: 8 }}>
       <input type="checkbox" checked={blacklistVehicle} onChange={(e) => setBlacklistVehicle(e.target.checked)} />
@@ -492,12 +507,19 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     </label>
   )
 
+  // Aviso para vetar al propietario del vehículo
   const ownerBanBox = !sameOwner && (
     <label style={{ display: 'flex', gap: 8, fontSize: 13, marginTop: 8 }}>
       <input type="checkbox" checked={blacklistOwner} onChange={(e) => setBlacklistOwner(e.target.checked)} />
-      Vetar al propietario ({v?.owner_name}): si la persona está en listas; el vehículo podrá usarse con otro dueño
+      Vetar al propietario ({v?.owner_name}): si la persona está en listas vinculantes)
     </label>
   )
+
+  // Razones para el rechazo de documentos
+  const docReasonOptions = docToReject ? rejectionReasonsFor(docToReject.doc.document_type) : []
+
+  // El motivo final: el de la lista, o lo que escribió quien revisa si eligió "Otro motivo"
+  const finalDocReason = docReasonChoice === OTHER_REASON ? docReason.trim() : docReasonChoice
 
   return (
     <>
@@ -546,6 +568,13 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               <p className="detail-empty-inline pay-hint">
                 Hubo hallazgos en una versión anterior de este envío, sobre {pastFindings.map((ch) => ch.subject_ref).join(', ')}.
                 Los datos actuales son distintos.
+              </p>
+            )}
+
+            {correctedByClient && (
+              <p className="detail-empty-inline pay-hint">
+                El cliente corrigió los datos el {formatDate(assignment.updated_at)}. Revisa que las consultas y los
+                documentos correspondan a la información de hoy.
               </p>
             )}
 
@@ -745,10 +774,14 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                   <label className="edit-field">Tipo de documento
                     <select
                       value={form.owner_document_type}
-                      placeholder={form.owner_document_type === 'NIT' ? 'NIT sin dígito de verificación' : ''}
                       onChange={(e) => {
-                        const value = form.owner_document_type === 'NIT' ? e.target.value.replace(/\D/g, '') : e.target.value
-                        setForm({...form, owner_document_id: value})
+                        const type = e.target.value 
+                        setForm({
+                          ...form, 
+                          owner_document_type: type,
+                          // al pasar a NIT se dejan solo los digitos en el número que ya estaba escrito
+                          owner_document_id: type === 'NIT' ? form.owner_document_id.replace(/\D/g, '') : form.owner_document_id,        
+                        })
                         setFormError('')
                         setHint((h) => ({ ...h, owner: false }))
                         setBlocked((b) => ({ ...b, owner: false }))
@@ -761,8 +794,11 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                   <label className="edit-field">Número
                     <input
                       value={form.owner_document_id}
+                      placeholder={form.owner_document_type === 'NIT' ? 'NIT sin dígito de verificación' : ''}
                       onChange={(e) => {
-                        set('owner_document_id')(e)
+                        const value = form.owner_document_type === 'NIT' ? e.target.value.replace(/\D/g, '') : e.target.value
+                        setForm({ ...form, owner_document_id: value })
+                        setFormError('')
                         setHint((h) => ({ ...h, owner: false }))
                         setBlocked((b) => ({ ...b, owner: false }))
                       }}
@@ -774,6 +810,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                 {hint.owner && (
                   <p className="edit-note">Datos cargados de un registro anterior. Revísalos y corrígelos si algo cambió.</p>
                 )}
+
                 {blocked.owner && (
                   <p className="detail-error-text">
                     Este propietario no está autorizado para realizar el transporte. Si tienes dudas, comunícate con Logística.
@@ -867,7 +904,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       {showApprove && (
         <Modal title="Verificar y aprobar transporte" onClose={() => setShowApprove(false)}>
           <p className="edit-note">
-            Consulta cada fuente con el dato indicado y registra el resultado. Marca "Sí" solo si confirmaste que el documento coincide: los homónimos son frecuentes. Un hallazgo en listas vinculantes impide aprobar; las multas y antecedentes se registran y se le avisan al cliente.
+            Consulta cada fuente con el dato indicado y registra el resultado. Marca "Sí" solo si confirmaste que el documento tiene registros. Un hallazgo en listas vinculantes impide aprobar; las multas y antecedentes se registran y se le avisan al cliente.
           </p>
 
           {SUBJECT_ORDER.map((s) => {
@@ -901,7 +938,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                 id="block-reason" className="pay-textarea" rows={2} value={blockReason}
                 onChange={(e) => setBlockReason(e.target.value)}
               />
-              <p className="edit-note">Escribe un motivo general: el detalle de la coincidencia no debe verlo el cliente.</p>
+              <p className="edit-note">Escribe un motivo general: el detalle no lo verá el cliente.</p>
 
               <label style={{ display: 'flex', gap: 8, fontSize: 13, marginTop: 8 }}>
                 <input type="checkbox" checked={blockBlacklist} onChange={(e) => setBlockBlacklist(e.target.checked)} />
@@ -970,16 +1007,26 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       
       {docToReject && (
         <Modal title={`Rechazar: ${docToReject.label}`} onClose={() => setDocToReject(null)}>
-          <label className="pay-label" htmlFor="doc-reason">Motivo (lo verá el cliente)</label>
-          <textarea
-            id="doc-reason" className="pay-textarea" rows={3} value={docReason}
-            onChange={(e) => setDocReason(e.target.value)} placeholder="Ej: la imagen no se lee"
-          />
+          <label className="edit-field">Motivo (lo verá el cliente)
+            <select value={docReasonChoice} onChange={(e) => setDocReasonChoice(e.target.value)}>
+              <option value="">Selecciona un motivo</option>
+              {docReasonOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+              <option value={OTHER_REASON}>Otro motivo...</option>
+            </select>
+          </label>
+
+          {docReasonChoice === OTHER_REASON && (
+            <textarea
+              className="pay-textarea" rows={3} value={docReason}
+              onChange={(e) => setDocReason(e.target.value)} placeholder="Describe el motivo"
+            />
+          )}
+
           <div className="pay-actions">
             <button type="button" className="pay-btn" onClick={() => setDocToReject(null)} disabled={isBusy}>Cancelar</button>
             <button
-              type="button" className="pay-btn is-primary" disabled={!docReason.trim() || isBusy}
-              onClick={() => handleReviewDoc(docToReject.doc, 'rejected', docReason.trim())}
+              type="button" className="pay-btn is-primary" disabled={!finalDocReason || isBusy}
+              onClick={() => handleReviewDoc(docToReject.doc, 'rejected', finalDocReason)}
             >
               {busy === 'review' ? 'Rechazando...' : 'Rechazar documento'}
             </button>

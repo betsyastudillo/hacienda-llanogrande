@@ -38,3 +38,40 @@ export const TRANSPORT_CHECK_SUBJECTS = { vehicle: 'Vehículo', owner: 'Propieta
 export const BLOCKING_TRANSPORT_CHECKS = ['listas_vinculantes']
 
 export const vehicleTypeLabel = (value) => VEHICLE_TYPES.find((t) => t.value === value)?.label || value
+
+// Razones para el rechazo de algún documento
+export const OTHER_REASON = '__otro__'
+
+const GENERAL_REJECTION_REASONS = [
+  'La imagen no se lee bien (borrosa, oscura o cortada)',
+  'El documento está incompleto (falta el reverso u otras páginas)',
+  'El documento no corresponde al tipo solicitado',
+  'El documento está vencido',
+]
+
+// Motivos propios de cada documento; se muestran antes que los generales
+const REJECTION_REASONS_BY_DOCUMENT = {
+  soat: [
+    'La placa del SOAT no coincide con la del vehículo',
+  ],
+  tarjeta_propiedad: [
+    'La placa no coincide con la del vehículo',
+    'El propietario no coincide con el declarado',
+  ],
+  documento_propietario: [
+    'El documento no corresponde al propietario declarado',
+  ],
+  cedula: [
+    'La cédula no corresponde al transportador declarado',
+  ],
+  licencia_conduccion: [
+    'La licencia no corresponde al transportador declarado',
+    'La categoría de la licencia no es apta para este tipo de vehículo',
+    'La categoría de la licencia está vencida para este tipo de vehículo',
+  ],
+}
+
+export const rejectionReasonsFor = (documentType) => [
+  ...(REJECTION_REASONS_BY_DOCUMENT[documentType] || []),
+  ...GENERAL_REJECTION_REASONS,
+]

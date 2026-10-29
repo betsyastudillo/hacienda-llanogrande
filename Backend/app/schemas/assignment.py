@@ -32,6 +32,7 @@ class TransportCheckInput(BaseModel):
   check_key: str
   has_findings: bool
   note: Optional[str] = None
+  subject_ref: str
 
 
 class TransportCheckResponse(BaseModel):
@@ -43,6 +44,7 @@ class TransportCheckResponse(BaseModel):
 
   class Config:
     from_attributes = True
+
 
 class AssignmentCreate(BaseModel):
   order_id: UUID

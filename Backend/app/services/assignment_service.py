@@ -335,9 +335,9 @@ def resubmit_assignment(db: Session, order_id: UUID, vehicle_data, carrier_data,
   if not assignment:
     raise ValueError("No transport submission found for this order")
 
-  if assignment.validation_status != "rejected":
-    raise ValueError("Only a rejected transport submission can be resubmitted")
-
+  if assignment.validation_status not in ("rejected", "pending"):
+    raise ValueError("Solo se pueden corregir los datos mientras el transporte está pendiente o rechazado")
+  
   _validate_submission(vehicle_data, carrier_data)
   _ensure_not_blacklisted(db, vehicle_data, carrier_data)
 
@@ -352,6 +352,7 @@ def resubmit_assignment(db: Session, order_id: UUID, vehicle_data, carrier_data,
   assignment.validated_at = None
   assignment.validated_by_user_id = None
   assignment.updated_by_user_id=current_user.id
+  assignment.updated_at = datetime.now(timezone.utc)   # marca la corrección aunque solo cambie el vehículo o el transportador
 
   db.commit()
   db.refresh(assignment)
@@ -515,6 +516,16 @@ def validate_assignment(
 
   detail = attach_transport_details(db, [assignment])[0]
 
+  refs = {
+    "vehicle": detail.vehicle.plate,
+    "owner": f"{detail.vehicle.owner_document_type} {detail.vehicle.owner_document_id}",
+    "carrier": f"{detail.carrier.document_type} {detail.carrier.document_id}",
+  }
+
+  for (s, k), ch in submitted.items():
+    if ch.subject_ref != refs[s]:
+      raise ValueError("Los datos del transporte cambiaron mientras se verificaba. Cierra la ventana y repite la verificación.")
+  
   if decision == "approved":
     
     if order.status != "facturado":
