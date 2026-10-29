@@ -30,8 +30,11 @@ function KardexCard({ label, value, price, valueClass = '', sign = '', isFinal =
 }
 
 function todayISO() {
-  return new Date().toISOString().slice(0, 10)
+  // en-CA entrega el formato AAAA-MM-DD; se calcula en hora de Colombia, no en UTC
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
 }
+
+const PAGE_SIZE = 10
 
 export default function ProductInventory() {
   const { productId } = useParams()
@@ -57,19 +60,26 @@ export default function ProductInventory() {
   const [kardex, setKardex] = useState(null)
   const [kardexLoading, setKardexLoading] = useState(false)
 
+  const [page, setPage] = useState(1)
+
   const canManage = hasPermission('inventory:gestionar')
   const canAdjust = hasPermission('inventory:ajustar')
 
   const loadData = async () => {
-    const [productRes, stockRes, movementsRes] = await Promise.all([
-      api.get(`/products/${productId}`),
-      api.get(`/inventory/products/${productId}/stock`),
-      api.get(`/inventory/products/${productId}/movements`),
-    ])
-    setProduct(productRes.data)
-    setStock(stockRes.data.current_stock)
-    setMovements(movementsRes.data)
-    setLoading(false)
+    try {
+      const [productRes, stockRes, movementsRes] = await Promise.all([
+        api.get(`/products/${productId}`),
+        api.get(`/inventory/products/${productId}/stock`),
+        api.get(`/inventory/products/${productId}/movements`),
+      ])
+      setProduct(productRes.data)
+      setStock(stockRes.data.current_stock)
+      setMovements(movementsRes.data)
+    } catch (err) {
+      fail(getErrorMessage(err, 'No se pudo cargar el producto'))
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -117,6 +127,7 @@ export default function ProductInventory() {
       return fail('Los ajustes requieren categoría y motivo')
 
     setSubmitting(true)
+    
     try {
       await api.post('/inventory/movements', {
         product_id: productId,
@@ -129,6 +140,7 @@ export default function ProductInventory() {
       handleClose()
       showToast('Movimiento registrado.')
       await loadData()
+      setPage(1)
       await loadKardex()
     } catch (err) {
       fail(getErrorMessage(err, 'No se pudo registrar el movimiento'))
@@ -141,6 +153,13 @@ export default function ProductInventory() {
     ADJUSTMENT_CATEGORIES.find((c) => c.value === value)?.label || value
 
   if (loading) return <main className="inventory-main"><p>Cargando...</p></main>
+  
+  if (!product) return <main className="inventory-main"><p>No se pudo cargar el producto.</p></main>
+
+  const totalPages = Math.max(1, Math.ceil(movements.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)   // por si la lista se acorta y la página ya no existe
+  const firstIndex = (currentPage - 1) * PAGE_SIZE
+  const pageMovements = movements.slice(firstIndex, firstIndex + PAGE_SIZE)
 
   return (
     <main className="inventory-main">
@@ -186,7 +205,12 @@ export default function ProductInventory() {
             value={kardexEnd}
             onChange={(e) => setKardexEnd(e.target.value)}
           />
-          <button type="button" className="inventory-kardex-btn" onClick={loadKardex} disabled={kardexLoading}>
+          <button 
+            type="button" 
+            className="inventory-kardex-btn" 
+            onClick={loadKardex} 
+            disabled={kardexLoading || !kardexStart || !kardexEnd || kardexStart > kardexEnd}
+          >
             {kardexLoading ? 'Consultando...' : 'Consultar'}
           </button>
         </div>
@@ -226,7 +250,7 @@ export default function ProductInventory() {
                 <span>Motivo</span>
               </div>
 
-              {movements.map((m) => {
+              {pageMovements.map((m) => {
                 const config = MOVEMENT_CONFIG[m.movement_type]
                 const Icon = config.icon
                 return (
@@ -243,6 +267,23 @@ export default function ProductInventory() {
                   </div>
                 )
               })}
+
+              {movements.length > PAGE_SIZE && (
+                <div className="inventory-pagination">
+                  <button type="button" className="inventory-page-btn" onClick={() => setPage(currentPage - 1)} disabled={currentPage === 1}>
+                    ← Anterior
+                  </button>
+
+                  <span className="inventory-page-info">
+                    {firstIndex + 1}–{Math.min(firstIndex + PAGE_SIZE, movements.length)} de {movements.length}
+                  </span>
+
+                  <button type="button" className="inventory-page-btn" onClick={() => setPage(currentPage + 1)} disabled={currentPage === totalPages}>
+                    Siguiente →
+                  </button>
+                </div>
+              )}
+
             </div>
           </div>
         )}

@@ -102,7 +102,7 @@ def create_manual_movement(
   return movement
 
 
-# Cosechas del día
+# CCortes de fecha del periodo (hora en Colombia)
 def _period_bounds(start_date: date, end_date: date):
   # Los cortes de día se calculan en hora de Colombia, no en UTC
   start_dt = datetime.combine(start_date, time.min, tzinfo=LOCAL_TZ)
@@ -160,9 +160,9 @@ def _get_kardex(db: Session, product_id: UUID, start_date: date, end_date: date)
     +_sum_movements(db, product_id, "ajuste", end_dt=start_dt)
   )
 
-  entries = _sum_movements(db, product_id, "entrada", start_dt, end_dt, order_linked=False)
-  reversals = _sum_movements(db, product_id, "entrada", start_dt, end_dt, order_linked=True)
-  exits = _sum_movements(db, product_id, "salida", start_dt, end_dt) - reversals
+  entries = _sum_movements(db, product_id, "entrada", start_dt, end_dt)
+  # reversals = _sum_movements(db, product_id, "entrada", start_dt, end_dt, order_linked=True)
+  exits = _sum_movements(db, product_id, "salida", start_dt, end_dt)
   adjustments_damage = _sum_movements(db, product_id, "ajuste", start_dt, end_dt, only_damage=True)
   adjustments_other = _sum_movements(db, product_id, "ajuste", start_dt, end_dt, only_damage=False)
 

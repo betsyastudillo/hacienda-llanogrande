@@ -94,6 +94,11 @@
   cursor: pointer;
 }
 
+.inventory-kardex-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .inventory-kardex-btn:hover:not(:disabled) {
   background-color: var(--border);
 }
@@ -302,6 +307,34 @@
 .inventory-empty {
   font-size: 13px;
   color: var(--text-footer);
+}
+
+.inventory-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.inventory-page-info { 
+  font-size: 13px; 
+  color: var(--text-footer); 
+}
+
+.inventory-page-btn {
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  color: #222222;
+  background: #ffffff;
+  border: 1px solid #d9d5cb;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.inventory-page-btn:disabled { 
+  opacity: 0.5; cursor: not-allowed; 
 }
 
 @media (max-width: 600px) {
