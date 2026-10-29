@@ -4,7 +4,7 @@ from typing import Optional, Literal
 from pydantic import BaseModel, field_validator, model_validator
 from uuid import UUID
 from app.schemas.mixins import AuditResponseMixin
-from app.constants.company_requirements import LEGAL_REP_FIELDS, VALID_DOCUMENT_TYPES, VALID_LEGAL_REP_DOCUMENT_TYPES
+from app.constants.company_requirements import LEGAL_REP_FIELDS, MIN_ADDRESS_LENGTH, VALID_DOCUMENT_TYPES, VALID_LEGAL_REP_DOCUMENT_TYPES
 
 
 # Validaciones para teléfono y email, para que no los envíen con un caracter cualquiera
@@ -103,6 +103,16 @@ class CompanyValidators(BaseModel):
       raise ValueError("El departamento y la ciudad no pueden estar vacíos")
     
     return value.strip()
+  
+  @field_validator("address", "fiscal_address", check_fields=False)
+  @classmethod
+  def validate_address(cls, value):
+    if value is None:
+      return value
+    value = value.strip()
+    if len(value) < MIN_ADDRESS_LENGTH:
+      raise ValueError(f"La dirección debe tener al menos {MIN_ADDRESS_LENGTH} caracteres")
+    return value
   
 
 class CompanyCreate(CompanyBase, CompanyValidators):

@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import UploadFile
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
+from app.constants.company_requirements import MIN_ADDRESS_LENGTH
 from app.constants.transport_requirements import (
   ALLOWED_DOCUMENTS_BY_SUBJECT,
   BLOCKING_TRANSPORT_CHECKS,
@@ -166,6 +167,9 @@ def _validate_submission(vehicle_data, carrier_data) -> None:
 
   if vehicle_data.capacity_m3 <= 0:
     raise ValueError("La capacidad del vehículo debe ser mayor a 0.")
+  
+  if vehicle_data.capacity_m3 > 9999:
+    raise ValueError("La capacidad del vehículo no es válida (máximo 9999 m³)")
 
   if not vehicle_data.owner_name.strip() or not vehicle_data.owner_document_id.strip():
     raise ValueError("El nombre y número de documento del propietario del vehículo son obligatorios.")
@@ -182,8 +186,8 @@ def _validate_submission(vehicle_data, carrier_data) -> None:
   if not PHONE_RE.fullmatch((carrier_data.phone or "").strip()):
     raise ValueError("El teléfono del transportador debe tener entre 7 y 15 dígitos.")
 
-  if not (carrier_data.address or "").strip():
-    raise ValueError("La dirección del transportador es obligatoria.")
+  if len((carrier_data.address or "").strip()) < MIN_ADDRESS_LENGTH:
+    raise ValueError(f"La dirección del transportador debe tener al menos {MIN_ADDRESS_LENGTH} caracteres")
 
 
 # Se reutiliza entre pedidos por placa)

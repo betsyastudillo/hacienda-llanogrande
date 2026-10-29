@@ -8,6 +8,8 @@ import StatusBadge from '../../../components/StatusBadge/StatusBadge'
 import FilePreviewModal from '../../../components/FilePreviewModal/FilePreviewModal'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
 import { formatDate } from '../../../utils/formatDate'
+import { isValidAddress, MIN_ADDRESS_LENGTH } from '../../../utils/validators'
+import { formatCapacity } from '../../../utils/formatNumber'
 import { 
     TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES, VEHICLE_TYPES, vehicleTypeLabel, TRANSPORT_CHECK_LABELS, TRANSPORT_CHECK_SUBJECTS, BLOCKING_TRANSPORT_CHECKS, OTHER_REASON, rejectionReasonsFor
 } from '../../../constants/transport'
@@ -47,7 +49,6 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   const [formError, setFormError] = useState('')
   const [ownerIsCarrier, setOwnerIsCarrier] = useState(false)
   const [showApprove, setShowApprove] = useState(false)
-  const [checked, setChecked] = useState(false)
   const [showReject, setShowReject] = useState(false)
   const [reason, setReason] = useState('')
   const [blacklist, setBlacklist] = useState(false)
@@ -63,7 +64,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
   const [docToReject, setDocToReject] = useState(null)   // { doc, label }
   const [docReason, setDocReason] = useState('')
-  const [docReasonChoice, setDocReasonChoice] = useState('')   // un motivo de la lista, o OTHER_REASON para rechazo de documentos
+  const [docReasonChoice, setDocReasonChoice] = useState('')   // para rechazo de documentos
   const [checkValues, setCheckValues] = useState({})   // { 'vehicle:simit': { has_findings, note } }
 
   const isBusy = busy !== null
@@ -264,6 +265,9 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
     if (!/^\d{7,15}$/.test(form.phone))
       return setFormError('El teléfono del transportador debe tener entre 7 y 15 dígitos.')
+
+    if (!isValidAddress(form.address))
+      return setFormError(`La dirección del transportador debe tener al menos ${MIN_ADDRESS_LENGTH} caracteres.`)
 
     setFormError('')
 
@@ -593,7 +597,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               </div>
               <div className="detail-info-row">
                 <span>Capacidad</span>
-                <span>{assignment.vehicle.capacity_m3}</span>
+                <span>{formatCapacity(assignment.vehicle.capacity_m3)} m³</span>
               </div>
   
               {sameOwner ? (

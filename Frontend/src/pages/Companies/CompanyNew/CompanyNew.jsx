@@ -8,7 +8,7 @@ import { JURIDICA_DOCUMENT_TYPES, NATURAL_DOCUMENT_TYPES, REQUIRED_JURIDICA_DOCS
 import { getComplianceChecks, getRepComplianceChecks } from '../../../constants/complianceChecks'
 import { DEPARTMENTS, CITIES_BY_DEPARTMENT } from '../../../constants/colombia'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
-import { isValidEmail, isValidPhone } from '../../../utils/validators'
+import { isValidEmail, isValidPhone, isValidAddress, MIN_ADDRESS_LENGTH } from '../../../utils/validators'
 import './CompanyNew.css'
 
 
@@ -178,7 +178,11 @@ export default function CompanyNew() {
     if (!form.business_sector) return fail('Selecciona el sector del cliente.')
     if (!isValidPhone(form.phone)) return fail('El teléfono debe tener solo números (entre 7 y 15 dígitos)')
     if (!isValidEmail(form.email)) return fail('El correo no tiene un formato válido')
-    
+    if (!isValidAddress(form.address)) return fail(`La dirección debe tener al menos ${MIN_ADDRESS_LENGTH} caracteres.`)
+
+    if (!sameAsOperational && form.fiscal_address && !isValidAddress(form.fiscal_address))
+      return fail(`La dirección fiscal debe tener al menos ${MIN_ADDRESS_LENGTH} caracteres.`)
+
     if (form.economic_activity_code && !/^\d{4}$/.test(form.economic_activity_code)) return fail('El código CIIU debe tener 4 dígitos')
 
     if (!sameAsOperational) {

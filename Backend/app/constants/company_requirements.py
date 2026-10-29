@@ -39,6 +39,7 @@ VALID_REJECTION_TYPES = ("documents", "compliance")
 # Campos que no se pueden dejar vacíos al editar
 REQUIRED_FIELDS = {"address", "phone", "email", "country", "department", "city"}
 
+MIN_ADDRESS_LENGTH = 8
 
 def get_required_checks(business_sector):
   return COMMON_CHECKS + CHECKS_BY_SECTOR.get(business_sector, ())

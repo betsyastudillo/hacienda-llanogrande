@@ -4,7 +4,7 @@ import Modal from '../../../components/Modal/Modal'
 import { useToast } from '../../../context/Toast/ToastContext'
 import { DEPARTMENTS } from '../../../constants/departments'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
-import { isValidEmail, isValidPhone } from '../../../utils/validators'
+import { isValidEmail, isValidPhone, isValidAddress, MIN_ADDRESS_LENGTH } from '../../../utils/validators'
 
 const FIELDS = [
   'display_name', 'address', 'department', 'city', 'phone', 'email',
@@ -47,32 +47,49 @@ export default function EditCompanyModal({ company, canApprove, onClose, onSaved
       : null
 
   const handleSave = async () => {
+
     if (!hasChanges) {
       showToast('No hay cambios para guardar')
+    
       return onClose()
     }
 
     if (!form.address.trim() || !form.department || !form.city.trim() || !form.phone || !form.email.trim())
       return fail('Dirección, departamento, ciudad, teléfono y correo son obligatorios.')
+    
     if (!isValidPhone(form.phone)) return fail('El teléfono debe tener solo números (entre 7 y 15 dígitos)')
+    
     if (!isValidEmail(form.email)) return fail('El correo no tiene un formato válido')
+
+    if ('address' in changes && !isValidAddress(form.address))
+      return fail(`La dirección debe tener al menos ${MIN_ADDRESS_LENGTH} caracteres.`)
+
+    if (changes.fiscal_address && !isValidAddress(form.fiscal_address))
+      return fail(`La dirección fiscal debe tener al menos ${MIN_ADDRESS_LENGTH} caracteres.`)
+    
     if (form.economic_activity_code && !/^\d{4}$/.test(form.economic_activity_code))
       return fail('El código CIIU debe tener 4 dígitos')
+    
     if (form.fiscal_phone && !isValidPhone(form.fiscal_phone)) return fail('El teléfono fiscal no es válido')
+    
     if (form.fiscal_email && !isValidEmail(form.fiscal_email)) return fail('El correo fiscal no tiene un formato válido')
 
     if (isJuridica) {
+    
       if (
         !form.legal_rep_name.trim() || !form.legal_rep_document_type ||
         !form.legal_rep_document_number.trim() || !form.legal_rep_email.trim() || !form.legal_rep_city.trim()
       ) return fail('Completa todos los datos del representante legal.')
+    
       if (!isValidEmail(form.legal_rep_email)) return fail('El correo del representante legal no es válido')
     }
 
     setSaving(true)
+    
     try {
       const res = await api.put(`/companies/${company.id}`, changes)
       const movedTo = res.data.verification_status
+    
       showToast(
         movedTo === company.verification_status
           ? 'Datos actualizados correctamente.'
@@ -80,7 +97,7 @@ export default function EditCompanyModal({ company, canApprove, onClose, onSaved
             ? 'Datos actualizados. La empresa volvió a borrador para repetir la verificación.'
             : 'Datos actualizados. La empresa volvió a revisión.'
       )
-      console.log(res)
+    
       await onSaved()
       onClose()
     } catch (err) {
