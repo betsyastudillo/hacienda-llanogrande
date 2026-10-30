@@ -1,6 +1,6 @@
 import os
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 import qrcode
@@ -136,7 +136,7 @@ def verify_dispatch_guide(db: Session, token: str, current_user=None) -> dict:
   carrier = db.query(Carrier).filter(Carrier.id == assignment.carrier_id).first()
 
   guide.status = "used"
-  guide.used_at = datetime.utcnow()
+  guide.used_at = datetime.now(timezone.utc)
 
   order = db.query(Order).filter(Order.id == guide.order_id).first()
   order.status = "dispatched"

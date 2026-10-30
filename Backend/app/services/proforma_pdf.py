@@ -10,6 +10,7 @@ from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Tabl
 from sqlalchemy.orm import Session
 from app.models.company import Company 
 from app.services.pdf_helpers import full_address, format_date
+from app.utils.formatting import format_account_number, format_document, format_nit
 
 PROFORMAS_DIR = "uploads/proformas"
 LOGO_PATH = "assets/logo.png"
@@ -29,16 +30,17 @@ def _doc(company: Company) -> str:
 
 def generate_proforma_pdf(db: Session, payment, order, bank_account) -> str:
   seller = (
-      db.query(Company)
-      .filter(Company.company_type == "own", Company.is_active == True)  # noqa: E712
-      .first()
+    db.query(Company)
+    .filter(Company.company_type == "own", Company.is_active == True)  # noqa: E712
+    .first()
   )
   customer = db.query(Company).filter(Company.id == order.company_id).first()
 
   if not seller:
-      raise ValueError("Own company not found, cannot generate the proforma")
+    raise ValueError("Own company not found, cannot generate the proforma")
+  
   if not customer:
-      raise ValueError("Order company not found, cannot generate the proforma")
+    raise ValueError("Order company not found, cannot generate the proforma")
 
   folder = os.path.join(PROFORMAS_DIR, str(payment.id))
   os.makedirs(folder, exist_ok=True)
@@ -90,6 +92,7 @@ def generate_proforma_pdf(db: Session, payment, order, bank_account) -> str:
   story += [header, Spacer(1, 0.5 * cm)]
 
   # --- Vendedor y cliente ---
+  
   def party(label, c):
     return [
       Paragraph(label, section),
@@ -148,14 +151,18 @@ def generate_proforma_pdf(db: Session, payment, order, bank_account) -> str:
   ]))
   story += [totals, Spacer(1, 0.7 * cm)]
 
+  # Cuenta dividida en 4
+  account_text = format_account_number(bank_account.account_number)
   # --- Cuenta para consignar ---
-  holder_doc = f"{bank_account.account_holder_document_type or ''} {bank_account.account_holder_document_number or ''}".strip()
+  doc_type = bank_account.account_holder_document_type or ""
+  doc_number = format_nit(bank_account.account_holder_document_number)
+
   bank_rows = [
     [p("Banco", bold), p(bank_account.bank_name)],
     [p("Tipo de cuenta", bold), p(str(bank_account.account_type).capitalize())],
-    [p("Número de cuenta", bold), p(bank_account.account_number)],
+    [p("Número de cuenta", bold), p(account_text)],
     [p("Titular", bold), p(bank_account.account_holder_name)],
-    [p("Documento del titular", bold), p(holder_doc)],
+    [p(f"Documento del titular: {doc_type}", bold), p(doc_number)],
   ]
   if bank_account.agreement_number:
     bank_rows.append([p("Convenio", bold), p(bank_account.agreement_number)])

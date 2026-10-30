@@ -3,11 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 import api from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
 import { useToast } from '../../../context/Toast/ToastContext'
-import UnitReferenceHelper from '../../../components/UnitReferenceHelper/UnitReferenceHelper'
 import { estimateWeightKg } from '../../../constants/units'
 import { Pencil, Trash } from 'lucide-react'
 import { formatCurrency } from '../../../utils/formatCurrency'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
+import { formatQuantity } from '../../../utils/formatQuantity'
 import './OrderNew.css'
 
 export default function OrderNew() {
@@ -199,9 +199,8 @@ export default function OrderNew() {
       }
 
       if (isEdit) {
-        console.log(payload)
         const r= await api.put(`/orders/${orderId}`, payload)
-        console.log(r)
+
         showToast('Pedido actualizado')
         navigate(`/orders/${orderId}`)
       } else {
@@ -220,7 +219,9 @@ export default function OrderNew() {
   if (loadingEdit) return <main className="order-new-main"><p>Cargando pedido...</p></main>
 
   const selectedProduct = products.find((m) => m.id === selectedProductId)
-
+  const selectedParent = selectedProduct?.parent_product_id
+    ? products.find((p) => p.id === selectedProduct.parent_product_id)
+    : null
 
   return (
     <main className="order-new-main">
@@ -267,7 +268,7 @@ export default function OrderNew() {
               .filter((m) => (stockByProduct[m.id] || 0) > 0)
               .map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.name}
+                  {m.name} · {formatCurrency(m.price)} / {m.parent_product_id ? 'paquete' : m.unit}
                 </option>
               ))}
           </select>
@@ -291,8 +292,8 @@ export default function OrderNew() {
           </button>
 
           {selectedProductId && (
-            <p className='order-new-stock-hint'>
-              Disponible: {stockByProduct[selectedProductId]} {products.find((m) => m.id === selectedProductId)?.unit}(es)
+            <p className="order-new-stock-hint">
+              Disponible: {formatQuantity(stockByProduct[selectedProductId], selectedProduct, selectedParent)}
             </p>
           )}
 
@@ -318,12 +319,16 @@ export default function OrderNew() {
               </thead>
               <tbody>
                 {items.map((item, index) => {
+                  const product = products.find((p) => p.id === item.product_id)
+                  const parent = product?.parent_product_id
+                    ? products.find((p) => p.id === product.parent_product_id)
+                    : null
                   const estimatedKg = estimateWeightKg(item.approx_weight_kg, item.product_unit, item.quantity_m3)
                   const lineTotal = item.unit_price * item.quantity_m3
                   return(
                     <tr key={item.product_id}>
                     <td>{item.product_name}</td>
-                    <td>{item.quantity_m3} {item.product_unit}</td>
+                      <td>{formatQuantity(item.quantity_m3, product, parent)}</td>
                     <td className="order-new-weight-cell">
                       {estimatedKg !== null ? `≈ ${estimatedKg.toFixed(2)} kg` : '—'}
                     </td>

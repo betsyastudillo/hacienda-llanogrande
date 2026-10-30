@@ -61,19 +61,19 @@ export default function Orders() {
   
   const actionCount = baseOrders.filter((o) => o.needs_action).length
   
-  const orderStatusHelpItems = ORDER_STATUS_STEPS.map((step) => ({
+  const orderStatusHelpItems = [
+    ...ORDER_STATUS_STEPS.map((step) => ({
     key: step.key,
     abrev: step.abrev,
     label: step.label,
     color: STATUS_COLORS[step.key]?.bg
-  },
+  })),
   {
     key: 'cancelled', 
     abrev: 'A',
     label: 'Anulado',
     color: STATUS_COLORS.cancelled.bg
-  }  
-  ))
+  }]
 
   return (
     <main className="orders-main">

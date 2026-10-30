@@ -890,7 +890,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               <label className="edit-field">Teléfono
                 <input value={form.phone} onChange={setDigits('phone')} maxLength={15} inputMode="numeric" />
               </label>
-              <label className="edit-field">Dirección
+              <label className="edit-field">Dirección de residencia
                 <input value={form.address} onChange={set('address')} maxLength={200} />
               </label>
             </div>

@@ -173,6 +173,8 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged, de
 
   const awaitingReceipt = payment.status === 'pending' || payment.status === 'failed'
 
+  const handlePse = () => showToast('El pago por PSE estará disponible pronto.')
+
   return (
     <>
       <CollapsibleCard
@@ -204,11 +206,11 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged, de
             <>
               <div className="detail-info-row"><span>Titular</span><span>{bankAccount.account_holder_name}</span></div>
               <div className="detail-info-row"><span>Banco</span><span>{bankAccount.bank_name}</span></div>
-              <div className="detail-info-row"><span>Tipo</span><span>{bankAccount.account_type}</span></div>
+              <div className="detail-info-row"><span>Tipo de cuenta</span><span>{bankAccount.account_type}</span></div>
               {bankAccount.agreement_number ? (
                 <div className="detail-info-row"><span>Convenio</span><span>{bankAccount.agreement_number}</span></div>
               ) : (
-                <div className="detail-info-row"><span>Cuenta</span><span>{bankAccount.account_number}</span></div>
+                <div className="detail-info-row"><span>Número de Cuenta</span><span className='account-number'>{formatAccountNumber(bankAccount.account_number)}</span></div>
               )}
             </>
           )}
@@ -225,6 +227,19 @@ export default function PaymentCard({ order, payment, bankAccount, onChanged, de
               </button>
             </div>
           )}
+
+          <div className="detail-info-row">
+            <span>Pago por PSE</span>
+            <button
+              type="button"
+              className="pay-pse-btn"
+              onClick={handlePse}
+              aria-label="Pagar por PSE"
+              title="Pagar por PSE"
+            >
+              <img src="/logos/pse.png" alt="" className="pay-method-logo" />
+            </button>
+          </div>
 
           {payment.status === 'failed' && payment.rejection_reason && (
             <div className="detail-info-row">

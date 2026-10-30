@@ -1,12 +1,12 @@
 import { Truck, PackageCheck, FileCheck, FileText, BanknoteCheck, ScrollText, Ban } from 'lucide-react'
 
 export const ORDER_STATUS_STEPS = [
-  { key: 'created', abrev: 'C', label: 'Creado' },
+  { key: 'created', abrev: 'CR', label: 'Creado' },
   { key: 'payment_confirmed', abrev: 'PC', label: 'Pago confirmado' },
-  { key: 'facturado', abrev: 'F', label: 'Facturado' },
+  { key: 'facturado', abrev: 'FA', label: 'Facturado' },
   { key: 'transport_validated', abrev: 'TC', label: 'Transporte confirmado' },
   { key: 'dispatch_guide_generated', abrev: 'GG', label: 'Guía generada' },
-  { key: 'dispatched', abrev: 'D', label: 'Despachado' },
+  { key: 'dispatched', abrev: 'DE', label: 'Despachado' },
 ]
 
 export const STATUS_LABELS = {

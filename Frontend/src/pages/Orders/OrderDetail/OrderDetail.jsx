@@ -7,6 +7,7 @@ import { useToast } from '../../../context/Toast/ToastContext'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
 import { useAuth } from '../../../context/AuthContext'
 import { formatCurrency } from '../../../utils/formatCurrency'
+import { formatQuantity } from '../../../utils/formatQuantity'
 import { formatDate } from '../../../utils/formatDate'
 import PaymentCard from './PaymentCard'
 import InvoiceCard from './InvoiceCard'
@@ -120,7 +121,7 @@ export default function OrderDetail() {
 
   async function reloadAll() {
     const orderRes = await api.get(`/orders/${orderId}`)
-    setOrder(orderRes.data) // el estado del pedido cambia al confirmar el pago
+    setOrder(orderRes.data) 
     await Promise.all([fetchPayment(), fetchInvoice(), fetchAssignment(), fetchDispatchGuide()])
   }
 
@@ -191,6 +192,9 @@ export default function OrderDetail() {
           <p className="detail-eyebrow">Empresa:</p>
           <p className="detail-order-id">{order.company_display_name}</p>
           <p className="detail-order-date">Creado el {formatDate(order.created_at)}</p>
+          {order.status === 'dispatched' && dispatchGuide?.used_at && (
+            <p className="detail-order-date">Despachado el {formatDate(dispatchGuide.used_at)}</p>
+          )}
         </div>
 
         {(canEdit || canCancel) && (
@@ -198,10 +202,11 @@ export default function OrderDetail() {
             {canEdit && (
               <button
                 type="button"
-                className="pay-btn is-edit "
+                className="pay-btn is-edit"
                 onClick={() => navigate(`/orders/${orderId}/edit`)}
               >
                 <Pencil size={18}/>
+                Editar
               </button>
             )}
             {canCancel && (
@@ -262,10 +267,11 @@ export default function OrderDetail() {
               <tbody>
                 {order.items.map((item) => {
                   const product = getProduct(item.product_id)
+                  const parent = product?.parent_product_id ? getProduct(product.parent_product_id) : null
                   return (
                     <tr key={item.id}>
                       <td>{product?.name || 'Producto'}</td>
-                      <td>{item.quantity_m3} {product?.unit}</td>
+                      <td>{formatQuantity(item.quantity_m3, product, parent)}</td>
                       <td>{formatCurrency(item.unit_price)}</td>
                       <td className="detail-line-total">{formatCurrency(item.subtotal)}</td>
                     </tr>

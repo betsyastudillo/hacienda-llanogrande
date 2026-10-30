@@ -247,6 +247,10 @@ export default function CompanyNew() {
     }
   }
 
+  const handleDocumentChange = (e) => {
+    const value = form.person_type === 'juridica' ? e.target.value.replace(/\D/g, '') : e.target.value
+    setForm({ ...form, document_number: value })
+  }
   const handlePhoneChange = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value.replace(/\D/g, '') })
   }
@@ -450,7 +454,8 @@ export default function CompanyNew() {
               <input
                 className="company-form-input"
                 value={form.document_number}
-                onChange={handleChange('document_number')}
+                onChange={handleDocumentChange}
+                placeholder={form.person_type === 'natural' ? 'Sin puntos ni espacios' : 'NIT sin dígito de verificación'}
               />
             </div>
           </div>
