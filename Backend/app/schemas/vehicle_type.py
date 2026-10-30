@@ -1,10 +1,12 @@
 from typing import Optional
+from decimal import Decimal
 from uuid import UUID
-from pydantic import BaseModel, field_validator, ConfigDict
+from pydantic import BaseModel, field_validator, ConfigDict, Field
 
 
 class VehicleTypeCreate(BaseModel):
   name: str
+  capacity_kg: Optional[Decimal] = Field(default=None, gt=0)
 
   @field_validator("name")
   @classmethod
@@ -17,6 +19,7 @@ class VehicleTypeCreate(BaseModel):
 
 class VehicleTypeUpdate(BaseModel):
   name: Optional[str] = None
+  capacity_kg: Optional[Decimal] = Field(default=None, gt=0)
   is_active: Optional[bool] = None
 
   @field_validator("name")
@@ -35,4 +38,5 @@ class VehicleTypeResponse(BaseModel):
   id: UUID
   code: str
   name: str
+  capacity_kg: Optional[Decimal] = None
   is_active: bool

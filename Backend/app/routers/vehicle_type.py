@@ -18,20 +18,21 @@ def list_types(include_inactive: bool = False, db: Session = Depends(get_db), cu
 
 
 @router.post("/", response_model=VehicleTypeResponse, status_code=201)
-def create_type(data: VehicleTypeCreate, db: Session = Depends(get_db),
-                current_user=Depends(require_permission("vehicle_type:gestionar"))):
+def create_type(data: VehicleTypeCreate, db: Session = Depends(get_db), current_user=Depends(require_permission("vehicle_type:gestionar"))):
+  print(data.capacity_kg)
   try:
-    return service.create_vehicle_type(db, data.name, current_user)
+    return service.create_vehicle_type(db, data.name, data.capacity_kg, current_user)
+  
   except ValueError as e:
     db.rollback()
     raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.patch("/{type_id}", response_model=VehicleTypeResponse)
-def update_type(type_id: UUID, data: VehicleTypeUpdate, db: Session = Depends(get_db),
-                current_user=Depends(require_permission("vehicle_type:gestionar"))):
+def update_type(type_id: UUID, data: VehicleTypeUpdate, db: Session = Depends(get_db), current_user=Depends(require_permission("vehicle_type:gestionar"))):
+  print(data.capacity_kg)
   try:
-    return service.update_vehicle_type(db, type_id, data.name, data.is_active, current_user)
+    return service.update_vehicle_type(db, type_id, data.name, data.is_active, data.capacity_kg, current_user)
   except ValueError as e:
     db.rollback()
     raise HTTPException(status_code=400, detail=str(e))

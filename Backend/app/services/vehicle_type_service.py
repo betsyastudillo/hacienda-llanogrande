@@ -8,23 +8,29 @@ from app.models.vehicle_type import VehicleType
 
 def _make_code(name: str) -> str:
   ascii_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+  
   return re.sub(r"[^a-z0-9]+", "_", ascii_name.lower()).strip("_")[:20]
 
 
 def list_vehicle_types(db: Session, include_inactive: bool = False):
   query = db.query(VehicleType)
+
   if not include_inactive:
     query = query.filter(VehicleType.is_active.is_(True))
+  
   return query.order_by(VehicleType.name).all()
 
 
 def active_vehicle_type_codes(db: Session) -> set:
   rows = db.query(VehicleType.code).filter(VehicleType.is_active.is_(True)).all()
+  
   return {r[0] for r in rows}
 
 
-def create_vehicle_type(db: Session, name: str, current_user) -> VehicleType:
+def create_vehicle_type(db: Session, name: str, capacity_kg, current_user) -> VehicleType:
+  
   code = _make_code(name)
+  
   if not code:
     raise ValueError("El nombre no es válido")
 
@@ -34,17 +40,25 @@ def create_vehicle_type(db: Session, name: str, current_user) -> VehicleType:
     raise ValueError("Ya existe un tipo de vehículo con ese nombre")
 
   vehicle_type = VehicleType(
-    code=code, name=name, is_active=True,
-    created_by_user_id=current_user.id, updated_by_user_id=current_user.id,
+    code=code, 
+    name=name, 
+    capacity_kg=capacity_kg,
+    is_active=True,
+    created_by_user_id=current_user.id, 
+    updated_by_user_id=current_user.id,
   )
+  print(vehicle_type)
   db.add(vehicle_type)
   db.commit()
   db.refresh(vehicle_type)
+  
   return vehicle_type
 
 
-def update_vehicle_type(db: Session, type_id, name: Optional[str], is_active: Optional[bool], current_user) -> VehicleType:
+def update_vehicle_type(db: Session, type_id, name: Optional[str], capacity_kg, is_active: Optional[bool], current_user) -> VehicleType:
+  
   vehicle_type = db.query(VehicleType).filter(VehicleType.id == type_id).first()
+  
   if not vehicle_type:
     raise ValueError("Tipo de vehículo no encontrado")
 
@@ -55,10 +69,15 @@ def update_vehicle_type(db: Session, type_id, name: Optional[str], is_active: Op
       raise ValueError("Ya existe un tipo de vehículo con ese nombre")
     vehicle_type.name = name
 
+  if capacity_kg is not None:
+    vehicle_type.capacity_kg = capacity_kg
+
   if is_active is not None:
     vehicle_type.is_active = is_active
 
   vehicle_type.updated_by_user_id = current_user.id
+  
   db.commit()
   db.refresh(vehicle_type)
+  
   return vehicle_type

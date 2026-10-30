@@ -366,7 +366,10 @@
   border-color: var(--status-approved-text);
   color: var(--status-approved-text);
 }
-
+.capacity-hint { font-size: 13px; margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; }
+.capacity-hint.is-ok        { background: #d9efdc; color: #1f6b34; }
+.capacity-hint.is-short     { background: #fbdcdc; color: #a12a2a; }
+.capacity-hint.is-oversized { background: #fdf1b8; color: #7a5c00; }
 .pay-hint { margin-top: 12px; }
 
 .pay-reason {

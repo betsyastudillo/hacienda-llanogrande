@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import api from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
 import { useToast } from '../../../context/Toast/ToastContext'
+import { useVehicleTypes } from '../../../hooks/useVehicleTypes'
 import Modal from '../../../components/Modal/Modal'
 import StatusBadge from '../../../components/StatusBadge/StatusBadge'
 import FilePreviewModal from '../../../components/FilePreviewModal/FilePreviewModal'
@@ -9,13 +10,15 @@ import { getErrorMessage } from '../../../utils/getErrorMessage'
 import { formatDate, todayISO } from '../../../utils/formatDate'
 import { isValidAddress, MIN_ADDRESS_LENGTH } from '../../../utils/validators'
 import { formatCapacity } from '../../../utils/formatNumber'
+import { capacityStatus } from '../../../utils/vehicleCapacity.js'
 import { TRANSPORT_STATUS_LABELS, TRANSPORT_STATUS_COLORS, TRANSPORT_STATUS_ICONS, } from '../../../constants/transportStatus'
+import { estimateWeightKg } from '../../../constants/units.js'
 import { 
     TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES,  TRANSPORT_CHECK_LABELS, TRANSPORT_CHECK_SUBJECTS, BLOCKING_TRANSPORT_CHECKS, OTHER_REASON, rejectionReasonsFor, EXPIRING_TRANSPORT_DOCS
 } from '../../../constants/transport'
 import CollapsibleCard from '../../../components/CollapsibleCard/CollapsibleCard'
-import TransportDocuments from './TransportDocuments'
 import ComplianceTable from '../../../components/ComplianceTable/ComplianceTable'
+import TransportDocuments from './TransportDocuments'
 
 const EMPTY_FORM = {
   plate: '', type: '', capacity_m3: '',
@@ -55,6 +58,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   const [pendingUpload, setPendingUpload] = useState(null)   // { key, file, label }
   const [expiryDate, setExpiryDate] = useState('')
   const [uploadError, setUploadError] = useState('')
+  const [products, setProducts] = useState([]) // Para calcular los pesos para el transporte
 
   const isBusy = busy !== null
   
@@ -83,6 +87,8 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   } : null
 
   const { types: vehicleTypes, labelOf: vehicleTypeLabel } = useVehicleTypes()
+
+  useEffect(() => { api.get('/products/').then((r) => setProducts(r.data)).catch(() => {}) }, [])
 
   // Ejecuta una acción mostrando el resultado y recargando el pedido
   // onError: si se pasa, el error se muestra donde se indique (dentro de un modal) y no como popup.
@@ -540,6 +546,15 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   // El motivo final: el de la lista, o lo que escribió quien revisa si eligió "Otro motivo"
   const finalDocReason = docReasonChoice === OTHER_REASON ? docReason.trim() : docReasonChoice
 
+  const orderWeightKg = order.items.reduce((sum, item) => {
+    const p = products.find((x) => x.id === item.product_id)
+    const kg = p ? estimateWeightKg(p.approx_weight_kg, p.unit, item.quantity_m3) : null
+    return sum + (kg || 0)
+  }, 0)
+
+  const selectedType = vehicleTypes.find((t) => t.code === form.type)
+  const fit = capacityStatus(selectedType?.capacity_kg, orderWeightKg)
+
   return (
     <>
       <CollapsibleCard
@@ -764,6 +779,11 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               </label>
             </div>
       
+            {/* Aviso sobre la capacidad del vehículo */}
+            {fit.level !== 'unknown' && (
+              <p className={`capacity-hint is-${fit.level}`}>{fit.message}</p>
+            )}
+
             {hint.vehicle && (
               <p className="edit-note">Datos cargados de un registro anterior. Revísalos y corrígelos si algo cambió.</p>
             )}
