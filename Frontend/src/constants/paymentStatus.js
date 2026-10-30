@@ -12,7 +12,7 @@ export const PAYMENT_STATUS_LABELS = {
 export const PAYMENT_STATUS_COLORS = {
   pending: { bgColor: '#fdf1b8', textColor: '#7a5c00' },
   confirmed: { bgColor: '#d9efdc', textColor: '#1f6b34' },
-  failed: { bgColor: '#fbdcdc', textColor: '#a12a2a' },
+  failed: { bgColor: '#fbdcdc', textColor: 'var(--status-rejected-text)' },
   cancelled: { bgColor: '#e5e3db', textColor: '#5f5e5a'}
 }
 

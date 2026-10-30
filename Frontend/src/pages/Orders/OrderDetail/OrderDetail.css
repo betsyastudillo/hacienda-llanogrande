@@ -1,13 +1,13 @@
 /* Antes de la carga */
 .detail-empty {
   text-align: center;
-  color: var(--text-footer);
+  color: var(--text-muted);
   padding: 2rem 0;
 }
 
 .detail-empty-inline {
   font-size: 13px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   margin-bottom: 12px;
   padding-bottom: 8px;
   /* border-bottom: 1px solid var(--border); */
@@ -20,7 +20,7 @@
   margin-top: 12px;
   padding: 5px;
   font-size: 14px;
-  color: var(--error);
+  color: var(--error-text);
 }
 
 
@@ -54,27 +54,27 @@
 
 .detail-eyebrow {
   font-size: 13px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   margin: 0 0 4px;
 }
 
 .detail-order-id {
   font-size: 22px;
   font-weight: 600;
-  color: var(--text-black);
+  color: var(--text-strong);
   margin: 0;
 }
 
 .detail-order-date {
   font-size: 13px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   margin: 4px 0 0;
 }
 
 
 /* Linea de pasos:  */
 .detail-stepper-card {
-  background-color: var(--white-bg);
+  background-color: var(--white);
   border-radius: 12px;
   padding: 1.5rem 1rem;
   margin-bottom: 1.5rem;
@@ -98,7 +98,7 @@
 
 .detail-stepper-track-fill {
   height: 100%;
-  background-color: var(--bg);
+  background-color: var(--surface-page);
   transition: width 0.2s ease;
 }
 
@@ -116,8 +116,8 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background-color: var(--bg);
-  color: var(--text-footer);
+  background-color: var(--surface-page);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -128,22 +128,22 @@
 
 .detail-stepper-circle.is-done {
   background-color: var(--border);
-  color: var(--white-bg);
+  color: var(--white);
 }
 
 .detail-stepper-circle.is-current {
-  background-color: var(--green);
-  color: var(--white-bg);
+  background-color: var(--status-approved-text);
+  color: var(--white);
 }
 
 .detail-stepper-label {
   font-size: 11px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   margin: 6px 4px 0;
 }
 
 .detail-stepper-label.is-current {
-  color: var(--text-black);
+  color: var(--text-strong);
   font-weight: 500;
 }
 
@@ -152,13 +152,13 @@
 }
 
 .detail-stepper.is-cancelled .detail-stepper-circle.is-current {
-  background: #5f5e5a;
-  border-color: #5f5e5a;
-  color: #ffffff;
+  background: var(--status-neutral-text);
+  border-color: var(--status-neutral-text);
+  color: var(--white);
 }
 
 .detail-stepper.is-cancelled .detail-stepper-label.is-current { 
-  color: #5f5e5a; 
+  color: var(--status-neutral-text); 
 }
 
 /* Tabla de productos */
@@ -170,7 +170,7 @@
 }
 
 .detail-card {
-  background-color: var(--bg);
+  background-color: var(--surface-page);
   border-radius: 12px;
   padding: 1.25rem;
   margin-bottom: 1.5rem;
@@ -191,7 +191,7 @@
 .detail-items-table th {
   text-align: left;
   font-size: 12px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   font-weight: 500;
   padding: 6px 0;
   border-bottom: 1px solid var(--border);
@@ -216,20 +216,20 @@
   display: flex;
   justify-content: space-between;
   font-size: 13px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   padding: 3px 0;
 }
 
 .detail-totals-final {
-  color: var(--text-black);
+  color: var(--text-strong);
   font-weight: 600;
   font-size: 15px;
   margin-top: 4px;
 }
 
 .detail-cancelled {
-  background: var(--code-bg);
-  color: var(--text-footer);
+  background: var(--surface-card);
+  color: var(--text-muted);
   border-radius: 12px;
   padding: 14px 16px;
   margin-bottom: 16px;
@@ -252,7 +252,7 @@
 .detail-info-row span:first-child {
   text-align: right;
   overflow-wrap: anywhere;
-  color: var(--text-footer);
+  color: var(--text-muted);
 }
 
 .pay-actions {
@@ -282,13 +282,13 @@
   margin-top: 10px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--white-bg);
+  background: var(--white);
   cursor: pointer;
 }
 
 .pay-link {
   background: var(--border);
-  border: 1px solid var(--text-footer);
+  border: 1px solid var(--text-muted);
   padding: 6px 10px;
   border-radius: 8px;
   display: flex;
@@ -303,26 +303,26 @@
 }
 
 .pay-btn.is-edit {
-  background:var(--bg);
+  background:var(--surface-page);
   color: var(--text);
 }
 
 .pay-btn.is-primary {
-  background: var(--red-soft);
-  border-color: var(--red-soft);
-  color: var(--white-bg);
+  background: var(--action);
+  border-color: var(--action);
+  color: var(--white);
 }
 
 .pay-btn.is-danger {
   background: var(--error-bg);
-  border-color: var(--error);
-  color: var(--error);
+  border-color: var(--error-text);
+  color: var(--error-text);
 }
 
 .pay-btn.is-confirm {
-  background: var(--green-bg);
-  border-color: var(--green);
-  color: var(--green);
+  background: var(--status-approved-bg);
+  border-color: var(--status-approved-text);
+  color: var(--status-approved-text);
 }
 
 .pay-hint { margin-top: 12px; }
@@ -330,7 +330,7 @@
 .pay-reason {
   max-width: 60%;
   text-align: right;
-  color: var(--error);
+  color: var(--error-text);
 }
 
 .pay-account-list {
@@ -344,14 +344,14 @@
   align-items: left;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid #d9d5cb;
+  border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
 }
 
 .pay-account-option.is-selected {
-  border-color: var(--green-bg);
+  border-color: var(--status-approved-bg);
   background: #f1f5ef;
 }
 
@@ -371,7 +371,7 @@
   font: inherit;
   font-size: 13px;
   padding: 8px;
-  border: 1px solid #d9d5cb;
+  border: 1px solid var(--border);
   border-radius: 8px;
   resize: vertical;
 }

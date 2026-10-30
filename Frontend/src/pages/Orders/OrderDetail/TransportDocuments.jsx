@@ -1,35 +1,21 @@
 import { Check, Eye, Upload, X } from 'lucide-react'
-import { formatDateOnly, } from '../../../utils/formatDate'
+import { formatDateOnly, daysLeft} from '../../../utils/formatDate'
 import { EXPIRY_WARNING_DAYS } from '../../../constants/transport'
+import { TRANSPORT_DOC_STATE_LABELS } from '../../../constants/transportStatus'
+import { daysUntil } from '../../../utils/formatDate'
 import './TransportDocuments.css'
 
-const STATE_LABEL = {
-  missing: 'Falta',
-  pending: 'En revisión',
-  approved: 'Aprobado',
-  rejected: 'Rechazado',
-  expired: 'Vencido'
-}
 
 export default function TransportDocuments({
   rows, canReview, canUpload, isBusy, busy,
   onView, onUpload, onApprove, onReject, onApproveAll,
 }) {
 
-  const pendingCount = rows.filter((r) => r.status === 'pending').length
-  const daysLeft = (iso) => Math.ceil((new Date(`${iso}T00:00:00-05:00`) - new Date()) / 86400000)
 
   return (
     <div className="td">
       <div className="td-head">
         <p className="td-title">Documentos</p>
-
-        {/* {canReview && pendingCount > 1 && (
-          <button type="button" className="td-btn is-ok" onClick={onApproveAll} disabled={isBusy}>
-            <Check size={14} />
-            {busy === 'review-all' ? 'Aprobando...' : `Aprobar los ${pendingCount} pendientes`}
-          </button>
-        )} */}
       </div>
 
       <ul className="td-list">
@@ -47,14 +33,14 @@ export default function TransportDocuments({
                   <p className={`td-expiry ${status === 'expired' ? 'is-expired' : ''}`}>
                     Vence: {formatDateOnly(doc.expires_at)}
                     {status !== 'expired' &&
-                      daysLeft(doc.expires_at) >= 0 &&
-                      daysLeft(doc.expires_at) <= EXPIRY_WARNING_DAYS &&
+                      daysUntil(doc.expires_at) >= 0 &&
+                      daysUntil(doc.expires_at) <= EXPIRY_WARNING_DAYS &&
                       ' · vence pronto'}
                   </p>
                 )}
                 {status === 'expired' && !doc?.expires_at && <p className="td-expiry is-expired">Sin fecha de vencimiento registrada</p>}
 
-                <span className={`td-state is-${status}`}>{STATE_LABEL[status]}</span>
+                <span className={`td-state is-${status}`}>{TRANSPORT_DOC_STATE_LABELS[status]}</span>
               </div>
 
               {status === 'rejected' && doc?.rejection_reason && (

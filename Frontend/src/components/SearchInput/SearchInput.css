@@ -7,7 +7,7 @@
 .search-input-icon {
   position: absolute;
   left: 12px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   pointer-events: none;
 }
 
@@ -18,8 +18,8 @@
   border-radius: 8px;
   border: 1px solid var(--border);
   font-size: 14px;
-  background-color: var(--white-bg);
-  color: var(--text-black);
+  background-color: var(--white);
+  color: var(--text-strong);
 }
 
 .search-input:focus {

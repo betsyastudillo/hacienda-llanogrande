@@ -116,7 +116,7 @@
   }
 
   a {
-    color: var(--text-black);
+    color: var(--text-strong);
     font-size: 16px;
     border-radius: 6px;
     background: var(--social-bg);

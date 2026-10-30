@@ -1,23 +1,37 @@
 :root {
+  /* Texto */
   --text: #444441;
-  --text-footer: #5f5e5a;
-  --text-black: #08060d;
-  --bg: #EAEFEF;
+  --text-muted: #5f5e5a;
+  --text-strong: #08060d;
+  --white: #ffff;
+  --black: #1a1a18;
+
+  /* Superficies y bordes */
+  --surface-page: #EAEFEF;
+  --surface-card: #f4f3ec;
   --border: #d3d1c7;
-  --code-bg: #f4f3ec;
-  --white-bg: #ffff;
-  --orange: #ED6A1E;
-  --red-soft: #EF7B6C;
-  --red-wine: #A80014;
-  --red-disabled: #FBD9B8;
-  --green: #1F5C29;
-  --green-bg: #D9F0DC;
-  --red: #a12a2a;
-  --error: #FC0013;
+
+  /* Marca y acciones */
+  --action: #EF7B6C;
+  --action-disabled: #FBD9B8;
+  --action-strong: #A80014;
+
+/* Estados */
+  --status-approved-text: #1F5C29;
+  --status-approved-bg: #D9F0DC;
+  --status-rejected-text: ##a12a2a;
+  --status-pending-bg: #F9E6A8;
+  --error-text: #FC0013;
   --error-bg: #FCEBEB;
-  --warning-soft: #FFF2A0;
-  --warning: #F9E6A8;
+
+
   --social-bg: rgba(244, 243, 236, 0.5);
+  --status-pending-bg: #fdf1b8;
+  --status-pending-text: #7a5c00;
+  --status-rejected-bg: #fbdcdc;
+  --status-rejected-text: ##a12a2a;
+  --status-neutral-bg: #ece9e2;
+  --status-neutral-text: #5f5e5a;
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
@@ -29,7 +43,7 @@
   letter-spacing: 0.18px;
   color-scheme: light dark;
   color: var(--text);
-  background: var(--bg);
+  background: var(--surface-page);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -62,7 +76,7 @@ h1,
 h2 {
   font-family: var(--heading);
   font-weight: 500;
-  color: var(--text-black);
+  color: var(--text-strong);
 }
 
 h1 {
@@ -92,12 +106,12 @@ code,
   font-family: var(--mono);
   display: inline-flex;
   border-radius: 4px;
-  color: var(--text-black);
+  color: var(--text-strong);
 }
 
 code {
   font-size: 15px;
   line-height: 135%;
   padding: 4px 8px;
-  background: var(--code-bg);
+  background: var(--surface-card);
 }

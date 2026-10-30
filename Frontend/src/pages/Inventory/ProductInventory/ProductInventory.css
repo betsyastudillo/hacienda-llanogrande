@@ -7,7 +7,7 @@
 .inventory-back-btn {
   background: none;
   border: none;
-  color: var(--text-footer);
+  color: var(--text-muted);
   font-size: 13px;
   cursor: pointer;
   padding: 0;
@@ -31,13 +31,13 @@
 .inventory-title {
   font-size: 22px;
   font-weight: 600;
-  color: var(--text-black);
+  color: var(--text-strong);
   margin: 0;
 }
 
 .inventory-subtitle {
   font-size: 14px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   margin: 4px 0 1.5rem;
 }
 
@@ -45,8 +45,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background-color: var(--red-soft);
-  color: var(--white-bg);
+  background-color: var(--action);
+  color: var(--white);
   border: none;
   border-radius: 8px;
   padding: 10px 16px;
@@ -56,7 +56,7 @@
 
 .inventory-form-card,
 .inventory-history-card {
-  background-color: var(--white-bg);
+  background-color: var(--white);
   border-radius: 12px;
   padding: 1.25rem;
   margin-bottom: 1.5rem;
@@ -79,7 +79,7 @@
 
 .inventory-kardex-sep {
   font-size: 13px;
-  color: var(--text-footer);
+  color: var(--text-muted);
 }
 
 .inventory-kardex-btn {
@@ -88,7 +88,7 @@
   border-radius: 8px;
   border: 1px solid var(--border);
   background-color: var(--social-bg);
-  color: var(--text-black);
+  color: var(--text-strong);
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
@@ -111,13 +111,13 @@
 
 .inventory-kardex-unit-note {
   font-size: 12px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   font-style: italic;
   margin: 0 0 12px;
 }
 
 .inventory-kardex-item {
-  background-color: var(--code-bg);
+  background-color: var(--surface-card);
   border-radius: 8px;
   padding: 10px 12px;
   display: flex;
@@ -132,17 +132,17 @@
 
 .inventory-kardex-label {
   font-size: 11px;
-  color: var(--text-footer);
+  color: var(--text-muted);
 }
 
 .inventory-kardex-value {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-black);
+  color: var(--text-strong);
 }
 
 .inventory-kardex-value.is-entry {
-  color: var(--green);
+  color: var(--status-approved-text);
 }
 
 .inventory-kardex-value.is-exit {
@@ -153,20 +153,20 @@
 .inventory-kardex-value {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-black);
+  color: var(--text-strong);
 }
 
 .inventory-kardex-total {
   font-size: 11px;
   font-weight: 400;
-  color: var(--text-footer);
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
 .inventory-kardex-range-label {
   text-align: center;
   font-size: 13px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   margin: 0 0 16px;
 }
 
@@ -182,7 +182,7 @@
 
 .inventory-movement-header {
   font-size: 11px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   font-weight: 600;
   text-transform: uppercase;
   border-bottom: 2px solid var(--border);
@@ -210,8 +210,8 @@
 }
 
 .inventory-movement-badge.is-entry {
-  background-color: var(--green-bg);
-  color: var(--green);
+  background-color: var(--status-approved-bg);
+  color: var(--status-approved-text);
 }
 
 .inventory-movement-badge.is-exit {
@@ -230,12 +230,12 @@
 }
 
 .inventory-movement-reason {
-  color: var(--text-footer);
+  color: var(--text-muted);
   overflow-wrap: anywhere;
 }
 
 .inventory-movement-date {
-  color: var(--text-footer);
+  color: var(--text-muted);
   font-size: 12px;
   white-space: nowrap;
   text-align: right;
@@ -278,14 +278,14 @@
   padding: 0 20px;
   border-radius: 8px;
   border: none;
-  background-color: var(--red-soft);
-  color: var(--white-bg);
+  background-color: var(--action);
+  color: var(--white);
   font-weight: 600;
   cursor: pointer;
 }
 
 .inventory-form-submit-btn:hover:not(:disabled) {
-  background-color: var(--red-wine);
+  background-color: var(--action-strong);
 }
 
 .modal-field {
@@ -306,7 +306,7 @@
 
 .inventory-empty {
   font-size: 13px;
-  color: var(--text-footer);
+  color: var(--text-muted);
 }
 
 .inventory-pagination {
@@ -319,16 +319,16 @@
 
 .inventory-page-info { 
   font-size: 13px; 
-  color: var(--text-footer); 
+  color: var(--text-muted); 
 }
 
 .inventory-page-btn {
   padding: 6px 12px;
   font: inherit;
   font-size: 13px;
-  color: #222222;
-  background: #ffffff;
-  border: 1px solid #d9d5cb;
+  color: var(--black);
+  background: var(--white);
+  border: 1px solid var(--border);
   border-radius: 8px;
   cursor: pointer;
 }

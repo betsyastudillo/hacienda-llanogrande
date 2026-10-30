@@ -15,7 +15,7 @@
   overflow: hidden;
   width: min(100%, 380px);
   padding: 24px 20px 22px;
-  background: var(--white-bg);
+  background: var(--white);
   border-radius: 14px;
   text-align: center;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
@@ -24,7 +24,7 @@
 
 .fb-icon { display: block; margin: 0 auto 10px; }
 .fb-success .fb-icon { color: #2f5d3a; }
-.fb-error .fb-icon { color: #a12a2a; }
+.fb-error .fb-icon { color: var(--status-rejected-text); }
 
 .fb-message { margin: 0 0 16px; font-size: 15px; line-height: 1.4; color: #222; }
 
@@ -32,9 +32,9 @@
   padding: 8px 22px;
   font: inherit;
   font-size: 14px;
-  border: 1px solid #d9d5cb;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--white-bg);
+  background: var(--white);
   cursor: pointer;
 }
 
@@ -50,7 +50,7 @@
   animation-fill-mode: forwards;
 }
 .popup.is-success .popup-progress { background: #2f5d3a; }
-.popup.is-error .popup-progress { background: #a12a2a; }
+.popup.is-error .popup-progress { background: var(--status-rejected-text); }
 
 @keyframes popup-countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @keyframes popup-fade { from { opacity: 0; } to { opacity: 1; } }

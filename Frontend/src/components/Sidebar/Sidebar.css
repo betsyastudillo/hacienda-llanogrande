@@ -1,5 +1,5 @@
 .sidebar {
-  background-color: var(--code-bg);
+  background-color: var(--surface-card);
   flex-shrink: 0;
   overflow: hidden;
   transition: width 0.2s ease;
@@ -33,13 +33,13 @@
 }
 
 .sidebar-link:hover {
-  background-color:var( --red-wine);
-  color: #ffffff;
+  background-color:var(--action-strong);
+  color: var(--white);
 }
 
 .sidebar-link-active {
-  background-color: var(--red-soft);
-  color: var(--white-bg);
+  background-color: var(--action);
+  color: var(--white);
   font-weight: 500;
 }
 

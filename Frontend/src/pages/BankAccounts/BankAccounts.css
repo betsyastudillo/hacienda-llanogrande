@@ -14,7 +14,7 @@
 .bank-title {
   font-size: 22px;
   font-weight: 600;
-  color: var(--text-black);
+  color: var(--text-strong);
   margin: 0;
 }
 
@@ -22,8 +22,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: var(--red-soft);
-  color: var(--white-bg);
+  background-color: var(--action);
+  color: var(--white);
   border: none;
   border-radius: 8px;
   padding: 10px 16px;
@@ -34,13 +34,13 @@
 
 .bank-empty {
   text-align: center;
-  color: var(--text-footer);
+  color: var(--text-muted);
   padding: 2rem 0;
 }
 
 .bank-table-wrapper {
   overflow-x: auto;
-  background-color: var(--white-bg);
+  background-color: var(--white);
   border-radius: 12px;
 }
 
@@ -54,7 +54,7 @@
 .bank-table th {
   text-align: left;
   font-size: 16px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   font-weight: 500;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
@@ -84,7 +84,7 @@
 .bank-holder-doc {
   display: block;
   font-size: 11px;
-  color: var(--text-footer);
+  color: var(--text-muted);
 }
 
 .bank-actions {
@@ -100,13 +100,13 @@
   height: 32px;
   border-radius: 50%;
   border: 1px solid var(--border);
-  background: var(--white-bg);
+  background: var(--white);
   color: var(--text);
   cursor: pointer;
 }
 
 .bank-icon-btn:hover {
-  background-color: #f4f3ee;
+  background-color: var(--surface-card);
 }
 
 .bank-form-field {
@@ -130,7 +130,7 @@
 
 .bank-edit-warning {
   font-size: 13px;
-  color: var(--error);
+  color: var(--error-text);
   margin: 12px 0 0;
 }
 
@@ -141,7 +141,7 @@
   border-radius: 8px;
   border: 1px solid var(--border);
   font-size: 14px;
-  background-color: var(--white-bg);
+  background-color: var(--white);
   box-sizing: border-box;
 }
 
@@ -150,8 +150,8 @@
   height: 42px;
   border-radius: 8px;
   border: none;
-  background-color: var(--red-soft);
-  color: var(--white-bg);
+  background-color: var(--action);
+  color: var(--white);
   font-weight: 600;
   cursor: pointer;
   margin-top: 4px;

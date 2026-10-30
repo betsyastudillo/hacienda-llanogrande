@@ -7,13 +7,13 @@
 .ct-table th,
 .ct-table td {
   padding: 8px 6px;
-  border-bottom: 1px solid #d9d5cb;
+  border-bottom: 1px solid var(--border);
   text-align: left;
 }
 
 .ct-table th {
   font-weight: 500;
-  color: var(--text-footer);
+  color: var(--text-muted);
 }
 
 .ct-center {
@@ -29,7 +29,7 @@
 
 .ct-note-row td {
   background: var(--error-bg);
-  border-bottom: 1px solid #d9d5cb;
+  border-bottom: 1px solid var(--border);
 }
 
 .ct-note {
@@ -38,7 +38,7 @@
   font: inherit;
   font-size: 13px;
   padding: 8px;
-  border: 1px solid #d9d5cb;
+  border: 1px solid var(--border);
   border-radius: 8px;
   resize: vertical;
 }

@@ -23,3 +23,12 @@ export function formatDateOnly(value) {
 }
 
 export const todayISO = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+
+export const daysLeft = (iso) => Math.ceil((new Date(`${iso}T00:00:00-05:00`) - new Date()) / 86400000)
+
+// Días que faltan para una fecha AAAA-MM-DD (negativo si ya pasó), contados desde hoy en hora de Colombia
+export const daysUntil = (iso) => {
+  const [y, m, d] = iso.split('-').map(Number)
+  const [ty, tm, td] = todayISO().split('-').map(Number)
+  return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(ty, tm - 1, td)) / 86400000)
+}

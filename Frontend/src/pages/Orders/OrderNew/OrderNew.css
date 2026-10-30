@@ -7,7 +7,7 @@
 .order-new-title {
   font-size: 25px;
   font-weight: 600;
-  color: var(--text-black);
+  color: var(--text-strong);
   margin: 0 0 2.5rem;
 }
 
@@ -19,7 +19,7 @@
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-black);
+  color: var(--text-strong);
   margin-bottom: 10px;
 }
 
@@ -30,12 +30,12 @@
   border-radius: 8px;
   border: 1px solid var(--border);
   font-size: 14px;
-  background-color: var(--white-bg);
-  color: var(--text-black);
+  background-color: var(--white);
+  color: var(--text-strong);
 }
 
 .order-new-card {
-  background-color: var(--white-bg);
+  background-color: var(--white);
   border-radius: 12px;
   padding: 1.25rem;
   margin-bottom: 1.5rem;
@@ -67,7 +67,7 @@
   border-radius: 8px;
   border: 1px solid var(--border);
   background-color: var(--social-bg);
-  color: var(--text-black);
+  color: var(--text-strong);
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
@@ -79,7 +79,7 @@
 
 .order-new-stock-hint {
   font-size: 12px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   /* margin: -6px 0 10px; */
   display: flex;
   align-items: center;
@@ -96,7 +96,7 @@
 .order-new-items-table th {
   text-align: center;
   font-size: 13px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   font-weight: 500;
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
@@ -112,8 +112,8 @@
   padding: 0 14px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background-color: var(--white-bg);
-  color: var(--text-footer);
+  background-color: var(--white);
+  color: var(--text-muted);
   font-size: 14px;
   cursor: pointer;
 }
@@ -124,7 +124,7 @@
   height: 32px;
   border-radius: 50%;
   border: 1px solid var(--border);
-  background-color: var(--white-bg);
+  background-color: var(--white);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -138,32 +138,32 @@
 }
 
 .order-new-remove-btn {
-  color: var(--error);
-  border-color: var(--red-soft);
+  color: var(--error-text);
+  border-color: var(--action);
 }
 
 .order-new-edit-btn:hover {
-  background-color: #f4f3ee;
+  background-color: var(--surface-card);
 }
 
 .order-new-remove-btn:hover {
   background-color: var(--error-bg);
 }
 .order-new-weight-cell {
-  color: var(--text-footer);
+  color: var(--text-muted);
   font-size: 13px;
 }
 
 .order-new-total-weight {
   text-align: right;
   font-size: 13px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   margin-top: 10px;
 }
 
 .order-new-line-total {
   font-weight: 500;
-  color: var(--text-black);
+  color: var(--text-strong);
 }
 
 .order-new-summary {
@@ -174,7 +174,7 @@
 .order-new-total-price {
   font-size: 15px;
   font-weight: 600;
-  color: var(--text-black);
+  color: var(--text-strong);
   margin: 4px 0 0;
 }
 
@@ -189,7 +189,7 @@
   padding: 0 18px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background-color: #ffffff;
+  background-color: var(--white);
   color: var(--text);
   font-size: 14px;
   cursor: pointer;
@@ -200,19 +200,19 @@
   padding: 0 22px;
   border-radius: 8px;
   border: none;
-  background-color: var(--red-soft);
-  color: var(--white-bg);
+  background-color: var(--action);
+  color: var(--white);
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
 }
 
 .order-new-submit-btn:hover:not(:disabled) {
-  background-color: var(--red-wine);
+  background-color: var(--action-strong);
 }
 
 .order-new-submit-btn:disabled {
-  background-color: var(--red-disabled);
+  background-color: var(--action-disabled);
   cursor: default;
 }
 

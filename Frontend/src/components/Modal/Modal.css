@@ -10,7 +10,7 @@
 }
 
 .modal-card {
-  background-color: #ffffff;
+  background-color: var(--white);
   border-radius: 12px;
   width: 100%;
   max-width: 420px;
@@ -29,14 +29,14 @@
 .modal-title {
   font-size: 15px;
   font-weight: 600;
-  color: #1a1a18;
+  color: var(--black);
   margin: 0 0 0.75rem;
 }
 
 .modal-close-btn {
   background: none;
   border: none;
-  color: var(--text-footer);
+  color: var(--text-muted);
   cursor: pointer;
   padding: 0 0 0.75rem;
 }

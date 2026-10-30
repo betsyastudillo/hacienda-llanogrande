@@ -14,7 +14,7 @@
 .companies-title {
   font-size: 22px;
   font-weight: 600;
-  color: var(--text-black);
+  color: var(--text-strong);
   margin: 0;
 }
 
@@ -25,8 +25,8 @@
 }
 
 .companies-create-btn {
-  background-color: var(--red-soft);
-  color: var(--white-bg);
+  background-color: var(--action);
+  color: var(--white);
   border: none;
   border-radius: 8px;
   padding: 10px 16px;
@@ -40,11 +40,11 @@
 }
 
 .companies-create-btn:hover {
-  background-color: var(--red-wine);
+  background-color: var(--action-strong);
 }
 
 .companies-edit-btn {
-  background-color: var(--code-bg);
+  background-color: var(--surface-card);
   border: 1px solid var(--border);
   border-radius: 50%;
   width: 32px;
@@ -59,14 +59,14 @@
 }
 
 .companies-empty {
-  color: var(--text-footer);
+  color: var(--text-muted);
   font-size: 14px;
   padding: 2rem 0;
   text-align: center;
 }
 
 .companies-error-text {
-  color: var(--error);
+  color: var(--error-text);
 }
 
 .search-input-wrapper {
@@ -76,7 +76,7 @@
 }
 
 .companies-table-wrapper {
-  background-color: var(--white-bg);
+  background-color: var(--white);
   border-radius: 12px;
   overflow-x: auto;
 }
@@ -92,7 +92,7 @@
   text-align: left;
   font-size: 16px;
   font-weight: 500;
-  color: var(--text-footer);
+  color: var(--text-muted);
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
 }
@@ -122,7 +122,7 @@
 }
 
 .companies-row:hover {
-  background-color: var(--code-bg);
+  background-color: var(--surface-card);
 }
 
 .companies-row td {
@@ -138,7 +138,7 @@
 
 .companies-id-cell {
   font-weight: 500;
-  color: var(--text-black);
+  color: var(--text-strong);
   text-decoration: underline;
 }
 
@@ -148,7 +148,7 @@
 
 .companies-total-cell {
   font-weight: 500;
-  color: var(--text-black);
+  color: var(--text-strong);
 }
 
 .companies-table-wrapper {
@@ -164,7 +164,7 @@
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   margin: 0 0 12px;
   cursor: pointer;
 }
@@ -186,7 +186,7 @@
 .companies-action-count {
   font-size: 13px;
   font-weight: 500;
-  color: var(--error);
+  color: var(--error-text);
 }
 
 .companies-attention {
@@ -196,11 +196,11 @@
   border-radius: 999px;
   font-size: 11px;
   background: var(--error-bg);
-  color: var(--error);
+  color: var(--error-text);
 }
 
 .companies-row.is-attention {
-  box-shadow: inset 3px 0 0 var(--error);
+  box-shadow: inset 3px 0 0 var(--error-text);
 }
 
 @media (max-width: 600px) {

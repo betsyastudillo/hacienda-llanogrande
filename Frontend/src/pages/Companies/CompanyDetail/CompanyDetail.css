@@ -7,7 +7,7 @@
 .company-detail-back-btn {
   background: none;
   border: none;
-  color: var(--text-footer);
+  color: var(--text-muted);
   font-size: 13px;
   cursor: pointer;
   padding: 0;
@@ -23,20 +23,20 @@
 
 .company-detail-eyebrow {
   font-size: 12px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   margin: 0 0 4px;
 }
 
 .company-detail-title {
   font-size: 22px;
   font-weight: 600;
-  color: var(--text-black);
+  color: var(--text-strong);
   margin: 0;
 }
 
 .company-detail-subtitle {
   font-size: 13px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   margin: 4px 0 0;
 }
 
@@ -60,8 +60,8 @@
 }
 
 .company-detail-deactivate-btn:hover {
-  background-color: var(--red-soft);
-  color: var(--white-bg);
+  background-color: var(--action);
+  color: var(--white);
 }
 
 .company-detail-reactivate-btn {
@@ -69,7 +69,7 @@
   padding: 0 14px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background:var(--bg);
+  background:var(--surface-page);
   color: var(--text);
   font-size: 13px;
   font-weight: 500;
@@ -77,14 +77,14 @@
 }
 
 .company-detail-reactivate-btn:hover {
-  background-color: var(--red-soft);
-  color: var(--white-bg);
+  background-color: var(--action);
+  color: var(--white);
 }
 
 .company-detail-prev-rejection {
   font-size: 12px;
-  color: var(--text-footer);
-  background-color: #f4f3ee;
+  color: var(--text-muted);
+  background-color: var(--surface-card);
   padding: 8px 12px;
   border-radius: 8px;
   margin-bottom: 1.25rem;
@@ -98,7 +98,7 @@
 
 .company-detail-card {
   min-width: 0;
-  background-color: var(--code-bg);
+  background-color: var(--surface-card);
   border-radius: 12px;
   padding: 1.25rem;
 }
@@ -126,7 +126,7 @@
 .company-detail-info-row span:first-child {
   text-align: right;
   overflow-wrap: anywhere;
-  color: var(--text-footer);
+  color: var(--text-muted);
 }
 
 .company-detail-checks-card {
@@ -137,12 +137,12 @@
   font-size: 13px;
   font-weight: 600;
   margin: 16px 0 6px;
-  color: var(--text-footer);
+  color: var(--text-muted);
 }
 
 .company-detail-empty {
   font-size: 13px;
-  color: var(--text-footer);
+  color: var(--text-muted);
 }
 
 .company-detail-docs-list {
@@ -189,12 +189,12 @@
 }
 
 .company-detail-doc-badge.is-accent {
-  background-color: var(--green-bg);
+  background-color: var(--status-approved-bg);
 }
 
 .company-detail-doc-badge.is-error {
   background-color: var(--error-bg);
-  color: var(--error);
+  color: var(--error-text);
 }
 
 .company-detail-doc-actions {
@@ -221,16 +221,16 @@
   padding: 5px 10px;
   border-radius: 6px;
   border: 1px solid var(--border);
-  background: var(--white-bg);
+  background: var(--white);
   cursor: pointer;
 }
 
 .company-detail-doc-approve-btn {
-  color: var(--green);
+  color: var(--status-approved-text);
 }
 
 .company-detail-doc-reject-btn {
-  color: var(--error);
+  color: var(--error-text);
 }
 
 .company-detail-replace-btn {
@@ -241,7 +241,7 @@
   height: 32px;
   border-radius: 50%;
   border: 1px solid var(--border);
-  background: var(--white-bg);
+  background: var(--white);
   cursor: pointer;
 }
 
@@ -264,7 +264,7 @@
 
 .company-detail-check-label {
   font-size: 13px;
-  color: var(--text-black);
+  color: var(--text-strong);
   flex: 1;
   text-align: left;
 }
@@ -280,27 +280,27 @@
 }
 
 .company-detail-check-badge.is-clear {
-  background-color: var(--green-bg);
-  color: var(--green);
+  background-color: var(--status-approved-bg);
+  color: var(--status-approved-text);
 }
 
 .company-detail-check-badge.is-findings {
   background-color: var(--error-bg);
-  color: var(--red-wine);
+  color: var(--action-strong);
 }
 
 .company-detail-check-note {
   font-size: 12px;
   text-align: left;
-  color: var(--text-footer);
+  color: var(--text-muted);
   margin: 6px 0 0;
   padding: 8px 10px;
-  background-color: #f4f3ee;
+  background-color: var(--surface-card);
   border-radius: 6px;
 }
 
 .company-detail-approve-card {
-  background-color: var(--code-bg);
+  background-color: var(--surface-card);
   border-radius: 12px;
   padding: 1.25rem;
   margin-top: 1.5rem;
@@ -308,7 +308,7 @@
 
 .company-detail-approve-hint {
   font-size: 13px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   margin: 0 0 1rem;
 }
 
@@ -323,8 +323,8 @@
   padding: 0 16px;
   border-radius: 8px;
   border: none;
-  background-color: var(--red-soft);
-  color: var(--white-bg);
+  background-color: var(--action);
+  color: var(--white);
   font-weight: 600;
   font-size: 16px;
   cursor: pointer;
@@ -336,7 +336,7 @@
 }
 
 .company-detail-approve-btn:hover {
-  background-color: var(--red-wine);
+  background-color: var(--action-strong);
 }
 
 
@@ -374,7 +374,7 @@
   font-size: 16px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--white-bg);
+  background: var(--white);
   cursor: pointer;
 }
 
@@ -382,9 +382,9 @@
   height: 40px;
   padding: 0 18px;
   border-radius: 8px;
-  border: 1px solid var(--red-soft);
-  background-color: var(--red-soft);
-  color: var(--white-bg);
+  border: 1px solid var(--action);
+  background-color: var(--action);
+  color: var(--white);
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
@@ -392,7 +392,7 @@
 
 .company-detail-rejection-text {
   font-size: 13px;
-  color: var(--error);
+  color: var(--error-text);
   margin: 0;
 }
 
@@ -415,7 +415,7 @@
   font: inherit;
   font-size: 13px;
   padding: 8px;
-  border: 1px solid #d9d5cb;
+  border: 1px solid var(--border);
   border-radius: 8px;
   resize: vertical;
 }
@@ -465,8 +465,8 @@
 }
 
 .edit-section { font-size: 13px; font-weight: 600; margin: 8px 0 0; }
-.edit-note { font-size: 12px; color: var(--text-footer); margin: 0; }
-.edit-warning { font-size: 13px; color: var(--error); margin: 12px 0 0; }
+.edit-note { font-size: 12px; color: var(--text-muted); margin: 0; }
+.edit-warning { font-size: 13px; color: var(--error-text); margin: 12px 0 0; }
 
 @media (max-width: 600px) {
   .edit-row { flex-direction: column; }

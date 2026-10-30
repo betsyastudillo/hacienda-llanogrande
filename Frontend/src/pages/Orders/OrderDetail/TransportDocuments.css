@@ -29,9 +29,9 @@
 
 .td-item {
   padding: 10px 12px;
-  background: var(--white-bg);
-  border: 1px solid #d9d5cb;
-  border-left: 4px solid #d9d5cb;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
   border-radius: 10px;
 }
 
@@ -40,30 +40,30 @@
 }
 
 .td-item.is-approved { 
-  border-left-color: #1f6b34; 
+  border-left-color: var(--status-approved-text); 
 }
 
 .td-item.is-rejected { 
-  border-left-color: var(--red); 
+  border-left-color: var(--status-rejected-text); 
 }
 
 .td-item.is-expired { 
-  border-left-color: var(--red); 
+  border-left-color: var(--status-rejected-text); 
 }
 
 .td-state.is-expired { 
-  color: var(--red); 
-  background: #fbdcdc; 
+  color: var(--status-rejected-text); 
+  background: var(--status-rejected-bg); 
 }
 
 .td-expiry { 
   margin: 4px 0 0; 
   font-size: 12px; 
-  color: #5f5e5a; 
+  color: var(--status-rejected-text); 
 }
 
 .td-expiry.is-expired { 
-  color: var(--red); 
+  color: var(--status-rejected-text); 
 }
 
 .td-top { 
@@ -87,29 +87,29 @@
 }
 
 .td-state.is-missing { 
-  color: #5f5e5a; 
-  background: #ece9e2; 
+  color: var(--status-neutral-text); 
+  background: var(--status-neutral-bg); 
 }
 
 .td-state.is-pending { 
-  color: #7a5c00; 
-  background: #fdf1b8; 
+  color: var(--status-pending-text); 
+  background: var(--status-pending-bg); 
 }
 
 .td-state.is-approved { 
-  color: #1f6b34; 
-  background: #d9efdc; 
+  color: var(--status-approved-text); 
+  background: var(--status-approved-bg); 
 }
 
 .td-state.is-rejected { 
-  color: var(--red); 
-  background: #fbdcdc; 
+  color: var(--status-rejected-text); 
+  background: var(--status-rejected-bg); 
 }
 
 .td-reason { 
   margin: 6px 0 0; 
   font-size: 12px; 
-  color: var(--red); 
+  color: var(--status-rejected-text); 
   text-align: left; 
 }
 
@@ -128,14 +128,14 @@
   padding: 5px 10px;
   font: inherit;
   font-size: 12px;
-  color: #222222;
-  background: #ffffff;
-  border: 1px solid #d9d5cb;
+  color: var(--black);
+  background: var(--white);
+  border: 1px solid var(--border);
   border-radius: 8px;
   cursor: pointer;
 }
 .td-btn:hover { 
-  background: #f1f0ea; 
+  background: var(--surface-card); 
 }
 
 .td-btn:disabled { 
@@ -144,11 +144,11 @@
 }
 
 .td-btn.is-ok { 
-  color: var(--green); 
-  border-color: var(--green); 
+  color: var(--status-approved-text); 
+  border-color: var(--status-approved-text); 
 }
 
 .td-btn.is-no { 
-  color: var(--red); 
-  border-color: var(--red); 
+  color: var(--status-rejected-text); 
+  border-color: var(--status-rejected-text); 
 }

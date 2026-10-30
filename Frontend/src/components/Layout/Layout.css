@@ -11,7 +11,7 @@
 
 .layout-content {
   flex: 1;
-  background-color: var(--white-bg);
+  background-color: var(--white);
   overflow-y: auto;
   overflow-x: hidden;
   width: 100%;

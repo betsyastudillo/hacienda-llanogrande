@@ -14,7 +14,7 @@
 .products-title {
   font-size: 22px;
   font-weight: 600;
-  color: var(--text-black);
+  color: var(--text-strong);
   margin: 0;
 }
 
@@ -22,8 +22,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background-color: var(--red-soft);
-  color: var(--white-bg);
+  background-color: var(--action);
+  color: var(--white);
   border: none;
   border-radius: 8px;
   padding: 10px 16px;
@@ -33,19 +33,19 @@
 }
 
 .products-create-btn:hover {
-  background-color: var(--red-wine);
+  background-color: var(--action-strong);
 }
 
 .products-empty {
   text-align: center;
-  color: var(--text-footer);
+  color: var(--text-muted);
   font-size: 14px;
   padding: 2rem 0;
 }
 
 .products-table-wrapper {
   overflow-x: auto;
-  background-color: var(--white-bg);
+  background-color: var(--white);
   border-radius: 12px;
   margin-top: 1.5rem;
 }
@@ -60,7 +60,7 @@
 .products-table th {
   text-align: left;
   font-size: 16px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   font-weight: 500;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
@@ -73,9 +73,9 @@
 }
 
 .products-row-pack td {
-  background-color: #fbfaf6;
+  background-color: var(--surface-card);
   font-size: 13px;
-  color: var(--text-footer);
+  color: var(--text-muted);
 }
 
 .products-with-stock-badge {
@@ -84,8 +84,8 @@
   font-weight: 500;
   padding: 3px 10px;
   border-radius: 6px;
-  background-color: var(--green-bg);
-  color: var(--green);
+  background-color: var(--status-approved-bg);
+  color: var(--status-approved-text);
 }
 .products-out-of-stock-badge {
   display: inline-block;
@@ -94,14 +94,14 @@
   padding: 3px 10px;
   border-radius: 6px;
   background-color: var(--error-bg);
-  color: var(--error);
+  color: var(--error-text);
 }
 
 .products-name-cell {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #1a1a18;
+  color: var(--black);
   font-weight: 500;
 }
 
@@ -124,11 +124,11 @@
 
 .products-stock-value {
   font-weight: 500;
-  color: #1a1a18;
+  color: var(--black);
 }
 
 .products-edit-btn, .products-stock-link {
-  background-color: var(--white-bg);
+  background-color: var(--white);
   border: 1px solid var(--border);
   border-radius: 50%;
   width: 32px;
@@ -139,11 +139,11 @@
 }
 
 .products-edit-btn:hover {
-  background-color: #f4f3ee;
+  background-color: var(--surface-card);
 }
 
 .products-empty-inline {
   font-size: 12px;
-  color: var(--text-footer);
+  color: var(--text-muted);
   font-style: italic;
 }

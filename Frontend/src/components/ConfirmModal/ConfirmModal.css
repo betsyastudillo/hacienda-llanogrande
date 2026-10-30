@@ -16,7 +16,7 @@
   padding: 0 18px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--white-bg);
+  background: var(--white);
   cursor: pointer;
 }
 
@@ -30,17 +30,17 @@
 }
 
 .confirm-modal-confirm.is-primary {
-  background-color: var(--red-soft);
-  color: var(--white-bg);
+  background-color: var(--action);
+  color: var(--white);
 }
 
 .confirm-modal-confirm.is-danger {
-  background-color: var(--red-soft);
-  color: var(--white-bg);
+  background-color: var(--action);
+  color: var(--white);
 }
 
 .confirm-modal-confirm.is-danger:hover {
-  background-color: var(--red-wine);
+  background-color: var(--action-strong);
 }
 
 .confirm-modal-confirm:disabled {

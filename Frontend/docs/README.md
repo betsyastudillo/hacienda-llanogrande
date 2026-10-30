@@ -38,7 +38,7 @@ Nota: el listado de inventario y el detalle de inventario por producto viven ani
 ## Convenciones
 
 - **Un archivo `.css` por componente/página**, mismo nombre, misma carpeta.
-- **Colores como variables CSS**, definidas en `index.css` (`--bg`, `--red-soft`, `--red-wine`, `--text`, `--text-footer`, `--border`, `--white-bg`, `--error`, `--error-bg`, etc). Solo en casos demasiado específicos se dejaron colores sueltos en hexadecimal dentro de un componente, como el caso de ProductInventory, que maneja colores para los valores distintos a las variables por diseño.
+- **Colores como variables CSS**, definidas en `index.css` (`--surface-page`, `--action`, `--action-strong`, `--text`, `--text-muted`, `--border`, `--white`, `--error-text`, `--error-bg`, etc). Solo en casos demasiado específicos se dejaron colores sueltos en hexadecimal dentro de un componente, como el caso de ProductInventory, que maneja colores para los valores distintos a las variables por diseño.
 - **Nombres de rutas en `App.jsx` siempre absolutos** (`/orders/new`, nunca `new`), porque el grupo de rutas protegidas no tiene un `path` propio — ver nota en `context.md`.
 - **La visibilidad de botones/secciones según rol se decide con `hasPermission('recurso:accion')`**, nunca comparando `user.role` directamente contra un string. El backend es la única fuente de verdad de qué puede hacer cada rol; el frontend solo pregunta.
 - **La URL del backend se resuelve sola**, en `services/api.js`, usando `window.location.hostname` — así el mismo build funciona en `localhost` y en la IP de red local (para pruebas desde el teléfono) sin tocar código.

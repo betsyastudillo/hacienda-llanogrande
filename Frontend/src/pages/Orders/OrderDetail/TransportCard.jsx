@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { CircleCheck, CircleX, Clock, Eye, Upload, Check, X } from 'lucide-react'
 import api from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
 import { useToast } from '../../../context/Toast/ToastContext'
@@ -10,6 +9,7 @@ import { getErrorMessage } from '../../../utils/getErrorMessage'
 import { formatDate, todayISO } from '../../../utils/formatDate'
 import { isValidAddress, MIN_ADDRESS_LENGTH } from '../../../utils/validators'
 import { formatCapacity } from '../../../utils/formatNumber'
+import { TRANSPORT_STATUS_LABELS, TRANSPORT_STATUS_COLORS, TRANSPORT_STATUS_ICONS, } from '../../../constants/transportStatus'
 import { 
     TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES, VEHICLE_TYPES, vehicleTypeLabel, TRANSPORT_CHECK_LABELS, TRANSPORT_CHECK_SUBJECTS, BLOCKING_TRANSPORT_CHECKS, OTHER_REASON, rejectionReasonsFor, EXPIRING_TRANSPORT_DOCS
 } from '../../../constants/transport'
@@ -17,25 +17,11 @@ import CollapsibleCard from '../../../components/CollapsibleCard/CollapsibleCard
 import TransportDocuments from './TransportDocuments'
 import ComplianceTable from '../../../components/ComplianceTable/ComplianceTable'
 
-
-const STATUS = {
-  pending: { label: 'Pendiente de validación', icon: Clock, bg: '#fdf1b8', text: '#7a5c00' },
-  approved: { label: 'Aprobado', icon: CircleCheck, bg: '#d9efdc', text: '#1f6b34' },
-  rejected: { label: 'Rechazado', icon: CircleX, bg: '#fbdcdc', text: '#a12a2a' },
-}
-
 const EMPTY_FORM = {
   plate: '', type: '', capacity_m3: '',
   owner_name: '', owner_document_type: 'CC', owner_document_id: '', owner_phone: '',
   full_name: '', document_type: 'CC', document_id: '', phone: '', address: '',
 }
-
-// const DOC_STATUS = {
-//   missing: { label: 'Falta', icon: null, bg: '#ece9e2', text: '#5f5e5a' },
-//   pending: { label: 'En revisión', icon: Clock, bg: '#fdf1b8', text: '#7a5c00' },
-//   approved: { label: 'Aprobado', icon: CircleCheck, bg: '#d9efdc', text: '#1f6b34' },
-//   rejected: { label: 'Rechazado', icon: CircleX, bg: '#fbdcdc', text: '#a12a2a' },
-// }
 
 const SUBJECT_ORDER = ['vehicle', 'owner', 'carrier']
 
@@ -84,6 +70,17 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   canGuide && assignment?.validation_status === 'approved' &&
   order.status === 'transport_validated' && !dispatchGuide
   const canUpload = canSubmit && !canValidate && assignment && assignment.validation_status !== 'approved'
+
+  const statusKey = assignment && TRANSPORT_STATUS_LABELS[assignment.validation_status]
+    ? assignment.validation_status
+    : 'pending'
+
+  const status = assignment ? {
+    label: TRANSPORT_STATUS_LABELS[statusKey],
+    icon: TRANSPORT_STATUS_ICONS[statusKey],
+    bg: TRANSPORT_STATUS_COLORS[statusKey].bgColor,
+    text: TRANSPORT_STATUS_COLORS[statusKey].textColor,
+  } : null
 
   // Ejecuta una acción mostrando el resultado y recargando el pedido
   // onError: si se pasa, el error se muestra donde se indique (dentro de un modal) y no como popup.
@@ -454,7 +451,6 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   )
 
   const missing = assignment?.missing_documents || []
-  const status = assignment ? STATUS[assignment.validation_status] || STATUS.pending : null
 
   const ownerDocLabel = v?.owner_document_type === 'NIT' ? 'RUT del propietario' : 'Cédula del propietario'
 
