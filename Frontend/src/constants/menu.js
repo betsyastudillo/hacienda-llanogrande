@@ -10,6 +10,8 @@ export const MENU_ITEMS = [
   { label: 'Empresas', path: '/companies', permission: 'company:ver' },
   
   { label: 'Cuentas bancarias', path: '/banks-accounts', permission: 'bank_account:gestionar' },
+
+  { label: 'Tipo de vehículos', path: '/vehicle_types', permission: 'vehicle_type:gestionar' },
   
   // { label: 'Pagos', path: '/payments', permission: 'payment:ver' },
   // { label: 'Mis pagos', path: '/my-payments', permission: 'payment:ver_propio' },

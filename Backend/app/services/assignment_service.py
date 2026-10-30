@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import UploadFile
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
+from app.database import get_db
 from app.constants.company_requirements import MIN_ADDRESS_LENGTH
 from app.constants.transport_requirements import (
   ALLOWED_DOCUMENTS_BY_SUBJECT,
@@ -14,13 +15,11 @@ from app.constants.transport_requirements import (
   MIN_VALIDITY_DAYS,
   OWNER_DOCUMENT,
   PLATE_BLACKLIST_TYPE,
-  REQUIRED_DOCUMENTS_BY_SUBJECT,
   TRANSPORT_ALLOWED_EXTENSIONS,
   TRANSPORT_CHECKS,
   TRANSPORT_MAX_FILE_SIZE,
   VALID_CARRIER_DOCUMENT_TYPES,
   VALID_OWNER_DOCUMENT_TYPES,
-  VALID_VEHICLE_TYPES,
   compute_missing_documents,
   document_is_expired,
   is_expiring_type,
@@ -42,6 +41,7 @@ from app.models.vehicle import Vehicle
 from app.services.document_blacklist_service import is_document_blacklisted
 from app.services.document_service import create_document, replace_document_file
 from app.services.order_service import can_access_order, CLIENT_ROLES
+from app.services.vehicle_type_service import active_vehicle_type_codes
 
 
 PHONE_RE = re.compile(r"\d{7,15}")
@@ -165,7 +165,7 @@ def _ensure_not_blacklisted(db: Session, vehicle_data, carrier_data) -> None:
     raise ValueError("El propietario del vehículo no está autorizado para ingresar a la planta. Si tienes dudas, comunícate con Logística.")
 
 
-def _validate_submission(vehicle_data, carrier_data) -> None:
+def _validate_submission(db: Session, vehicle_data, carrier_data) -> None:
   
   if not PLATE_RE.fullmatch(normalize_plate(vehicle_data.plate)):
     raise ValueError("La placa debe tener 5 o 6 letras y números.")
@@ -173,8 +173,8 @@ def _validate_submission(vehicle_data, carrier_data) -> None:
   if not normalize_plate(vehicle_data.plate):
     raise ValueError("La placa del vehículo es obligatoria.")
 
-  if vehicle_data.type not in VALID_VEHICLE_TYPES:
-    raise ValueError(f"El tipo de vehículo debería ser uno de: {', '.join(VALID_VEHICLE_TYPES)}")
+  if vehicle_data.type not in active_vehicle_type_codes(db):
+    raise ValueError("Tipo de vehículo no válido")
 
   if vehicle_data.capacity_m3 <= 0:
     raise ValueError("La capacidad del vehículo debe ser mayor a 0.")

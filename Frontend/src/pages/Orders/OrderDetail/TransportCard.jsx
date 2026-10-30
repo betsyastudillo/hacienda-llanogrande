@@ -11,7 +11,7 @@ import { isValidAddress, MIN_ADDRESS_LENGTH } from '../../../utils/validators'
 import { formatCapacity } from '../../../utils/formatNumber'
 import { TRANSPORT_STATUS_LABELS, TRANSPORT_STATUS_COLORS, TRANSPORT_STATUS_ICONS, } from '../../../constants/transportStatus'
 import { 
-    TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES, VEHICLE_TYPES, vehicleTypeLabel, TRANSPORT_CHECK_LABELS, TRANSPORT_CHECK_SUBJECTS, BLOCKING_TRANSPORT_CHECKS, OTHER_REASON, rejectionReasonsFor, EXPIRING_TRANSPORT_DOCS
+    TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES,  TRANSPORT_CHECK_LABELS, TRANSPORT_CHECK_SUBJECTS, BLOCKING_TRANSPORT_CHECKS, OTHER_REASON, rejectionReasonsFor, EXPIRING_TRANSPORT_DOCS
 } from '../../../constants/transport'
 import CollapsibleCard from '../../../components/CollapsibleCard/CollapsibleCard'
 import TransportDocuments from './TransportDocuments'
@@ -81,6 +81,8 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     bg: TRANSPORT_STATUS_COLORS[statusKey].bgColor,
     text: TRANSPORT_STATUS_COLORS[statusKey].textColor,
   } : null
+
+  const { types: vehicleTypes, labelOf: vehicleTypeLabel } = useVehicleTypes()
 
   // Ejecuta una acción mostrando el resultado y recargando el pedido
   // onError: si se pasa, el error se muestra donde se indique (dentro de un modal) y no como popup.
@@ -757,7 +759,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               <label className="edit-field">Tipo
                 <select value={form.type} onChange={set('type')}>
                   <option value="">Selecciona</option>
-                  {VEHICLE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    {vehicleTypes.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}
                 </select>
               </label>
             </div>

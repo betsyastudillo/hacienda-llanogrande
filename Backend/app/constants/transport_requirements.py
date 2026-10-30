@@ -24,7 +24,6 @@ ALLOWED_DOCUMENTS_BY_SUBJECT = {
 }
 
 VALID_CARRIER_DOCUMENT_TYPES = ("CC", "CE", "PP", "PPT", "PEP")
-VALID_VEHICLE_TYPES = ("camioneta", "camion_sencillo", "doble_troque", "tractomula", "volqueta")
 VALID_OWNER_DOCUMENT_TYPES = ("CC", "CE", "PP", "PPT", "PEP", "NIT")
 
 # Las placas vetadas se guardan en DocumentBlacklist con este tipo de documento

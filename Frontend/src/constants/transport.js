@@ -18,14 +18,6 @@ export const CARRIER_DOCUMENT_TYPES = [
 // El dueño también puede ser una empresa (NIT)
 export const OWNER_DOCUMENT_TYPES = [...CARRIER_DOCUMENT_TYPES, { value: 'NIT', label: 'NIT' }]
 
-// Debe coincidir con VALID_VEHICLE_TYPES del backend
-export const VEHICLE_TYPES = [
-  { value: 'camioneta', label: 'Camioneta' },
-  { value: 'camion_sencillo', label: 'Camión sencillo' },
-  { value: 'doble_troque', label: 'Doble troque' },
-  { value: 'tractomula', label: 'Tractomula' },
-  { value: 'volqueta', label: 'Volqueta' },
-]
 
 export const TRANSPORT_CHECK_LABELS = {
   simit: 'SIMIT (multas)',
@@ -36,8 +28,6 @@ export const TRANSPORT_CHECK_LABELS = {
 export const TRANSPORT_CHECK_SUBJECTS = { vehicle: 'Vehículo', owner: 'Propietario', carrier: 'Transportador' }
 
 export const BLOCKING_TRANSPORT_CHECKS = ['listas_vinculantes']
-
-export const vehicleTypeLabel = (value) => VEHICLE_TYPES.find((t) => t.value === value)?.label || value
 
 // Razones para el rechazo de algún documento
 export const OTHER_REASON = '__otro__'

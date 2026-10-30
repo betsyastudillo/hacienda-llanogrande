@@ -15,6 +15,7 @@ import CompanyDetail from "./pages/Companies/CompanyDetail/CompanyDetail"
 import Inventory from './pages/Inventory/Inventory'
 import ProductInventory from './pages/Inventory/ProductInventory/ProductInventory'
 import BankAccounts from "./pages/BankAccounts/BankAccounts"
+import VehicleTypes from "./pages/VehicleTypes/VehicleTypes"
 
 function App() {
   return (
@@ -48,6 +49,7 @@ function App() {
             <Route path="/inventory/:productId" element={<ProductInventory />} />
 
             <Route path="banks-accounts" element={<BankAccounts />}/>
+            <Route path="/vehicle_types" element={<VehicleTypes />}/>
           </Route> 
           <Route path="*" element={<Navigate to="/orders" replace />} />
         </Routes>
