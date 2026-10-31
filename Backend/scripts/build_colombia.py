@@ -6,8 +6,7 @@ from collections import Counter, defaultdict
 URL = "https://www.datos.gov.co/resource/gdxc-w37w.json?$limit=2000"
 
 rows = requests.get(URL, timeout=30).json()
-print(f"Filas recibidas: {len(rows)}")
-print("Tipos:", dict(Counter(r["tipo_municipio"] for r in rows)))
+
 
 SMALL = {"de", "del", "la", "las", "los", "el", "y"}
 
@@ -45,6 +44,3 @@ with open("colombia.js", "w", encoding="utf-8") as f:
   f.write("export const CITIES_BY_DEPARTMENT = ")
   json.dump(out, f, ensure_ascii=False, indent=2)
   f.write("\n\nexport const DEPARTMENTS = Object.keys(CITIES_BY_DEPARTMENT).sort((a, b) => a.localeCompare(b, 'es'))\n")
-
-print(f"Departamentos: {len(out)}")
-print("Archivo generado: colombia.js")

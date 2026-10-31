@@ -47,7 +47,7 @@ def create_vehicle_type(db: Session, name: str, capacity_kg, current_user) -> Ve
     created_by_user_id=current_user.id, 
     updated_by_user_id=current_user.id,
   )
-  print(vehicle_type)
+
   db.add(vehicle_type)
   db.commit()
   db.refresh(vehicle_type)
