@@ -16,6 +16,8 @@ ROLES_PERMISSIONS = {
     "dispatch_guide:crear", "dispatch_guide:ver",
     "order:ver_todos",
     "blacklist:gestionar", 
+    "payment:ver",
+    "invoice:ver",
   },
   "operaciones": {
     "product:gestionar",

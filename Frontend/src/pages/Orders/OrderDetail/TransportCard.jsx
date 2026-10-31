@@ -6,6 +6,8 @@ import { useVehicleTypes } from '../../../hooks/useVehicleTypes'
 import Modal from '../../../components/Modal/Modal'
 import StatusBadge from '../../../components/StatusBadge/StatusBadge'
 import FilePreviewModal from '../../../components/FilePreviewModal/FilePreviewModal'
+import CollapsibleCard from '../../../components/CollapsibleCard/CollapsibleCard'
+import ComplianceTable from '../../../components/ComplianceTable/ComplianceTable'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
 import { formatDate, todayISO } from '../../../utils/formatDate'
 import { isValidAddress, MIN_ADDRESS_LENGTH } from '../../../utils/validators'
@@ -16,8 +18,6 @@ import { estimateWeightKg } from '../../../constants/units.js'
 import { 
     TRANSPORT_DOCS, CARRIER_DOCUMENT_TYPES, OWNER_DOCUMENT_TYPES,  TRANSPORT_CHECK_LABELS, TRANSPORT_CHECK_SUBJECTS, BLOCKING_TRANSPORT_CHECKS, OTHER_REASON, rejectionReasonsFor, EXPIRING_TRANSPORT_DOCS
 } from '../../../constants/transport'
-import CollapsibleCard from '../../../components/CollapsibleCard/CollapsibleCard'
-import ComplianceTable from '../../../components/ComplianceTable/ComplianceTable'
 import TransportDocuments from './TransportDocuments'
 
 const EMPTY_FORM = {
