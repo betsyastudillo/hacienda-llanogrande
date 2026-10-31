@@ -308,7 +308,7 @@ def create_assignment(db: Session, data, current_user) -> Assignment:
       "Este pedido ya tiene un transporte enviado. Si fue rechazado, corrígelo y reenvíalo."
     )
 
-  _validate_submission(data.vehicle, data.carrier)
+  _validate_submission(db, data.vehicle, data.carrier)
   _ensure_not_blacklisted(db, data.vehicle, data.carrier)
 
   vehicle = _find_or_create_vehicle(db, data.vehicle, current_user)
@@ -353,7 +353,7 @@ def resubmit_assignment(db: Session, order_id: UUID, vehicle_data, carrier_data,
   if assignment.validation_status not in ("rejected", "pending"):
     raise ValueError("Solo se pueden corregir los datos mientras el transporte está pendiente o rechazado")
   
-  _validate_submission(vehicle_data, carrier_data)
+  _validate_submission(db, vehicle_data, carrier_data)
   _ensure_not_blacklisted(db, vehicle_data, carrier_data)
 
   vehicle = _find_or_create_vehicle(db, vehicle_data, current_user)

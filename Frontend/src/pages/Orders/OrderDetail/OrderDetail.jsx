@@ -251,6 +251,7 @@ export default function OrderDetail() {
           <p>Motivo: {order.cancellation_reason}</p>
         </div>
       )}
+      
       <div className="detail-grid">
         <div className="detail-card">
           <p className="detail-card-title">Productos</p>

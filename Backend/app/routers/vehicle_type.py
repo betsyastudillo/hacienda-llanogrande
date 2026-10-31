@@ -14,6 +14,7 @@ def list_types(include_inactive: bool = False, db: Session = Depends(get_db), cu
   # Los inactivos solo los ve quien gestiona; el resto solo ve los activos
   if include_inactive and not user_has_permission(current_user, "vehicle_type:gestionar"):
     include_inactive = False
+  
   return service.list_vehicle_types(db, include_inactive)
 
 
@@ -30,9 +31,10 @@ def create_type(data: VehicleTypeCreate, db: Session = Depends(get_db), current_
 
 @router.patch("/{type_id}", response_model=VehicleTypeResponse)
 def update_type(type_id: UUID, data: VehicleTypeUpdate, db: Session = Depends(get_db), current_user=Depends(require_permission("vehicle_type:gestionar"))):
-  print(data.capacity_kg)
+
   try:
     return service.update_vehicle_type(db, type_id, data.name, data.is_active, data.capacity_kg, current_user)
+
   except ValueError as e:
     db.rollback()
     raise HTTPException(status_code=400, detail=str(e))
