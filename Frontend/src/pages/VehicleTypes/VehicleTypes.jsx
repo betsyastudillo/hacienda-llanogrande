@@ -87,7 +87,7 @@ console.log(types)
                 // className="detail-info-row"
                 >
                 <td>{t.name}{!t.is_active && ' (inactivo)'}</td>
-                <td>{t.capacity_kg ? `${Number(t.capacity_kg) / 1000} t` : 'sin capacidad'}</td>
+                <td>{t.capacity_kg ? `${Number(t.capacity_kg) / 1000} T` : 'sin capacidad'}</td>
                 <td>
                   <div className='inventory-actions'>
                     <button type='button' className='inventory-icon-btn'

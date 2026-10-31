@@ -55,7 +55,7 @@ def create_vehicle_type(db: Session, name: str, capacity_kg, current_user) -> Ve
   return vehicle_type
 
 
-def update_vehicle_type(db: Session, type_id, name: Optional[str], capacity_kg, is_active: Optional[bool], current_user) -> VehicleType:
+def update_vehicle_type(db: Session, type_id, name: Optional[str], is_active: Optional[bool], capacity_kg,  current_user) -> VehicleType:
   
   vehicle_type = db.query(VehicleType).filter(VehicleType.id == type_id).first()
   

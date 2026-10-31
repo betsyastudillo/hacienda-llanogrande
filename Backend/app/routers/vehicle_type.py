@@ -19,7 +19,7 @@ def list_types(include_inactive: bool = False, db: Session = Depends(get_db), cu
 
 @router.post("/", response_model=VehicleTypeResponse, status_code=201)
 def create_type(data: VehicleTypeCreate, db: Session = Depends(get_db), current_user=Depends(require_permission("vehicle_type:gestionar"))):
-  print(data.capacity_kg)
+
   try:
     return service.create_vehicle_type(db, data.name, data.capacity_kg, current_user)
   
