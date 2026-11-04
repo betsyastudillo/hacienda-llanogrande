@@ -372,6 +372,7 @@ def attach_needs_action(db: Session, orders: List[Order], current_user: User) ->
           and not transport_docs_missing
         )
         or order.status == "transport_validated"   # falta generar la guía
+        or (assignment and assignment.review_pending)   # cambio de transporte sin consultas
       )
 
     # Si es cliente, faltaría generar la proforma, el pago fue rechazado, falta subir el comprobante,

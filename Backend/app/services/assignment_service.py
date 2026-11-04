@@ -676,7 +676,7 @@ def correct_assignment(db: Session, order_id: UUID, vehicle_data, carrier_data, 
 
   reason = (reason or "").strip()
 
-  if not reason:
+  if assignment.validation_status == "approved" and not reason:
     raise ValueError("Indica el motivo del cambio")
 
   # El veto interno se revisa al instante: un vetado conocido no entra

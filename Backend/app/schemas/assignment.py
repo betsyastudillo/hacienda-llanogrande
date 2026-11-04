@@ -120,7 +120,7 @@ class AssignmentResponse(AuditResponseMixin):
 class AssignmentCorrection(BaseModel):
   vehicle: VehicleSubmission
   carrier: CarrierSubmission   # usa el nombre real de tu schema del transportador
-  reason: str
+  reason: Optional[str] = None
 
 class PostReviewBody(BaseModel):
   checks: list[TransportCheckInput]   # el mismo schema de consultas que usa validate

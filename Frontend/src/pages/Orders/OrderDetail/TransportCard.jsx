@@ -59,6 +59,8 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   const [expiryDate, setExpiryDate] = useState('')
   const [changeReason, setChangeReason] = useState('')
   const [uploadError, setUploadError] = useState('')
+  const [postReview, setPostReview] = useState(false)
+
   const [products, setProducts] = useState([]) // Para calcular los pesos para el transporte
 
   const isBusy = busy !== null
@@ -75,7 +77,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   canGuide && assignment?.validation_status === 'approved' &&
   order.status === 'transport_validated' && !dispatchGuide
   const canUpload = canSubmit && !canValidate && assignment && assignment.validation_status !== 'approved'
-  const canCorrect = hasPermission('assignment:corregir') && assignment &&
+  const canCorrect = hasPermission('assignment:corregir') && Boolean(assignment) &&
   ['facturado', 'transport_validated', 'dispatch_guide_generated'].includes(order.status)
 
 
@@ -132,6 +134,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
   function openForm() {
     setFormError('')
+    setChangeReason('')
 
     if (assignment) {
       const v = assignment.vehicle
@@ -283,29 +286,30 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     if (!isValidAddress(form.address))
       return setFormError(`La dirección del transportador debe tener al menos ${MIN_ADDRESS_LENGTH} caracteres.`)
 
-    if (isCorrection && !changeReason.trim()) return setFormError('Indica el motivo del cambio.')
-    if (isCorrection) body.reason = changeReason.trim()
-
-    setFormError('')
-
-    const body = {
-      vehicle: {
-        plate: form.plate.trim(),
-        type: form.type,
-        capacity_m3: Number(form.capacity_m3),
-        owner_name: owner.name.trim(),
-        owner_document_type: owner.type,
-        owner_document_id: owner.id.trim(),
-        owner_phone: owner.phone.trim() || null,
-      },
-      carrier: {
-        full_name: form.full_name.trim(),
-        document_type: form.document_type,
-        document_id: form.document_id.trim(),
-        phone: form.phone.trim(),
-        address: form.address.trim(),
-      },
-    }
+    if (needsChangeReason && !changeReason.trim()) return setFormError('Indica el motivo del cambio.')
+      
+      setFormError('')
+      
+      const body = {
+        vehicle: {
+          plate: form.plate.trim(),
+          type: form.type,
+          capacity_m3: Number(form.capacity_m3),
+          owner_name: owner.name.trim(),
+          owner_document_type: owner.type,
+          owner_document_id: owner.id.trim(),
+          owner_phone: owner.phone.trim() || null,
+        },
+        carrier: {
+          full_name: form.full_name.trim(),
+          document_type: form.document_type,
+          document_id: form.document_id.trim(),
+          phone: form.phone.trim(),
+          address: form.address.trim(),
+        },
+      }
+    
+    if (needsChangeReason) body.reason = changeReason.trim()
 
     run( 'submit',
       () => {
@@ -364,7 +368,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       }),
       'Transporte aprobado.',
       'No se pudo aprobar el transporte',
-      () => setShowApprove(false)
+      () => closeApprove()
     )
   }
 
@@ -432,7 +436,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       }),
       'Transporte rechazado. La consulta quedó registrada.',
       'No se pudo rechazar el transporte',
-      () => setShowApprove(false)
+      () => closeApprove()
     )
   }
 
@@ -444,11 +448,31 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     )
   }
 
+  function handleCompleteReview() {
+    run('complete-review',
+      () => api.post(`/assignments/${assignment.id}/complete-review`, {
+        checks: buildChecksPayload(),
+        blacklist_carrier: blockBlacklist,
+        blacklist_vehicle: blacklistVehicle,
+        blacklist_owner: blacklistOwner,
+        reason: blockReason.trim() || null,
+      }),
+      'Consultas registradas.',
+      'No se pudieron registrar las consultas',
+      closeApprove
+    )
+  }
+
   function openPreview(label, doc) {
     setPreview({
       title: label,
       apiPath: `/assignments/order/${order.id}/documents/${doc.id}/file`,
     })
+  }
+
+  function closeApprove() {
+    setShowApprove(false)
+    setPostReview(false)
   }
 
   const v = assignment?.vehicle
@@ -536,6 +560,9 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   // El dueño solo cuenta si su sección está visible; si es el transportador, ya lo cubre el aviso del transportador
   const formBlocked = Boolean(blocked.vehicle) || blocked.carrier || (!ownerIsCarrier && blocked.owner)
   
+  // Si se puede corregir, y el transporte ya estaba aprobado, hay que indicar un motivo de cambio
+  const needsChangeReason = canCorrect && assignment?.validation_status === 'approved'
+
   // Falta algún documento o alguno no está aprobado todavía
   const docsUnapproved = docRows.some((r) => r.status !== 'approved')
 
@@ -551,7 +578,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   const ownerBanBox = !sameOwner && (
     <label style={{ display: 'flex', gap: 8, fontSize: 13, marginTop: 8 }}>
       <input type="checkbox" checked={blacklistOwner} onChange={(e) => setBlacklistOwner(e.target.checked)} />
-      Vetar al propietario ({v?.owner_name}): si la persona está en listas vinculantes)
+      Vetar al propietario ({v?.owner_name}): si la persona está en listas vinculantes
     </label>
   )
 
@@ -606,6 +633,26 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               </p>
             )}
 
+            {assignment.review_pending && canValidate && (
+              <div className="pay-actions">
+                <button
+                  type="button"
+                  className="pay-btn is-primary"
+                  onClick={() => {
+                    setCheckValues({})
+                    setBlockReason('')
+                    setBlockBlacklist(false)
+                    setBlacklistVehicle(false)
+                    setBlacklistOwner(false)
+                    setPostReview(true)
+                    setShowApprove(true)
+                  }}
+                >
+                  Registrar consultas
+                </button>
+              </div>
+            )}
+
             {findings.length > 0 && (
               <div className="detail-error-text">
                 <strong>Hallazgos en la verificación:</strong>
@@ -628,7 +675,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
             {correctedByClient && (
               <p className="detail-empty-inline pay-hint">
-                El cliente corrigió los datos el {formatDate(assignment.updated_at)}. Revisa que las consultas y los
+                Se corrigieron los datos el {formatDate(assignment.updated_at)}. Revisa que las consultas y los
                 documentos correspondan a la información de hoy.
               </p>
             )}
@@ -720,8 +767,8 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             {assignment.validation_status === 'pending' && !canValidate && missing.length === 0 && (
               <p className="detail-empty-inline pay-hint">En revisión por el área de logística.</p>
             )}
-  
-            {canFix || canCorrect && (
+
+            {(canFix || canCorrect) && (
               <div className="pay-actions">
                 <button className="pay-btn is-primary" onClick={openForm}>Corregir datos</button>
               </div>
@@ -939,7 +986,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             </div>
           </div>
           
-          {canCorrect && (
+          {needsChangeReason && (
             <label className="edit-field">Motivo del cambio
               <input
                 value={changeReason}
@@ -977,7 +1024,10 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       )}
       
       {showApprove && (
-        <Modal title="Verificar y aprobar transporte" onClose={() => setShowApprove(false)}>
+        <Modal
+          title={postReview ? 'Registrar consultas del cambio' : 'Verificar y aprobar transporte'}
+          onClose={closeApprove}
+        >
           <p className="edit-note">
             Consulta cada fuente con el dato indicado y registra el resultado. Marca "Sí" solo si confirmaste que el documento tiene registros. Un hallazgo en listas vinculantes impide aprobar; las multas y antecedentes se registran y se le avisan al cliente.
           </p>
@@ -1001,7 +1051,42 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             )
           })}
 
-          {blockingHit ? (
+          {postReview ? (
+            <>
+              {hasFindings && (
+                <>
+                  <p className="detail-error-text">
+                    Hay hallazgos. Decide si vetas a alguien y escribe el motivo.
+                  </p>
+
+                  <label className="pay-label" htmlFor="post-reason">Motivo (uso interno)</label>
+                  <textarea
+                    id="post-reason" className="pay-textarea" rows={2} value={blockReason}
+                    onChange={(e) => setBlockReason(e.target.value)}
+                  />
+
+                  <label style={{ display: 'flex', gap: 8, fontSize: 13, marginTop: 8 }}>
+                    <input type="checkbox" checked={blockBlacklist} onChange={(e) => setBlockBlacklist(e.target.checked)} />
+                    Vetar al transportador: no podrá volver a ingresar a la planta
+                  </label>
+
+                  {vehicleBanBox}
+                  {ownerBanBox}
+                </>
+              )}
+
+              <div className="pay-actions">
+                <button type="button" className="pay-btn" onClick={closeApprove} disabled={isBusy}>Cancelar</button>
+                <button
+                  type="button" className="pay-btn is-primary"
+                  disabled={!checksComplete || isBusy}
+                  onClick={handleCompleteReview}
+                >
+                  {busy === 'complete-review' ? 'Guardando...' : 'Registrar consultas'}
+                </button>
+              </div>
+            </>
+          ) : blockingHit ? (
             <>
               <p className="detail-error-text">
                 Hay un hallazgo en listas vinculantes: este transporte no se puede aprobar. Se rechazará y la consulta
@@ -1024,7 +1109,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               {ownerBanBox}
 
               <div className="pay-actions">
-                <button type="button" className="pay-btn" onClick={() => setShowApprove(false)} disabled={isBusy}>Cancelar</button>
+                <button type="button" className="pay-btn" onClick={() => closeApprove()} disabled={isBusy}>Cancelar</button>
                 <button
                   type="button" className="pay-btn is-danger"
                   disabled={!blockReason.trim() || !findingsHaveNotes || isBusy}
@@ -1040,7 +1125,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                 <p className="detail-empty-inline pay-hint">Hay hallazgos: se registrarán y se le avisará al cliente.</p>
               )}
               <div className="pay-actions">
-                <button type="button" className="pay-btn" onClick={() => setShowApprove(false)} disabled={isBusy}>Cancelar</button>
+                <button type="button" className="pay-btn" onClick={() => closeApprove()} disabled={isBusy}>Cancelar</button>
                 <button type="button" className="pay-btn is-primary" disabled={!checksComplete || isBusy} onClick={handleApprove}>
                   {busy === 'approved' ? 'Aprobando...' : 'Aprobar transporte'}
                 </button>
