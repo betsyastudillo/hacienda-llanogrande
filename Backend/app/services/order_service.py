@@ -171,8 +171,6 @@ def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
           subtotal=item_subtotal
       )
 
-      register_order_deduction(db, product, new_order.id, item_data.quantity_m3, current_user)
-
       db.add(order_item)
 
   new_order.subtotal = subtotal
@@ -202,14 +200,6 @@ def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_use
   
   # Se borran los items existentes (el pedido sigue en 'created', no hay documentos que dependan de ellos)
   db.query(OrderItem).filter(OrderItem.order_id == order.id).delete()
-
-  # Revierte el inventario con movimientos nuevos, sin borrar el historial
-  _reverse_order_deductions(
-    db, 
-    order, 
-    current_user, 
-    f"Reversión por edición del pedido {order.order_number}"
-  )
 
   db.flush()
 
@@ -247,8 +237,6 @@ def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_use
     
     db.add(order_item)
 
-    register_order_deduction(db, product, order.id, item_data.quantity_m3, current_user)
-
   order.subtotal = subtotal
   order.tax = tax
   order.total = subtotal + tax
@@ -282,8 +270,6 @@ def cancel_order(db: Session, order_id: UUID, reason: str, current_user) -> Opti
   
   if payment and payment.status == "pending":
     payment.status = "cancelled"
-
-  _reverse_order_deductions(db, order, current_user, f"Anulación del pedido {order.order_number}")
 
   order.status = "cancelled"
   order.cancelled_at = datetime.now(timezone.utc)

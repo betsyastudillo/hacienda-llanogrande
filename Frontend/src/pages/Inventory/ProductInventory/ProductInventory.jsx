@@ -68,7 +68,7 @@ export default function ProductInventory() {
         api.get(`/inventory/products/${productId}/movements`),
       ])
       setProduct(productRes.data)
-      setStock(stockRes.data.current_stock)
+      setStock(stockRes.data)
       setMovements(movementsRes.data)
     } catch (err) {
       fail(getErrorMessage(err, 'No se pudo cargar el producto'))
@@ -164,10 +164,19 @@ export default function ProductInventory() {
       <div className='inventory-header-block'>
         <div className='inventory-title-center'>
           <h1 className="inventory-title">{product.name}</h1>
-          <p className="inventory-subtitle">
-            Stock disponible: <strong>{stock} {product.unit}</strong>
-          </p>
+          {/* <p className="inventory-subtitle"> */}
+            <div className="stock-summary">
+              <div><span>En planta</span><strong>{stock.physical}</strong></div>
+              <div><span>Separado</span><strong>{stock.reserved}</strong></div>
+              <div><span>Disponible</span><strong>{stock.available}</strong></div>
+            </div>
+          {/* </p> */}
         </div>
+        {product.parent_product_id && (
+          <p className="inventory-kardex-unit-note">
+            Cantidades del producto base. Disponible en paquetes: {stock.current_stock}
+          </p>
+        )}
 
         {canManage && (
           <div className='inventory-header-actions'>
@@ -226,6 +235,9 @@ export default function ProductInventory() {
               <KardexCard label="Otros ajustes" value={kardex.adjustments_other} price={product.price} />
               <KardexCard label="Saldo final" value={kardex.closing_balance} price={product.price} isFinal />
             </div>
+            <p className="inventory-kardex-unit-note">
+              Hoy: separado {kardex.reserved_balance} {product.unit} · disponible {kardex.available_balance} {product.unit}
+            </p>
           </>
         )}
       </div>

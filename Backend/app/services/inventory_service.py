@@ -7,9 +7,47 @@ from sqlalchemy import func, or_
 from zoneinfo import ZoneInfo
 from app.models.inventory_movement import InventoryMovement
 from app.models.product import Product
+from app.models.order import Order
+from app.models.order_item import OrderItem
 
 LOCAL_TZ = ZoneInfo("America/Bogota")
 ADJUSTMENT_CATEGORIES = ("damage", "count_difference", "other")
+
+# Pedidos que ya no separan inventario
+NON_RESERVING_ORDER_STATUSES = ("cancelled", "dispatched")
+
+
+# Unidades del producto base que tienen separadas los pedidos abiertos (los paquetes se convierten a unidades)
+def get_reserved_stock(db: Session, stock_target_id: UUID) -> int:
+  target_id = func.coalesce(Product.parent_product_id, Product.id)
+  units = OrderItem.quantity_m3 * func.coalesce(Product.units_per_pack, 1)
+
+  total = (
+    db.query(func.coalesce(func.sum(units), 0))
+    .select_from(OrderItem)
+    .join(Order, Order.id == OrderItem.order_id)
+    .join(Product, Product.id == OrderItem.product_id)
+    .filter(target_id == stock_target_id, Order.status.notin_(NON_RESERVING_ORDER_STATUSES))
+    .scalar()
+  )
+
+  return int(total)
+
+
+# Lo que hay en la planta menos lo que ya está separado
+def get_available_stock(db: Session, stock_target_id: UUID) -> Decimal:
+  return get_current_stock(db, stock_target_id) - get_reserved_stock(db, stock_target_id)
+
+
+def get_sellable_stock(db: Session, product: Product) -> int:
+  stock_target = resolve_stock_target(product)
+  base_available = get_available_stock(db, stock_target.id)
+
+  if product.parent_product_id:
+    return max(int((base_available / product.units_per_pack).to_integral_value(rounding=ROUND_DOWN)), 0)
+
+  return max(int(base_available), 0)
+
 
 # Trae el inventario
 def get_current_stock(db: Session, product_id: UUID) -> Decimal:
@@ -31,7 +69,7 @@ def resolve_stock_target(product: Product) -> Product:
   return product.parent_product if product.parent_product_id else product
 
 
-# Convierte los paqetes/unidades que pide el cliente a las und a descontar del inventario del producto base.
+# Convierte los paquetes/unidades que pide el cliente a las und a descontar del inventario del producto base.
 def get_deduction_quantity(product: Product, quantity_ordered: int) -> int:
 
   if product.parent_product_id:
@@ -140,7 +178,9 @@ def _sum_movements(db, product_id, movement_type, start_dt=None, end_dt=None, on
 
 
 def _get_kardex(db: Session, product_id: UUID, start_date: date, end_date: date) -> dict:
+  
   product = db.query(Product).filter(Product.id == product_id).first()
+  reserved = get_reserved_stock(db, product_id)
 
   if not product:
     raise ValueError("Product no found")
@@ -176,40 +216,30 @@ def _get_kardex(db: Session, product_id: UUID, start_date: date, end_date: date)
     "adjustments_damage": adjustments_damage,
     "adjustments_other": adjustments_other,
     "closing_balance": opening + entries - exits + adjustments_damage + adjustments_other,
+    "reserved_balance": reserved,
+    "available_balance": get_current_stock(db, product_id) - reserved,
   }
 
 # Registra la salida de inventario por pedido, resuelve automáticamente que si el product es un paquete lo descuenta del producto base. Se guarda junto a la transacción de create_order, por lo tanto, no hace commit
 def register_order_deduction(db: Session, product: Product, order_id: UUID, quantity_ordered: int, current_user) -> InventoryMovement:
 
-    stock_target = resolve_stock_target(product)
-    deduction_qty = get_deduction_quantity(product, quantity_ordered)
+  stock_target = resolve_stock_target(product)
+  deduction_qty = get_deduction_quantity(product, quantity_ordered)
 
-    reason = "Descuento automático por pedido"
+  reason = "Salida por despacho"
 
-    if product.parent_product_id:
-        reason += f"({quantity_ordered} paquete(s) de {product.name})"
+  if product.parent_product_id:
+    reason += f"({quantity_ordered} paquete(s) de {product.name})"
 
-    movement = InventoryMovement(
-        product_id=stock_target.id,
-        order_id=order_id,
-        movement_type="salida",
-        quantity=deduction_qty,
-        reason=reason,
-        created_by_user_id=current_user.id if current_user else None,
-    )
+  movement = InventoryMovement(
+    product_id=stock_target.id,
+    order_id=order_id,
+    movement_type="salida",
+    quantity=deduction_qty,
+    reason=reason,
+    created_by_user_id=current_user.id if current_user else None,
+  )
 
-    db.add(movement)
-    
-    return movement
-
-
-# Cuantas unds de este producto específico se pueden vender ahora mismo. Si es un pqt, es el stock base / units_per_pack (redondeado hacia abajo).
-def get_sellable_stock(db: Session, product: Product) -> int:
-
-    stock_target = resolve_stock_target(product)
-    base_stock = get_current_stock(db, stock_target.id)
-
-    if product.parent_product_id:
-        return int((base_stock / product.units_per_pack).to_integral_value(rounding=ROUND_DOWN))
-
-    return int(base_stock)
+  db.add(movement)
+  
+  return movement

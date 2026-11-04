@@ -13,6 +13,7 @@ from app.models.vehicle import Vehicle
 from app.models.carrier import Carrier
 from app.config import settings
 from app.services.assignment_service import attach_transport_details
+from app.services.inventory_service import register_order_deduction
 
 
 QR_UPLOAD_DIR = "uploads/dispatch_guides"
@@ -146,6 +147,9 @@ def verify_dispatch_guide(db: Session, token: str, current_user=None) -> dict:
   order = db.query(Order).filter(Order.id == guide.order_id).first()
   order.status = "dispatched"
 
+  for item in order.items:
+    register_order_deduction(db, item.product, order.id, item.quantity_m3, current_user)
+    
   if current_user:
     guide.updated_by_user_id = current_user.id
     order.updated_by_user_id = current_user.id

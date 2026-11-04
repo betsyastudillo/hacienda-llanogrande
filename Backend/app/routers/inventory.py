@@ -8,7 +8,7 @@ from app.auth_dependencies import InventoryManager, InventoryViewer, StockViewer
 from app.models.product import Product
 from app.schemas.inventory_movement import InventoryMovementCreate, InventoryMovementResponse, KardexResponse, StockResponse
 from app.services.inventory_service import (
-  _get_kardex, get_sellable_stock, get_movements_by_product, create_manual_movement,
+  _get_kardex, get_sellable_stock, get_movements_by_product, create_manual_movement, get_current_stock, get_reserved_stock, resolve_stock_target
 )
 
 router = APIRouter(prefix="/inventory", tags=["Inventory"])
@@ -21,12 +21,20 @@ def get_stock(
   db: Session = Depends(get_db),
 ):
   product = db.query(Product).filter(Product.id == product_id).first()
+  
   if not product:
     raise HTTPException(status_code=404, detail="Product not found")
+
+  target = resolve_stock_target(product)
+  physical = int(get_current_stock(db, target.id))
+  reserved = get_reserved_stock(db, target.id)
 
   return StockResponse(
     product_id=product_id,
     current_stock=get_sellable_stock(db, product),
+    physical=physical,
+    reserved=reserved,
+    available=physical - reserved,
   )
 
 
