@@ -453,6 +453,11 @@
   color: var(--status-approved-text); 
 }
 
+.capacity-hint.is-tight { 
+  background: var(--status-pending-bg); 
+  color: var(--status-pending-text); 
+}
+
 .capacity-hint.is-short     { 
   background: var(--status-rejected-bg); 
   color: var(--status-rejected-text); 
@@ -462,11 +467,6 @@
   background: var(--status-pending-bg); 
   color: var(--status-pending-text); 
 }
-
-
-
-
-
 
 
 /* QR */
