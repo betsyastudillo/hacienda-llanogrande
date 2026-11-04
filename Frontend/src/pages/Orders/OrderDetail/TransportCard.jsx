@@ -57,6 +57,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   const [checkValues, setCheckValues] = useState({})   // { 'vehicle:simit': { has_findings, note } }
   const [pendingUpload, setPendingUpload] = useState(null)   // { key, file, label }
   const [expiryDate, setExpiryDate] = useState('')
+  const [changeReason, setChangeReason] = useState('')
   const [uploadError, setUploadError] = useState('')
   const [products, setProducts] = useState([]) // Para calcular los pesos para el transporte
 
@@ -74,6 +75,9 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   canGuide && assignment?.validation_status === 'approved' &&
   order.status === 'transport_validated' && !dispatchGuide
   const canUpload = canSubmit && !canValidate && assignment && assignment.validation_status !== 'approved'
+  const canCorrect = hasPermission('assignment:corregir') && assignment &&
+  ['facturado', 'transport_validated', 'dispatch_guide_generated'].includes(order.status)
+
 
   const statusKey = assignment && TRANSPORT_STATUS_LABELS[assignment.validation_status]
     ? assignment.validation_status
@@ -262,6 +266,8 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       ? { name: form.full_name, type: form.document_type, id: form.document_id, phone: form.phone }
       : { name: form.owner_name, type: form.owner_document_type, id: form.owner_document_id, phone: form.owner_phone }
 
+    const isCorrection = canCorrect // logistica o admin corrigiendo
+
     if (!form.plate.trim() || !form.type || !(Number(form.capacity_m3) > 0))
       return setFormError('Completa la placa, el tipo y la capacidad del vehículo.')
 
@@ -276,6 +282,9 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
     if (!isValidAddress(form.address))
       return setFormError(`La dirección del transportador debe tener al menos ${MIN_ADDRESS_LENGTH} caracteres.`)
+
+    if (isCorrection && !changeReason.trim()) return setFormError('Indica el motivo del cambio.')
+    if (isCorrection) body.reason = changeReason.trim()
 
     setFormError('')
 
@@ -299,10 +308,16 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     }
 
     run( 'submit',
-      () => (assignment 
-        ? api.put(`/assignments/order/${order.id}/resubmit`, body)
-        : api.post('/assignments/', { order_id: order.id, ...body })),
-      assignment ? 'Datos corregidos y reenviados a logística.' : 'Datos enviados. Ahora sube los documentos.',
+      () => {
+        if (isCorrection) return api.put(`/assignments/order/${order.id}/correct`, body)
+        if (assignment) return api.put(`/assignments/order/${order.id}/resubmit`, body)
+        return api.post('/assignments/', { order_id: order.id, ...body })
+      },
+      isCorrection
+      ? 'Datos corregidos'
+      : assignment
+        ? 'Datos corregidos y reenviados a logística.'
+        : 'Datos enviados. Ahora sube los documentos.',
       'No se pudo enviar el transporte',
       () => setShowForm(false),
       setFormError
@@ -585,6 +600,12 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               </p>
             )}
 
+            {assignment.review_pending && canValidate && (
+              <p className="pay-error">
+                Se cambió el transportador o el vehículo. Faltan las consultas en listas y los documentos nuevos.
+              </p>
+            )}
+
             {findings.length > 0 && (
               <div className="detail-error-text">
                 <strong>Hallazgos en la verificación:</strong>
@@ -700,7 +721,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               <p className="detail-empty-inline pay-hint">En revisión por el área de logística.</p>
             )}
   
-            {canFix && (
+            {canFix || canCorrect && (
               <div className="pay-actions">
                 <button className="pay-btn is-primary" onClick={openForm}>Corregir datos</button>
               </div>
@@ -917,7 +938,17 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               </label>
             </div>
           </div>
-      
+          
+          {canCorrect && (
+            <label className="edit-field">Motivo del cambio
+              <input
+                value={changeReason}
+                onChange={(e) => setChangeReason(e.target.value)}
+                placeholder="Ej: el transportador registrado no pudo ir"
+              />
+            </label>
+          )}
+
           {formError && ! blocked.vehicle && !blocked.carrier && !blocked.owner && (
             <p className="detail-error-text">{formError}</p>
           )}   
@@ -938,7 +969,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               onClick={handleSubmit} 
               disabled={busy || formBlocked}
             >
-              {busy === 'submit' ? 'Enviando...' : assignment ? 'Reenviar' : 'Enviar'}
+              {busy === 'submit' ? 'Enviando...' : canCorrect ? 'Guardar cambio' : assignment ? 'Reenviar' : 'Enviar'}
             </button>
           
           </div>

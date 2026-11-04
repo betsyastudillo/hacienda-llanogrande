@@ -46,6 +46,7 @@ from app.services.vehicle_type_service import active_vehicle_type_codes
 
 PHONE_RE = re.compile(r"\d{7,15}")
 PLATE_RE = re.compile(r"[A-Z0-9]{5,6}")
+CORRECTABLE_ORDER_STATUSES = ("facturado", "transport_validated", "dispatch_guide_generated")
 
 # Adjunta a cada asignación su vehículo, transportador, documentos y los documentos que faltan.
 # Son atributos temporales (no columnas), igual que needs_action en los pedidos.
@@ -647,6 +648,130 @@ def validate_assignment(
     if blacklist_owner and vehicle.owner_document_id:
       _blacklist(db, vehicle.owner_document_type, vehicle.owner_document_id, ban_reason, current_user)
     
+  db.commit()
+  db.refresh(assignment)
+
+  return attach_transport_details(db, [assignment])[0]
+
+
+# Corrige la asignación en caso que en la recogida haya algún cambio que no se registra en la guía o en los datos que suministraron
+def correct_assignment(db: Session, order_id: UUID, vehicle_data, carrier_data, reason: str, current_user) -> Assignment:
+  order = db.query(Order).filter(Order.id == order_id).first()
+
+  if not order:
+    raise ValueError("Order not found")
+
+  # Con el pedido despachado o cancelado ya no se puede cambiar quién recoge
+  if order.status not in CORRECTABLE_ORDER_STATUSES:
+    raise ValueError("Ya no se puede corregir el transporte de este pedido")
+
+  # Con retiros parciales (Más adelante)
+  # if guide and guide.status == "used":
+  #   raise ValueError("Este retiro ya se despachó y no se puede cambiar")
+  
+  assignment = get_assignment_by_order(db, order_id)
+
+  if not assignment:
+    raise ValueError("Este pedido no tiene transporte enviado")
+
+  reason = (reason or "").strip()
+
+  if not reason:
+    raise ValueError("Indica el motivo del cambio")
+
+  # El veto interno se revisa al instante: un vetado conocido no entra
+  _validate_submission(db, vehicle_data, carrier_data)
+  _ensure_not_blacklisted(db, vehicle_data, carrier_data)
+
+  old_vehicle_id, old_carrier_id = assignment.vehicle_id, assignment.carrier_id
+
+  vehicle = _find_or_create_vehicle(db, vehicle_data, current_user)
+  carrier = _find_or_create_carrier(db, carrier_data, current_user)
+
+  assignment.vehicle_id = vehicle.id
+  assignment.carrier_id = carrier.id
+
+  # Cambió una persona o un vehículo (no un simple error de digitación) sobre algo ya autorizado:
+  # las consultas y los documentos quedan pendientes
+  party_changed = vehicle.id != old_vehicle_id or carrier.id != old_carrier_id
+
+  if party_changed and assignment.validation_status == "approved":
+    assignment.review_pending = True
+
+  assignment.updated_by_user_id = current_user.id
+  assignment.updated_at = datetime.now(timezone.utc)
+
+  # Cuando exista audit_log: se registra aquí quién, cuándo, antes/después y la razón
+
+  db.commit()
+  db.refresh(assignment)
+
+  return attach_transport_details(db, [assignment])[0]
+
+
+# Completar la revisión pendiente de un transporte que cambió después de haber sido aprobado. Se registran las consultas y se puede vetar a cualquiera de los sujetos.
+def complete_post_review(
+  db: Session, assignment_id: UUID, checks, current_user,
+  blacklist_carrier: bool = False, blacklist_vehicle: bool = False, blacklist_owner: bool = False,
+  reason: Optional[str] = None,
+) -> Assignment:
+
+  assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
+
+  if not assignment:
+    raise ValueError("Assignment not found")
+
+  if not assignment.review_pending:
+    raise ValueError("Este transporte no tiene una revisión pendiente")
+
+  detail = attach_transport_details(db, [assignment])[0]
+  submitted = {(ch.subject, ch.check_key): ch for ch in (checks or [])}
+  required = required_transport_checks(is_owner_carrier(detail.vehicle, detail.carrier))
+
+  missing_checks = [f"{s}:{k}" for s, k in required if (s, k) not in submitted]
+
+  if missing_checks:
+    raise ValueError(f"Faltan consultas por registrar: {', '.join(missing_checks)}")
+
+  refs = {
+    "vehicle": detail.vehicle.plate,
+    "owner": f"{detail.vehicle.owner_document_type} {detail.vehicle.owner_document_id}",
+    "carrier": f"{detail.carrier.document_type} {detail.carrier.document_id}",
+  }
+
+  for (s, k), ch in submitted.items():
+    if (s, k) not in required:
+      raise ValueError(f"Consulta no válida: {s}:{k}")
+    if ch.has_findings and not (ch.note or "").strip():
+      raise ValueError("Los hallazgos requieren una descripción")
+
+  db.query(TransportCheck).filter(TransportCheck.assignment_id == assignment.id).delete()
+
+  for (s, k), ch in submitted.items():
+    db.add(TransportCheck(
+      assignment_id=assignment.id, subject=s, check_key=k, subject_ref=refs[s],
+      has_findings=ch.has_findings,
+      note=(ch.note or "").strip() if ch.has_findings else None,
+      created_by_user_id=current_user.id,
+    ))
+
+  # Si apareció algo, se veta con las mismas opciones del rechazo
+  ban_reason = (reason or "").strip() or "Hallazgo en la revisión posterior al cambio de transporte"
+
+  if blacklist_carrier:
+    _blacklist(db, detail.carrier.document_type, detail.carrier.document_id, ban_reason, current_user)
+    detail.carrier.is_active = False
+
+  if blacklist_vehicle:
+    _blacklist(db, PLATE_BLACKLIST_TYPE, detail.vehicle.plate, ban_reason, current_user)
+    detail.vehicle.is_active = False
+
+  if blacklist_owner and detail.vehicle.owner_document_id:
+    _blacklist(db, detail.vehicle.owner_document_type, detail.vehicle.owner_document_id, ban_reason, current_user)
+
+  assignment.review_pending = False
+  assignment.updated_by_user_id = current_user.id
+
   db.commit()
   db.refresh(assignment)
 

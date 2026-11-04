@@ -12,7 +12,7 @@ ROLES_PERMISSIONS = {
   "logistica": {
     "vehicle:gestionar", "vehicle:ver",
     "carrier:gestionar", "carrier:ver",
-    "assignment:validar", "assignment:ver",
+    "assignment:validar", "assignment:ver", "assignment:corregir", "assignment:validar",
     "dispatch_guide:crear", "dispatch_guide:ver",
     "order:ver_todos",
     "blacklist:gestionar", 

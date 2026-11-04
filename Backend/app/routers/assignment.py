@@ -7,17 +7,17 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from app.database import get_db
 from app.services.order_service import can_access_order, get_order_by_id
-from app.dependencies import user_has_permission
+from app.dependencies import require_permission, user_has_permission
 from app.auth_dependencies import (
-  AssignmentLookup, AssignmentValidator, AssignmentViewer, AssignmentViewerAny,
+  AssignmentCorrector, AssignmentLookup, AssignmentValidator, AssignmentViewer, AssignmentViewerAny,
   AssignmentCreatorOwn,
 )
 from app.schemas.assignment import (
-  AssignmentCreate, AssignmentResubmit, AssignmentValidateRequest, AssignmentResponse, CarrierLookupResponse, DocumentReview, OwnerLookupResponse, VehicleLookupResponse,
+  AssignmentCorrection, AssignmentCreate, AssignmentResubmit, AssignmentValidateRequest, AssignmentResponse, CarrierLookupResponse, DocumentReview, OwnerLookupResponse, PostReviewBody, VehicleLookupResponse,
 )
 from app.schemas.document import DocumentBase
 from app.services.assignment_service import (
-  create_assignment, hide_sensitive_checks, lookup_carrier, lookup_owner, lookup_vehicle, resubmit_assignment, review_transport_document, validate_assignment,
+  complete_post_review, correct_assignment, create_assignment, hide_sensitive_checks, lookup_carrier, lookup_owner, lookup_vehicle, resubmit_assignment, review_transport_document, validate_assignment,
   get_assignment_detail_by_order, get_assignments,
   upload_transport_document, get_transport_document,
 )
@@ -183,6 +183,41 @@ def review_document(
   try:
     return review_transport_document(db, order_id, document_id, data.status, data.reason, current_user)
   
+  except ValueError as e:
+    db.rollback()
+    raise HTTPException(status_code=400, detail=str(e))
+  
+
+@router.put("/order/{order_id}/correct", response_model=AssignmentResponse)
+def correct(
+    order_id: UUID, 
+    body: AssignmentCorrection, 
+    current_user: AssignmentCorrector,
+    db: Session = Depends(get_db), 
+  ):
+  try:
+    return correct_assignment(db, order_id, body.vehicle, body.carrier, body.reason, current_user)
+  
+  except ValueError as e:
+    db.rollback()
+    raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{assignment_id}/complete-review", response_model=AssignmentResponse)
+def complete_review(
+  assignment_id: UUID, 
+  body: PostReviewBody, 
+  current_user: AssignmentValidator,
+  db: Session = Depends(get_db),
+):
+  try:
+    return complete_post_review(
+      db, assignment_id, body.checks, current_user,
+      blacklist_carrier=body.blacklist_carrier,
+      blacklist_vehicle=body.blacklist_vehicle,
+      blacklist_owner=body.blacklist_owner,
+      reason=body.reason,
+    )
   except ValueError as e:
     db.rollback()
     raise HTTPException(status_code=400, detail=str(e))

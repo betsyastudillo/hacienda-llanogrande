@@ -135,6 +135,11 @@ def verify_dispatch_guide(db: Session, token: str, current_user=None) -> dict:
   vehicle = db.query(Vehicle).filter(Vehicle.id == assignment.vehicle_id).first()
   carrier = db.query(Carrier).filter(Carrier.id == assignment.carrier_id).first()
 
+  detail = attach_transport_details(db, [assignment])[0]
+
+  if detail.blocked:
+    raise ValueError("El vehículo, su propietario o el transportador no están autorizados: ingreso bloqueado")
+
   guide.status = "used"
   guide.used_at = datetime.now(timezone.utc)
 

@@ -100,6 +100,7 @@ class AssignmentResponse(AuditResponseMixin):
   background_check_verified: bool
   validated_at: Optional[datetime] = None
   validated_by_user_id: Optional[UUID] = None
+  review_pending: bool = False
 
   # No son columnas: el servicio los adjunta (attach_transport_details). El cliente no tiene
   # vehicle:ver ni carrier:ver, por eso van dentro de la respuesta de la asignación.
@@ -114,3 +115,16 @@ class AssignmentResponse(AuditResponseMixin):
 
   class Config:
     from_attributes = True
+
+
+class AssignmentCorrection(BaseModel):
+  vehicle: VehicleSubmission
+  carrier: CarrierSubmission   # usa el nombre real de tu schema del transportador
+  reason: str
+
+class PostReviewBody(BaseModel):
+  checks: list[TransportCheckInput]   # el mismo schema de consultas que usa validate
+  blacklist_carrier: bool = False
+  blacklist_vehicle: bool = False
+  blacklist_owner: bool = False
+  reason: Optional[str] = None

@@ -40,6 +40,8 @@ AssignmentViewerAny = Annotated[User, Depends(require_any_permission(
     "assignment:ver", "assignment:ver_propio"
 ))]
 AssignmentLookup = Annotated[User, Depends(require_any_permission("assignment:crear_propio", "assignment:validar"))]
+AssignmentCorrector = Annotated[User, Depends(require_permission("assignment:corregir"))]
+VehicleTypeManager = Annotated[User, Depends(require_permission("vehicle_type:gestionar"))]
 
 # DispatchGuide
 DispatchGuideCreator = Annotated[User, Depends(require_permission("dispatch_guide:crear"))]

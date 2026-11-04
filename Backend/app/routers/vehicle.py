@@ -7,8 +7,8 @@ from app.schemas.document import DocumentBase
 from app.schemas.vehicle import VehicleCreate, VehicleResponse
 from app.services.document_service import create_document, get_documents_by_vehicle
 from app.services.vehicle_service import (
-    create_vehicle, get_vehicles, get_vehicle_by_id,
-    edit_vehicle, deactivate_vehicle,
+  create_vehicle, get_vehicles, get_vehicle_by_id,
+  edit_vehicle, deactivate_vehicle,
 )
 
 
@@ -17,10 +17,10 @@ router = APIRouter(prefix="/vehicles", tags=["Vehicles"])
 
 @router.get("/", response_model=list[VehicleResponse], summary="Lista los vehículos que han sido autorizados para recolección de productos.")
 def list_vehicles(
-    current_user: VehicleViewer,
-    db: Session = Depends(get_db),
+  current_user: VehicleViewer,
+  db: Session = Depends(get_db),
 ):
-    return get_vehicles(db)
+  return get_vehicles(db)
 
 
 @router.get("/{vehicle_id}", response_model=VehicleResponse, summary="Trae un vehículo autorizado para la recolección de productos.")
