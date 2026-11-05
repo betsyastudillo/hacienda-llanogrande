@@ -194,7 +194,7 @@ export default function Inventory() {
               setCategory('')
             }}
           >
-            <option value="entrada">Entrada (cosecha)</option>
+            <option value="entrada">Entrada</option>
             {canAdjust && <option value="ajuste">Ajuste (+/-)</option>}
           </select>
         </div>

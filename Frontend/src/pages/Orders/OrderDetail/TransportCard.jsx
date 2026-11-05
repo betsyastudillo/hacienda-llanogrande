@@ -1186,7 +1186,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
           <label className="edit-field">Fecha de vencimiento (la que figura en el documento)
             <input type="date" min={todayISO()} value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
           </label>
-          <p className="edit-note">Logística la comparará con el documento: si no coincide, se rechaza.</p>
+          <p className="edit-note">Se comparará con el documento: si no coincide, se rechaza.</p>
 
           <div className="pay-actions">
             <button type="button" className="pay-btn" onClick={() => setPendingUpload(null)} disabled={isBusy}>Cancelar</button>

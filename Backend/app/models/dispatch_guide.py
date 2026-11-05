@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from app.database import Base
@@ -8,7 +8,9 @@ class DispatchGuide(Base, AuditMixin):
   __tablename__ = "dispatch_guides"
 
   id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-  order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), unique=True, nullable=False)
+  order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False, index=True)
+  assignment_id = Column(UUID(as_uuid=True), ForeignKey("assignments.id"), nullable=False, unique=True)
+  balance_detail = Column(Text, nullable=True)   # saldo que queda después del retiro
   token = Column(String, unique=True, nullable=False)
   status = Column(String, nullable=False, default="pending")  # pending, used
   origin = Column(String, nullable=False)

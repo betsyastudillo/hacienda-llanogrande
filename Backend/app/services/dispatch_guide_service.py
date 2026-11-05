@@ -98,6 +98,7 @@ def create_dispatch_guide(db: Session, order_id: UUID, current_user) -> Dispatch
 
   new_guide = DispatchGuide(
     order_id=order_id,
+    assignment_id=assignment.id,
     token=token,
     status="pending",
     origin=_location(plant),

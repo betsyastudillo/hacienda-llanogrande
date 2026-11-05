@@ -4,7 +4,7 @@ import api from '../../services/api'
 import { useToast } from '../../context/Toast/ToastContext'
 import Modal from '../../components/Modal/Modal'
 import { getErrorMessage } from '../../utils/getErrorMessage'
-import { formatDate } from '../../utils/formatDate'
+import { formatDateTime } from '../../utils/formatDate'
 import './VerifyGuide.css'
 
 const STATUS_CONFIG = {
@@ -96,14 +96,14 @@ export default function VerifyGuide() {
         {guide.entered_at && (
           <div className="guide-field">
             <span className="guide-label">Ingreso</span>
-            <span className="guide-value">{formatDate(guide.entered_at)}</span>
+            <span className="guide-value">{formatDateTime(guide.entered_at)}</span>
           </div>
         )}
 
         {guide.used_at && (
           <div className="guide-field">
             <span className="guide-label">Salida</span>
-            <span className="guide-value">{formatDate(guide.used_at)}</span>
+            <span className="guide-value">{formatDateTime(guide.used_at)}</span>
           </div>
         )}
       </section>
