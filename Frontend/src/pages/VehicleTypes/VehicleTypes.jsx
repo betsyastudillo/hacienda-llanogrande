@@ -22,7 +22,6 @@ export default function VehicleTypes() {
     api.get('/vehicle-types/', { params: { include_inactive: true } }).then((r) => setTypes(r.data))
 
   useEffect(() => { load() }, [])
-console.log(types)
   const openForm = (t) => { 
     setEditing(t); 
     setName(t.name || ''),

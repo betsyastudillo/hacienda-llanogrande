@@ -25,7 +25,7 @@ export default function VerifyGuide() {
   const load = async () => {
     try {
       const res = await api.get(`/dispatch-guides/verify/${token}`)
-      console.log(res.data)
+
       setGuide(res.data)
       setError('')
     } catch (err) {
