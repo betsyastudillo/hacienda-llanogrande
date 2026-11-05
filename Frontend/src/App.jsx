@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { AuthProvider } from "./context/AuthContext"
 import ProtectedRoute from "./components/ProtectedRoute"
 import Layout from "./components/Layout/Layout"
+import HomeRedirect from "./components/HomeRedirect"
 import Login from "./pages/Login/Login"
 import Orders from "./pages/Orders/Orders"
 import OrderNew from "./pages/Orders/OrderNew/OrderNew"
@@ -16,6 +17,9 @@ import Inventory from './pages/Inventory/Inventory'
 import ProductInventory from './pages/Inventory/ProductInventory/ProductInventory'
 import BankAccounts from "./pages/BankAccounts/BankAccounts"
 import VehicleTypes from "./pages/VehicleTypes/VehicleTypes"
+import VerifyGuide from "./pages/DispatchGuides/VerifyGuide"
+import ScanGuide from "./pages/DispatchGuides/ScanGuide"
+
 
 function App() {
   return (
@@ -30,6 +34,7 @@ function App() {
               </ProtectedRoute>
             }
           >
+            <Route path="/" element={<HomeRedirect />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/orders/new" element={<OrderNew />} />
             <Route path="/orders/:orderId/edit" element={<OrderNew />} />
@@ -50,8 +55,10 @@ function App() {
 
             <Route path="banks-accounts" element={<BankAccounts />}/>
             <Route path="/vehicle_types" element={<VehicleTypes />}/>
-          </Route> 
-          <Route path="*" element={<Navigate to="/orders" replace />} />
+            <Route path="/dispatch-guides/verify/:token" element={<VerifyGuide />} />
+            <Route path="/dispatch-guides/scan" element={<ScanGuide />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

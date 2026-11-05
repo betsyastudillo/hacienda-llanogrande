@@ -8,7 +8,7 @@ import { getErrorMessage } from '../../../utils/getErrorMessage'
 import { useAuth } from '../../../context/AuthContext'
 import { formatCurrency } from '../../../utils/formatCurrency'
 import { formatQuantity } from '../../../utils/formatQuantity'
-import { formatDate } from '../../../utils/formatDate'
+import { formatDate, formatDateTime } from '../../../utils/formatDate'
 import PaymentCard from './PaymentCard'
 import InvoiceCard from './InvoiceCard'
 import TransportCard from './TransportCard'
@@ -113,6 +113,7 @@ export default function OrderDetail() {
   async function fetchDispatchGuide() {
     try {
       const res = await api.get(`/dispatch-guides/order/${orderId}`)
+
       setDispatchGuide(res.data)
     } catch {
       setDispatchGuide(null)
@@ -337,6 +338,8 @@ export default function OrderDetail() {
                   <p className="detail-empty-inline" style={{ textAlign: 'center', marginTop: 8 }}>
                     {dispatchGuide.status === 'used' ? 'Ya utilizada' : 'Escanear en portería'}
                   </p>
+                  {dispatchGuide.entered_at && <p className="detail-empty-inline">Ingreso a planta: {formatDateTime(dispatchGuide.entered_at)}</p>}
+                  {dispatchGuide.used_at && <p className="detail-empty-inline">Salida de planta: {formatDateTime(dispatchGuide.used_at)}</p>}
                 </>
               ) : (
                 <p className="detail-empty-inline">Aún no se ha generado la guía de despacho.</p>

@@ -7,16 +7,18 @@ import logo from '../../assets/llano_grande_logo_color.png'
 import './Login.css'
 
 export default function Login() {
+  const { login } = useAuth()
+  const navigate = useNavigate()
   const location = useLocation()
-  
+  const from = location.state?.from
+  const destination = from ? `${from.pathname}${from.search || ''}` : '/'
+
   const [documentId, setDocumentId] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(() => sessionStorage.getItem('session_message') || '')
   const [loading, setLoading] = useState(false)
-
-  const { login } = useAuth()
-  const navigate = useNavigate()
-
+  
+  
   useEffect(() => {
     sessionStorage.removeItem('session_message')
   }, [])
@@ -33,7 +35,7 @@ export default function Login() {
       })
 
       login(response.data.access_token)
-      navigate('/orders')
+      navigate(destination, { replace: true })
 
     } catch (err) {
       if (err.response && err.response.status === 401) {

@@ -87,7 +87,6 @@ export default function ProductInventory() {
       const res = await api.get(`/inventory/products/${productId}/kardex`, {
         params: { start_date: kardexStart, end_date: kardexEnd },
       })
-      console.log(res.data)
       setKardex(res.data)
     } catch (err) {
       fail(getErrorMessage(err, 'No se pudo consultar el kardex'))
@@ -236,7 +235,7 @@ export default function ProductInventory() {
               <KardexCard label="Saldo final" value={kardex.closing_balance} price={product.price} isFinal />
             </div>
             <p className="inventory-kardex-unit-note">
-              Hoy: separado {kardex.reserved_balance} {product.unit} · disponible {kardex.available_balance} {product.unit}
+              Hoy: separado {kardex.reserved_balance} {product.unit}(es) · disponible {kardex.available_balance} {product.unit}(es)
             </p>
           </>
         )}

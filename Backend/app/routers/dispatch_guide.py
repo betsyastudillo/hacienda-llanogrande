@@ -2,14 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
 from app.database import get_db
-from app.auth_dependencies import DispatchGuideCreator, DispatchGuideViewer, DispatchGuideViewerAny
+from app.auth_dependencies import DispatchGuideCreator, DispatchGuideViewer, DispatchGuideViewerAny, GuideVerifier
 from app.dependencies import require_role
 from app.models.user import User
 from app.schemas.dispatch_guide import DispatchGuideCreate, DispatchGuideResponse, VerificationResponse
 from app.services.order_service import get_order_by_id, can_access_order
 from app.constants.roles import CAN_MANAGE_FLEET, CAN_VIEW_DISPATCH_GUIDES
 from app.services.dispatch_guide_service import (
-    create_dispatch_guide, get_dispatch_guides, verify_dispatch_guide, get_dispatch_guide_by_order,
+    create_dispatch_guide, get_dispatch_guides, get_guide_for_verification, register_guide_entry, register_guide_exit, get_dispatch_guide_by_order,
 )
 
 router = APIRouter(prefix="/dispatch-guides", tags=["Dispatch Guides"])
@@ -59,11 +59,30 @@ def register_dispatch_guide(
     raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/verify/{token}", response_model=VerificationResponse, summary="Verifica una guía de despacho.")
-def verify_guide(token: str, db: Session = Depends(get_db), current_user=None):
+@router.get("/verify/{token}", response_model=VerificationResponse, summary="Consulta una guía (no cambia nada).")
+def verify_guide(token: str, current_user: GuideVerifier, db: Session = Depends(get_db)):
   try:
-    return verify_dispatch_guide(db, token, current_user=None)
+    return get_guide_for_verification(db, token)
   
   except ValueError as e:
     raise HTTPException(status_code=400, detail=str(e))
 
+
+@router.post("/verify/{token}/entry", response_model=VerificationResponse, summary="Registra el ingreso a la planta.")
+def guide_entry(token: str, current_user: GuideVerifier, db: Session = Depends(get_db)):
+  try:
+    return register_guide_entry(db, token, current_user)
+  
+  except ValueError as e:
+    db.rollback()
+    raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/verify/{token}/exit", response_model=VerificationResponse, summary="Registra la salida y descuenta el inventario.")
+def guide_exit(token: str, current_user: GuideVerifier, db: Session = Depends(get_db)):
+  try:
+    return register_guide_exit(db, token, current_user)
+  
+  except ValueError as e:
+    db.rollback()
+    raise HTTPException(status_code=400, detail=str(e))

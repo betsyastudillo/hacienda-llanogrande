@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     base_url: str = "http://localhost:8000"
+    frontend_url: str = "http://localhost:5173"
     payment_webhook_secret: str
 
     class Config:

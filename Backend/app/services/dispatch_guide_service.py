@@ -12,6 +12,7 @@ from app.models.assignment import Assignment
 from app.models.vehicle import Vehicle
 from app.models.carrier import Carrier
 from app.config import settings
+from app.models.vehicle_type import VehicleType
 from app.services.assignment_service import attach_transport_details
 from app.services.inventory_service import register_order_deduction
 
@@ -43,7 +44,8 @@ def generate_qr_image(order_id: UUID, token: str) -> str:
   os.makedirs(folder, exist_ok=True)
   file_path = os.path.join(folder, "qr.png")
 
-  verification_url = f"{settings.base_url}/dispatch-guides/verify/{token}"
+  #rstrip evita dobles barras por si dejan / al final
+  verification_url = f"{settings.frontend_url.rstrip('/')}/dispatch-guides/verify/{token}"
   
   # Con qrcode.make(...) el QR no cotiene los datos de despacho directamente, contiene la URL de verificación con el token para evitar falsificación de datos.
   img = qrcode.make(verification_url)
@@ -117,44 +119,28 @@ def create_dispatch_guide(db: Session, order_id: UUID, current_user) -> Dispatch
   return new_guide
 
 
-def verify_dispatch_guide(db: Session, token: str, current_user=None) -> dict:
-
+def _load_guide_context(db: Session, token: str):
   guide = db.query(DispatchGuide).filter(DispatchGuide.token == token).first()
-  
+
   if not guide:
     raise ValueError("Invalid token")
-  
-  # Validación para un solo uso
-  if guide.status == "used":
-    raise ValueError("This dispatch guide has already been used")
 
+  order = db.query(Order).filter(Order.id == guide.order_id).first()
   assignment = db.query(Assignment).filter(Assignment.order_id == guide.order_id).first()
 
   if not assignment:
     raise ValueError("No transport assignment found for this order")
-  
+
   vehicle = db.query(Vehicle).filter(Vehicle.id == assignment.vehicle_id).first()
   carrier = db.query(Carrier).filter(Carrier.id == assignment.carrier_id).first()
-
   detail = attach_transport_details(db, [assignment])[0]
 
-  if detail.blocked:
-    raise ValueError("El vehículo, su propietario o el transportador no están autorizados: ingreso bloqueado")
+  return guide, order, vehicle, carrier, detail
 
-  guide.status = "used"
-  guide.used_at = datetime.now(timezone.utc)
 
-  order = db.query(Order).filter(Order.id == guide.order_id).first()
-  order.status = "dispatched"
-
-  for item in order.items:
-    register_order_deduction(db, item.product, order.id, item.quantity_m3, current_user)
-    
-  if current_user:
-    guide.updated_by_user_id = current_user.id
-    order.updated_by_user_id = current_user.id
-
-  db.commit()
+def _build_verification(db: Session, guide, vehicle, carrier, detail) -> dict:
+  blocked = bool(detail.blocked)
+  vehicle_type = db.query(VehicleType).filter(VehicleType.code == vehicle.type).first()
 
   return {
     "order_id": guide.order_id,
@@ -165,6 +151,59 @@ def verify_dispatch_guide(db: Session, token: str, current_user=None) -> dict:
     "carrier_name": carrier.full_name,
     "carrier_document": carrier.document_id,
     "vehicle_plate": vehicle.plate,
-    "vehicle_type": vehicle.type,
+    "vehicle_type": vehicle_type.name if vehicle_type else vehicle.type,
+    "blocked": blocked,
+    "entered_at": guide.entered_at,
+    "used_at": guide.used_at,
+    # Solo se bloquea el ingreso: un vehículo vetado que ya está dentro debe poder salir
+    "can_enter": guide.status == "pending" and not blocked,
+    "can_exit": guide.status == "in_plant",
   }
 
+
+# Solo consulta: no cambia nada
+def get_guide_for_verification(db: Session, token: str) -> dict:
+  guide, order, vehicle, carrier, detail = _load_guide_context(db, token)
+  return _build_verification(db, guide, vehicle, carrier, detail)
+
+
+def register_guide_entry(db: Session, token: str, current_user) -> dict:
+  guide, order, vehicle, carrier, detail = _load_guide_context(db, token)
+
+  if guide.status != "pending":
+    raise ValueError(f"Esta guía no está pendiente de ingreso (estado actual: {guide.status})")
+
+  if detail.blocked:
+    raise ValueError("El vehículo, su propietario o el transportador no están autorizados: ingreso bloqueado")
+
+  guide.status = "in_plant"
+  guide.entered_at = datetime.now(timezone.utc)
+  guide.updated_by_user_id = current_user.id
+
+  db.commit()
+
+  return _build_verification(db, guide, vehicle, carrier, detail)
+
+
+def register_guide_exit(db: Session, token: str, current_user) -> dict:
+  guide, order, vehicle, carrier, detail = _load_guide_context(db, token)
+
+  if guide.status == "used":
+    raise ValueError("Esta guía ya fue utilizada")
+
+  if guide.status != "in_plant":
+    raise ValueError("La guía no registra ingreso a la planta")
+
+  guide.status = "used"
+  guide.used_at = datetime.now(timezone.utc)
+  guide.updated_by_user_id = current_user.id
+
+  order.status = "dispatched"
+  order.updated_by_user_id = current_user.id
+
+  for item in order.items:
+    register_order_deduction(db, item.product, order.id, item.quantity_m3, current_user)
+
+  db.commit()
+
+  return _build_verification(db, guide, vehicle, carrier, detail)

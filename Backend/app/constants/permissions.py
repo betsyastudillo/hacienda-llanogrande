@@ -54,6 +54,9 @@ ROLES_PERMISSIONS = {
     "payment:crear_propio", "payment:subir_comprobante",
     "invoice:ver_propio"
   },
+  "porteria": {
+    "dispatch_guide:verificar",
+  }
 }
 
 

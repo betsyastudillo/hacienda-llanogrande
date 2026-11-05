@@ -1,3 +1,5 @@
+const APP_TIME_ZONE = 'America/Bogota'
+
 const MONTHS_SHORT = [
   'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
   'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
@@ -31,4 +33,19 @@ export const daysUntil = (iso) => {
   const [y, m, d] = iso.split('-').map(Number)
   const [ty, tm, td] = todayISO().split('-').map(Number)
   return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(ty, tm - 1, td)) / 86400000)
+}
+
+// Fecha y hora en hora de Colombia, ej: 05/11/2026, 11:49 a. m.
+export const formatDateTime = (value) => {
+  if (!value) return '—'
+
+  return new Intl.DateTimeFormat('es-CO', {
+    timeZone: APP_TIME_ZONE,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  }).format(new Date(value))
 }

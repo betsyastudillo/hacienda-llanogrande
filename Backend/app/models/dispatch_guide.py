@@ -15,4 +15,5 @@ class DispatchGuide(Base, AuditMixin):
   destination = Column(String, nullable=False)
   cargo_detail = Column(String, nullable=False)
   qr_image_url = Column(String, nullable=True)
+  entered_at = Column(DateTime(timezone=True), nullable=True)
   used_at = Column(DateTime(timezone=True), nullable=True)

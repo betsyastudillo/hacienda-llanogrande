@@ -81,3 +81,6 @@ StockViewerAny = Annotated[User, Depends(require_any_permission("inventory:ver",
 
 # Invoice
 InvoiceViewerAny = Annotated[User, Depends(require_any_permission("invoice:ver", "invoice:ver_propio"))]
+
+# Verificar guía de despacho (portería)
+GuideVerifier = Annotated[User, Depends(require_permission("dispatch_guide:verificar"))]
