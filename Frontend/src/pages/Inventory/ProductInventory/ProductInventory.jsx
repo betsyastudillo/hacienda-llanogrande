@@ -87,7 +87,7 @@ export default function ProductInventory() {
       const res = await api.get(`/inventory/products/${productId}/kardex`, {
         params: { start_date: kardexStart, end_date: kardexEnd },
       })
-
+      console.log(res.data)
       setKardex(res.data)
     } catch (err) {
       fail(getErrorMessage(err, 'No se pudo consultar el kardex'))
@@ -162,6 +162,18 @@ export default function ProductInventory() {
         ← Volver a inventario
       </button>
       <div className='inventory-header-block'>
+        {canManage && (
+          <div className='inventory-header-actions'>
+            <button
+              type="button"
+              className="inventory-list-create-btn"
+              onClick={() => setShowModal(true)}
+            >
+              <CirclePlus size={18} />
+              Nuevo movimiento
+            </button>
+          </div>
+        )}
         <div className='inventory-title-center'>
           <h1 className="inventory-title">{product.name}</h1>
           {/* <p className="inventory-subtitle"> */}
@@ -178,18 +190,6 @@ export default function ProductInventory() {
           </p>
         )}
 
-        {canManage && (
-          <div className='inventory-header-actions'>
-            <button
-              type="button"
-              className="inventory-list-create-btn"
-              onClick={() => setShowModal(true)}
-            >
-              <CirclePlus size={18} />
-              Nuevo movimiento
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="inventory-history-card">

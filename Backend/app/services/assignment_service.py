@@ -145,7 +145,7 @@ def get_assignment_by_order(db: Session, order_id: UUID) -> Optional[Assignment]
 # Trae una asignación por id de orden, con vehículo, transportador y documentos
 def get_assignment_detail_by_order(db: Session, order_id: UUID) -> Optional[Assignment]:
   assignment = get_assignment_by_order(db, order_id)
-
+  print(assignment)
   if not assignment:
     return None
 
@@ -177,12 +177,6 @@ def _validate_submission(db: Session, vehicle_data, carrier_data) -> None:
   if vehicle_data.type not in active_vehicle_type_codes(db):
     raise ValueError("Tipo de vehículo no válido")
 
-  if vehicle_data.capacity_m3 <= 0:
-    raise ValueError("La capacidad del vehículo debe ser mayor a 0.")
-  
-  if vehicle_data.capacity_m3 > 9999:
-    raise ValueError("La capacidad del vehículo no es válida (máximo 9999 m³)")
-
   if not vehicle_data.owner_name.strip() or not vehicle_data.owner_document_id.strip():
     raise ValueError("El nombre y número de documento del propietario del vehículo son obligatorios.")
 
@@ -209,7 +203,6 @@ def _find_or_create_vehicle(db: Session, data, current_user) -> Vehicle:
 
   fields = {
     "type": data.type,
-    "capacity_m3": data.capacity_m3,
     "owner_name": data.owner_name.strip(),
     "owner_document_type": data.owner_document_type,
     "owner_document_id": data.owner_document_id.strip(),
@@ -219,9 +212,6 @@ def _find_or_create_vehicle(db: Session, data, current_user) -> Vehicle:
   vehicle = db.query(Vehicle).filter(Vehicle.plate == plate).first()
 
   if vehicle:
-    if not vehicle.is_active:
-      raise ValueError("Este vehículo está inactivo y no se puede usar.")
-        
     owner_changed = (
       (vehicle.owner_document_type, vehicle.owner_document_id)
       != (fields["owner_document_type"], fields["owner_document_id"])
@@ -290,11 +280,13 @@ def _find_or_create_carrier(db: Session, data, current_user) -> Carrier:
 # Se crea la asignación
 def create_assignment(db: Session, data, current_user) -> Assignment:
   order = db.query(Order).filter(Order.id == data.order_id).first()
-
-  if not order:
+  print(order)
+  if not order: 
+    print("Order not found")
     raise ValueError("Order not found")
 
   if not can_access_order(order, current_user):
+    print("User cannot access order")
     raise ValueError("Order not found")
 
   if order.status != "facturado":
@@ -303,7 +295,7 @@ def create_assignment(db: Session, data, current_user) -> Assignment:
     )
 
   existing = get_assignment_by_order(db, data.order_id)
-
+  print(existing)
   if existing:
     raise ValueError(
       "Este pedido ya tiene un transporte enviado. Si fue rechazado, corrígelo y reenvíalo."
@@ -314,7 +306,7 @@ def create_assignment(db: Session, data, current_user) -> Assignment:
 
   vehicle = _find_or_create_vehicle(db, data.vehicle, current_user)
   carrier = _find_or_create_carrier(db, data.carrier, current_user)
-
+  print(vehicle, carrier)
   new_assignment = Assignment(
     order_id=data.order_id,
     vehicle_id=vehicle.id,
@@ -642,7 +634,6 @@ def validate_assignment(
 
     if blacklist_vehicle:
       _blacklist(db, PLATE_BLACKLIST_TYPE, vehicle.plate, ban_reason, current_user)
-      vehicle.is_active = False
       vehicle.updated_by_user_id = current_user.id
 
     if blacklist_owner and vehicle.owner_document_id:
@@ -764,7 +755,6 @@ def complete_post_review(
 
   if blacklist_vehicle:
     _blacklist(db, PLATE_BLACKLIST_TYPE, detail.vehicle.plate, ban_reason, current_user)
-    detail.vehicle.is_active = False
 
   if blacklist_owner and detail.vehicle.owner_document_id:
     _blacklist(db, detail.vehicle.owner_document_type, detail.vehicle.owner_document_id, ban_reason, current_user)
@@ -868,10 +858,6 @@ def lookup_vehicle(db: Session, plate: str, current_user) -> Optional[Vehicle]:
   
   if not vehicle:
     return {"status": "not_found"}
-
-  # Un vehículo inactivo tampoco se puede usar: el envío lo rechazaría
-  if not vehicle.is_active:
-    return {"status": "blocked", "subject": "vehicle"}
 
   # Un cliente solo recibe datos de lo que su propia empresa ya usó
   if current_user.role in CLIENT_ROLES and not _used_by_company(db, current_user.company_id, vehicle_id=vehicle.id):

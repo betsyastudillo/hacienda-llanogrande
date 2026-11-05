@@ -83,8 +83,9 @@ def register_assignment(
   db: Session = Depends(get_db),
 ):
   try:
-    return create_assignment(db, data, current_user)
-
+    r = create_assignment(db, data, current_user)
+    print("Assignment created:", r)
+    return r
   except ValueError as e:
     db.rollback()
     raise HTTPException(status_code=_error_status(e), detail=str(e))

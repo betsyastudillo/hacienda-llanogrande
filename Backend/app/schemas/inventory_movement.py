@@ -45,3 +45,5 @@ class KardexResponse(BaseModel):
   adjustments_damage: int   # pérdidas por daño (negativo)
   adjustments_other: int    # otros ajustes (+/-)
   closing_balance: int
+  reserved_balance: int
+  available_balance: int

@@ -8,7 +8,7 @@ from app.schemas.vehicle import VehicleCreate, VehicleResponse
 from app.services.document_service import create_document, get_documents_by_vehicle
 from app.services.vehicle_service import (
   create_vehicle, get_vehicles, get_vehicle_by_id,
-  edit_vehicle, deactivate_vehicle,
+  edit_vehicle, 
 )
 
 
@@ -25,26 +25,29 @@ def list_vehicles(
 
 @router.get("/{vehicle_id}", response_model=VehicleResponse, summary="Trae un vehículo autorizado para la recolección de productos.")
 def get_a_vehicle(
-    vehicle_id: UUID, 
-    current_user: VehicleViewer,
-    db: Session = Depends(get_db),
+  vehicle_id: UUID, 
+  current_user: VehicleViewer,
+  db: Session = Depends(get_db),
 ):
-    vehicle = get_vehicle_by_id(db, vehicle_id)
-    if not vehicle:
-        raise HTTPException(status_code=404, detail="Vehicle not found")
-    return vehicle
+  vehicle = get_vehicle_by_id(db, vehicle_id)
+  
+  if not vehicle:
+    raise HTTPException(status_code=404, detail="Vehicle not found")
+  
+  return vehicle
 
 
 @router.post("/", response_model=VehicleResponse, summary="Crea un nuevo vehículo. Para guardar registro de los vehículos autorizados para ingresar a la planta.")
 def create_new_vehicle(
-    vehicle: VehicleCreate, 
-    current_user: VehicleManager,
-    db: Session = Depends(get_db),
+  vehicle: VehicleCreate, 
+  current_user: VehicleManager,
+  db: Session = Depends(get_db),
 ):
-    try:
-        return create_vehicle(db, vehicle)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+  try:
+    return create_vehicle(db, vehicle)
+  
+  except ValueError as e:
+    raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/{vehicle_id}/documents", response_model=DocumentBase, summary="Sube los documentos del vehículo autorizado para ingresar.")
@@ -85,17 +88,3 @@ def update_vehicle(
         raise HTTPException(status_code=404, detail="Vehicle not found")
     
     return vehicle
-
-
-@router.delete("/{vehicle_id}", summary="Desactiva un vehículo.")
-def remove_vehicle(
-    vehicle_id: UUID, 
-    current_user: VehicleManager,
-    db: Session = Depends(get_db),
-):
-    vehicle = deactivate_vehicle(db, vehicle_id)
-    
-    if not vehicle:
-        raise HTTPException(status_code=404, detail="Vehicle not found")
-    
-    return {"detail": "Vehicle deactivated"}

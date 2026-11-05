@@ -21,7 +21,6 @@ import {
 import TransportDocuments from './TransportDocuments'
 
 const EMPTY_FORM = {
-  plate: '', type: '', capacity_m3: '',
   owner_name: '', owner_document_type: 'CC', owner_document_id: '', owner_phone: '',
   full_name: '', document_type: 'CC', document_id: '', phone: '', address: '',
 }
@@ -145,7 +144,6 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       setForm({
         plate: v.plate,
         type: v.type,
-        capacity_m3: String(v.capacity_m3),
         owner_name: v.owner_name || '',
         owner_document_type: v.owner_document_type || 'CC',
         owner_document_id: v.owner_document_id || '',
@@ -219,7 +217,6 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       setForm((f) => ({
         ...f,
         type: v.type,
-        capacity_m3: String(v.capacity_m3),
         owner_name: v.owner_name || '',
         owner_document_type: v.owner_document_type || 'CC',
         owner_document_id: v.owner_document_id || '',
@@ -271,9 +268,6 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
     const isCorrection = canCorrect // logistica o admin corrigiendo
 
-    if (!form.plate.trim() || !form.type || !(Number(form.capacity_m3) > 0))
-      return setFormError('Completa la placa, el tipo y la capacidad del vehículo.')
-
     if (!owner.name.trim() || !owner.id.trim())
       return setFormError('Completa los datos del dueño del vehículo.')
 
@@ -294,7 +288,6 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
         vehicle: {
           plate: form.plate.trim(),
           type: form.type,
-          capacity_m3: Number(form.capacity_m3),
           owner_name: owner.name.trim(),
           owner_document_type: owner.type,
           owner_document_id: owner.id.trim(),
@@ -693,10 +686,6 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                 <span>Tipo</span>
                 <span>{vehicleTypeLabel(assignment.vehicle.type)}</span>
               </div>
-              <div className="detail-info-row">
-                <span>Capacidad</span>
-                <span>{formatCapacity(assignment.vehicle.capacity_m3)} m³</span>
-              </div>
   
               {sameOwner ? (
                 <>
@@ -862,10 +851,6 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                 realizar el transporte. Si tienes dudas, comunícate con Logística.
               </p>
             )}
-      
-            <label className="edit-field">Capacidad (m³)
-              <input type="number" min="0" value={form.capacity_m3} onChange={set('capacity_m3')} />
-            </label>
       
             <p className="edit-section">Dueño del vehículo</p>
             <label style={{ display: 'flex', gap: 8, fontSize: 13 }}>

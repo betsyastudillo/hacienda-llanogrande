@@ -12,7 +12,6 @@ from app.schemas.document import DocumentBase
 class VehicleSubmission(BaseModel):
   plate: str
   type: str
-  capacity_m3: Decimal
   owner_name: str
   owner_document_type: str
   owner_document_id: str
