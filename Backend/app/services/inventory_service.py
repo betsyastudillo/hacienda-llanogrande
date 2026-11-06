@@ -21,6 +21,7 @@ NON_RESERVING_ORDER_STATUSES = ("cancelled", "dispatched")
 
 # Unidades del producto base que siguen separadas: lo pedido menos lo que ya salió por portería
 def get_reserved_stock(db: Session, stock_target_id: UUID) -> int:
+  """Unidades del producto base ya vendidas y aún no sacadas por portería (pedido no anulado ni despachado)."""
   target_id = func.coalesce(Product.parent_product_id, Product.id)
   pack = func.coalesce(Product.units_per_pack, 1)
 
@@ -54,10 +55,12 @@ def get_reserved_stock(db: Session, stock_target_id: UUID) -> int:
 
 # Lo que hay en la planta menos lo que ya está separado
 def get_available_stock(db: Session, stock_target_id: UUID) -> Decimal:
+  """Físico menos reservado."""
   return get_current_stock(db, stock_target_id) - get_reserved_stock(db, stock_target_id)
 
 
 def get_sellable_stock(db: Session, product: Product) -> int:
+  """Cantidad que se puede vender de un producto; para un paquete, el disponible dividido por unidades por paquete (hacia abajo)."""
   stock_target = resolve_stock_target(product)
   base_available = get_available_stock(db, stock_target.id)
 
@@ -69,6 +72,7 @@ def get_sellable_stock(db: Session, product: Product) -> int:
 
 # Trae el inventario
 def get_current_stock(db: Session, product_id: UUID) -> Decimal:
+  """Inventario físico: entradas - salidas + ajustes del producto base."""
   def total_for(movement_type: str) -> Decimal:
     result = (
       # coalesce: función de SQL que dice: si este valor es NULL, usa este otro valor en su lugar.
@@ -84,12 +88,14 @@ def get_current_stock(db: Session, product_id: UUID) -> Decimal:
 
 # Si el producto es un paquete, devuelve su producto base donde realmente vive el inventario, si no, se devuelve a si mismo 
 def resolve_stock_target(product: Product) -> Product:
+  """Devuelve el producto base donde vive el inventario (el padre si es paquete)."""
   return product.parent_product if product.parent_product_id else product
 
 
 # Convierte los paquetes/unidades que pide el cliente a las und a descontar del inventario del producto base.
 def get_deduction_quantity(product: Product, quantity_ordered: int) -> int:
 
+  """Convierte paquetes a unidades del producto base. Error si el resultado no es entero."""
   if product.parent_product_id:
     raw = Decimal(quantity_ordered) * product.units_per_pack
     
@@ -105,6 +111,7 @@ def get_deduction_quantity(product: Product, quantity_ordered: int) -> int:
 
 # Trae los movimientos que ha tenido un producto
 def get_movements_by_product(db: Session, product_id: UUID) -> List[InventoryMovement]:
+  """Movimientos de un producto, del más reciente al más antiguo."""
   return (
     db.query(InventoryMovement)
     .filter(InventoryMovement.product_id == product_id)
@@ -118,6 +125,7 @@ def create_manual_movement(
   db: Session, product_id: UUID, movement_type: str, quantity: int, reason: Optional[str], category: Optional[str], current_user
 ) -> InventoryMovement:
 
+  """Registra una entrada o un ajuste manual. Rechaza paquetes; un ajuste por daño siempre resta. Hace commit."""
   product = db.query(Product).filter(Product.id == product_id).first()
   
   if not product:
@@ -161,6 +169,7 @@ def create_manual_movement(
 # CCortes de fecha del periodo (hora en Colombia)
 def _period_bounds(start_date: date, end_date: date):
   # Los cortes de día se calculan en hora de Colombia, no en UTC
+  """Convierte fechas de inicio y fin en cortes de día en hora de Colombia (fin exclusivo)."""
   start_dt = datetime.combine(start_date, time.min, tzinfo=LOCAL_TZ)
   end_dt = datetime.combine(end_date + timedelta(days=1), time.min, tzinfo=LOCAL_TZ)
 
@@ -169,6 +178,7 @@ def _period_bounds(start_date: date, end_date: date):
 
 def _sum_movements(db, product_id, movement_type, start_dt=None, end_dt=None, only_damage=None, order_linked=None) -> int:
 
+  """Suma movimientos de un tipo con filtros opcionales de periodo, daño y vínculo con pedido."""
   query = db.query(func.coalesce(func.sum(InventoryMovement.quantity), 0)).filter(
     InventoryMovement.product_id == product_id,
     InventoryMovement.movement_type == movement_type,
@@ -197,6 +207,7 @@ def _sum_movements(db, product_id, movement_type, start_dt=None, end_dt=None, on
 
 def _get_kardex(db: Session, product_id: UUID, start_date: date, end_date: date) -> dict:
   
+  """Kardex de un periodo: saldo inicial, entradas, salidas, ajustes, saldo final, reservado y disponible."""
   product = db.query(Product).filter(Product.id == product_id).first()
   reserved = get_reserved_stock(db, product_id)
 
@@ -241,6 +252,7 @@ def _get_kardex(db: Session, product_id: UUID, start_date: date, end_date: date)
 # Registra la salida de inventario por pedido, resuelve automáticamente que si el product es un paquete lo descuenta del producto base. Se guarda junto a la transacción de create_order, por lo tanto, no hace commit
 def register_order_deduction(db: Session, product: Product, order_id: UUID, quantity_ordered: int, current_user) -> InventoryMovement:
 
+  """Agrega un movimiento de salida (sobre el producto base). No hace commit: lo guarda la transacción de la salida de portería."""
   stock_target = resolve_stock_target(product)
   deduction_qty = get_deduction_quantity(product, quantity_ordered)
 

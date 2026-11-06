@@ -1,51 +1,80 @@
 # Frontend — Hacienda Llanogrande
 
-Documentación técnica del frontend. Para instrucciones de instalación y variables de entorno, ver el `README.md` de la raíz del repositorio.
+Documentación técnica del frontend. Para instalar y arrancar, ver el [README raíz](../../README.md).
+Para entender el negocio, empieza por [docs/02-flujo-del-pedido.md](../../docs/02-flujo-del-pedido.md).
+
+## Índice de esta carpeta
+
+| Archivo | Contenido |
+|---|---|
+| [pantallas-y-rutas.md](pantallas-y-rutas.md) | Todas las rutas, qué pantalla es cada una, qué endpoints usa y cómo funciona la sesión |
+| [detalle-del-pedido.md](detalle-del-pedido.md) | `OrderDetail` y sus tarjetas (`PaymentCard`, `InvoiceCard`, `TransportCard`), portería (`ScanGuide`, `VerifyGuide`), `OrderNew`, `Orders` |
+| [components.md](components.md) | Componentes reutilizables (`Modal`, `StatusBadge`, …) |
+| [constants.md](constants.md) | Listas y mapas de estados/colores |
+| [context.md](context.md) | `AuthContext` y `ProtectedRoute` |
+| [pages/](pages/) | Notas por módulo: companies, inventory, login, magic-link, orders, products |
 
 ## Stack
 
-- React (Vite)
-- react-router-dom — enrutamiento
-- axios — cliente HTTP
-- react-bootstrap — algunos componentes de formulario
+- React 19 + Vite 8 (`npm run dev`, `npm run build`, `npm run lint`)
+- react-router-dom 7 — enrutamiento
+- axios — cliente HTTP (`src/services/api.js`)
+- react-bootstrap + bootstrap — algunos componentes de formulario
 - lucide-react — íconos
+- html5-qrcode — lectura del QR con la cámara (portería)
+- jwt-decode — lectura del vencimiento del token
 
-## Estructura de carpetas
+## Estructura de carpetas (real)
 
 ```
 src/
-  components/     Piezas reutilizables, sin lógica de negocio propia (ver components.md)
-  constants/       Listas y mapas compartidos: estados, roles, unidades (ver constants.md)
-  context/         Estado global de sesión (ver context.md)
-  pages/            Pantallas, organizadas por dominio:
-    Login/
-    LinkLogin/              (pantalla de aterrizaje del magic link — ver pages/magic-link.md)
-    Orders/
-      OrderNew/
-      OrderDetail/
-    Products/
-      ProductForm/
-      Inventory/              (listado general de inventario)
-        ProductInventory/     (detalle de inventario de un producto — anidado dentro de Inventory)
-    Companies/
-      CompanyNew/            (formulario de crear empresa, 2 pasos — ver pages/companies.md)
-  services/         Cliente de API (api.js)
-  utils/            Funciones puras reutilizables (ej. formatDate.js)
+  main.jsx · App.jsx        Arranque y rutas
+  components/               Piezas reutilizables (ver components.md)
+    Layout/ Header/ Sidebar/ SessionGuard/ ScrollToTop/        Armazón de la app
+    Modal/ ConfirmModal/ FilePreviewModal/ CollapsibleCard/    Diálogos y contenedores
+    StatusBadge/ StatusIconBadge/ StatusHelpPopover/           Estados
+    SearchInput/ ComplianceTable/ UnitReferenceHelper/         Formularios y tablas de ayuda
+    ProtectedRoute.jsx · HomeRedirect.jsx                      Control de rutas
+  constants/                Mapas de estados, colores, menú, listas (colombia.js lo genera Backend/scripts/build_colombia.py)
+  context/                  AuthContext (sesión/permisos) y Toast/ToastContext (avisos)
+  hooks/useVehicleTypes.js  Tipos de vehículo activos con etiqueta
+  pages/                    Una carpeta por módulo (ver pantallas-y-rutas.md)
+    Login/ LinkLogin/ Orders/ Products/ Companies/ Inventory/ BankAccounts/ VehicleTypes/ DispatchGuides/
+  services/api.js           axios + token + manejo de sesión vencida
+  utils/                    Funciones puras: formatCurrency, formatDate, formatQuantity, validators, getErrorMessage, jwt, …
 ```
 
-Nota: el listado de inventario y el detalle de inventario por producto viven anidados dentro de `pages/Products/`, no como módulo independiente — reflejando que, aunque el inventario tiene su propia ruta (`/inventory`) y su propio link en el sidebar, conceptualmente es una vista sobre los productos.
+> ℹ️ Una versión anterior de este archivo decía que `Inventory/` vivía dentro de `pages/Products/`. **Es independiente**:
+> `pages/Inventory/` y `pages/Inventory/ProductInventory/`.
 
 ## Convenciones
 
-- **Un archivo `.css` por componente/página**, mismo nombre, misma carpeta.
-- **Colores como variables CSS**, definidas en `index.css` (`--surface-page`, `--action`, `--action-strong`, `--text`, `--text-muted`, `--border`, `--white`, `--error-text`, `--error-bg`, etc). Solo en casos demasiado específicos se dejaron colores sueltos en hexadecimal dentro de un componente, como el caso de ProductInventory, que maneja colores para los valores distintos a las variables por diseño.
-- **Nombres de rutas en `App.jsx` siempre absolutos** (`/orders/new`, nunca `new`), porque el grupo de rutas protegidas no tiene un `path` propio — ver nota en `context.md`.
-- **La visibilidad de botones/secciones según rol se decide con `hasPermission('recurso:accion')`**, nunca comparando `user.role` directamente contra un string. El backend es la única fuente de verdad de qué puede hacer cada rol; el frontend solo pregunta.
-- **La URL del backend se resuelve sola**, en `services/api.js`, usando `window.location.hostname` — así el mismo build funciona en `localhost` y en la IP de red local (para pruebas desde el teléfono) sin tocar código.
+- **Un `.css` por componente/página**, mismo nombre y carpeta.
+- **Colores como variables CSS** en `index.css` (`--surface-page`, `--action`, `--text`, `--border`, `--error-text`, …). Hay pocas excepciones en hexadecimal (p. ej. `ProductInventory`, `constants/*Status.js`).
+- **Rutas absolutas en `App.jsx`** (`/orders/new`). (Excepción actual: `banks-accounts` sin "/" inicial.)
+- **Permisos con `hasPermission('recurso:accion')`**, nunca comparando `user.role`. El backend es la fuente de verdad; esto es solo cosmético.
+- **Avisos:** `const { showToast } = useToast()` → `showToast(mensaje, 'success' | 'error', duracionMs)`. Todo resultado de una acción y todo error de un botón va como toast; los errores de validación de campo pueden ir junto al formulario.
+- **Modales:** `Modal` con render condicional (`{open && <Modal …/>}`); `ConfirmModal` se monta solo cuando se necesita.
+- **Vista previa de archivos:** `FilePreviewModal` con `fileUrl` (público) o `apiPath` (exige sesión; es lo que se usa para archivos sensibles).
+- **Estados con badge:** `StatusBadge` + un mapa en `constants/*Status.js`.
+- **Tarjetas del detalle de pedido:** `PaymentCard` e `InvoiceCard` son la plantilla (reciben `order`, el dato y `onChanged`); reutiliza las clases `pay-*` y `detail-*` de `OrderDetail.css`.
+- **No usar `crypto.randomUUID()`:** la app se abre por IP desde el celular (contexto no seguro, no existe). Usa un contador o `Date.now()`.
+- **La URL del backend** se arma en `services/api.js` con `window.location.hostname` + `:8000`. `VITE_API_BASE_URL` (en `.env`) hoy **no se usa**.
+- **Mensajes de error del backend:** `getErrorMessage(err, 'texto por defecto')` extrae el `detail`.
 
-## Patrón de pantallas con listado + formulario
+## Patrón de pantalla con listado + formulario
 
-La mayoría de módulos (Orders, Products, Companies) siguen el mismo patrón:
-- Un listado (`Xxx.jsx`) con buscador y, si aplica, botón "Nuevo".
-- Un formulario de creación (`XxxNew.jsx` o `XxxForm.jsx` si también sirve para editar).
-- Cuando el formulario es corto y no necesita su propia URL, se usa el componente `Modal` en vez de una pantalla nueva (ver ejemplo en Inventario).
+Orders, Products y Companies siguen el mismo patrón:
+- Listado (`Xxx.jsx`) con buscador y botón "Nuevo" según permiso.
+- Formulario de creación (`XxxNew.jsx`, o `XxxForm.jsx` si también edita).
+- Si el formulario es corto y no necesita URL propia, se usa `Modal` (ver Inventario, BankAccounts, VehicleTypes).
+
+## Cómo agregar una pantalla (receta)
+
+1. Crea `src/pages/MiModulo/MiModulo.jsx` y su `.css`.
+2. Agrega la ruta **absoluta** en `App.jsx` dentro del grupo protegido.
+3. Agrega la entrada en `constants/menu.js` con el `permission` que corresponda.
+4. Carga datos con `api.get(...)` en un `useEffect`; maneja `loading` y `error`.
+5. Oculta botones con `hasPermission(...)`; los resultados con `showToast(...)`.
+6. Valida con `utils/validators.js` (las mismas reglas que el backend: teléfono 7–15 dígitos, dirección ≥ 8 caracteres…).
+7. Documenta la pantalla en [pantallas-y-rutas.md](pantallas-y-rutas.md).

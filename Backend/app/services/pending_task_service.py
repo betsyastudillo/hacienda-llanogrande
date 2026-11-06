@@ -5,6 +5,7 @@ from app.schemas.pending_task import PendingTask
 
 
 def get_pending_tasks(db: Session) -> List[PendingTask]:
+  """Tareas pendientes del administrador (hoy: empresas por aprobar), de la más antigua a la más reciente."""
   tasks = []
 
   pending_companies = db.query(Company).filter(Company.verification_status == "pending").all()

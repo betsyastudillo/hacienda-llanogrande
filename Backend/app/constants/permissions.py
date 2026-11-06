@@ -62,4 +62,5 @@ ROLES_PERMISSIONS = {
 
 # Obtiene los permisos de acuerdo al rol asignado
 def get_permissions_for_role(role: str) -> list[str]:
+  """Devuelve la lista ordenada de permisos de un rol (la usa GET /users/me para el frontend)."""
   return sorted(ROLES_PERMISSIONS.get(role, set()))

@@ -20,6 +20,7 @@ class SimulatedProvider:
   name = "simulado"
 
   def emit(self, order, invoice) -> ProviderResult:
+    """Simula la emisión de la factura: genera valores con prefijo PRUEBA (sin validez fiscal)."""
     now = datetime.now(timezone.utc)
     number = f"{order.order_number}"
     raw = f"{number}|{invoice.total}|{now.isoformat()}".encode()
@@ -33,4 +34,5 @@ class SimulatedProvider:
 
 # Al integrar: crear FacturatechProvider con el mismo método emit() y devolverlo aquí
 def get_provider():
+  """Devuelve el proveedor de facturación en uso (hoy el simulado). Único punto a cambiar al integrar uno real."""
   return SimulatedProvider()

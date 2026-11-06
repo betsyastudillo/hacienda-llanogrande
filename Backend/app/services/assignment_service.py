@@ -54,6 +54,7 @@ CORRECTABLE_ORDER_STATUSES = ("facturado", "transport_validated", "dispatch_guid
 # Son atributos temporales (no columnas), igual que needs_action en los pedidos.
 def attach_transport_details(db: Session, assignments: List[Assignment]) -> List[Assignment]:
   
+  """Adjunta a cada retiro atributos temporales: vehicle, carrier, dispatch_guide, documents, missing_documents, blocked, checks y required_checks."""
   if not assignments:
     return assignments
 
@@ -141,11 +142,13 @@ def attach_transport_details(db: Session, assignments: List[Assignment]) -> List
 
 # Lista las asignaciones.
 def get_assignments(db: Session) -> List[Assignment]:
+  """Lista todos los retiros con su detalle de transporte."""
   return attach_transport_details(db, db.query(Assignment).all())
 
 
 # Retiros de un pedido, en orden, con vehículo, transportador, documentos y guía
 def get_assignments_by_order(db: Session, order_id: UUID) -> List[Assignment]:
+  """Retiros de un pedido, en orden, con vehículo, transportador, documentos y guía."""
   assignments = (
     db.query(Assignment)
     .filter(Assignment.order_id == order_id)
@@ -158,6 +161,7 @@ def get_assignments_by_order(db: Session, order_id: UUID) -> List[Assignment]:
 
 # Un cliente solo accede a retiros de sus pedidos: si no, responde "Order not found" (404) sin revelar que existe
 def get_accessible_assignment(db: Session, assignment_id: UUID, current_user):
+  """Devuelve (retiro, pedido) si el usuario puede ver el pedido; si no, ValueError('Order not found') para responder 404."""
   assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
 
   if not assignment:
@@ -173,6 +177,7 @@ def get_accessible_assignment(db: Session, assignment_id: UUID, current_user):
 
 # Un retiro anulado, despachado o de un pedido que ya no está en retiros no se puede cambiar
 def _ensure_assignment_open(db: Session, assignment: Assignment, order: Order):
+  """Verifica que el retiro se pueda modificar (no anulado, pedido en fase de retiros, guía no usada) y devuelve su guía."""
   if assignment.cancelled_at:
     raise ValueError("Este retiro fue anulado")
 
@@ -189,6 +194,7 @@ def _ensure_assignment_open(db: Session, assignment: Assignment, order: Order):
 
 # Valida las cantidades de un retiro contra lo que todavía se puede programar de cada producto
 def _validate_withdrawal_items(db: Session, order: Order, items_data) -> list:
+  """Valida las cantidades del retiro contra lo que aún se puede programar de cada producto."""
   if not items_data:
     raise ValueError("Indica las cantidades que se llevará este retiro")
 
@@ -221,6 +227,7 @@ def _validate_withdrawal_items(db: Session, order: Order, items_data) -> list:
 # es información interna que el cliente no debe ver.
 def _ensure_not_blacklisted(db: Session, vehicle_data, carrier_data) -> None:
   
+  """Rechaza placa, transportador o dueño vetados, sin revelar el motivo del veto."""
   if is_document_blacklisted(db, PLATE_BLACKLIST_TYPE, normalize_plate(vehicle_data.plate)):
     raise ValueError("Este vehículo no está autorizado para ingresar a la planta. Si tienes dudas, comunícate con el área de Logística.")
 
@@ -233,6 +240,7 @@ def _ensure_not_blacklisted(db: Session, vehicle_data, carrier_data) -> None:
 
 def _validate_submission(db: Session, vehicle_data, carrier_data) -> None:
   
+  """Valida formato de placa, tipo de vehículo activo, datos del dueño y del transportador."""
   if not PLATE_RE.fullmatch(normalize_plate(vehicle_data.plate)):
     raise ValueError("La placa debe tener 5 o 6 letras y números.")
 
@@ -264,6 +272,7 @@ def _validate_submission(db: Session, vehicle_data, carrier_data) -> None:
 # Se reutiliza entre pedidos por placa)
 def _find_or_create_vehicle(db: Session, data, current_user) -> Vehicle:
   
+  """Reutiliza el vehículo por placa (actualizando datos) o lo crea. Si cambia el dueño, el documento del dueño anterior se rechaza."""
   plate = normalize_plate(data.plate)
 
   fields = {
@@ -307,6 +316,7 @@ def _find_or_create_vehicle(db: Session, data, current_user) -> Vehicle:
 
 # Se reutiliza entre pedidos por tipo y número de documento).
 def _find_or_create_carrier(db: Session, data, current_user) -> Carrier:
+  """Reutiliza el transportador por documento (actualizando datos) o lo crea. Un transportador inactivo no se puede usar."""
   document_id = data.document_id.strip()
   fields = {
     "full_name": data.full_name.strip(), 
@@ -344,7 +354,7 @@ def _find_or_create_carrier(db: Session, data, current_user) -> Carrier:
 
 # Se crea la asignación
 def create_assignment(db: Session, data, current_user) -> Assignment:
-  # with_for_update bloquea el pedido mientras se valida, para que dos retiros simultáneos no se pasen de la cantidad
+  """Registra un retiro (cantidades + vehículo + transportador) con el pedido facturado o parcialmente despachado."""
   order = db.query(Order).filter(Order.id == data.order_id).first()
 
   if not order or not can_access_order(order, current_user): 
@@ -394,6 +404,7 @@ def create_assignment(db: Session, data, current_user) -> Assignment:
 # Si se rechaza el vehículo o transportador, el cliente corrige y reenvía SOBRE LA MISMA asignación
 # (vuelve a pending y se limpia el motivo), igual que el comprobante del pago.
 def resubmit_assignment(db: Session, assignment_id: UUID, vehicle_data, carrier_data, current_user) -> Assignment:
+  """El cliente corrige y reenvía un retiro rechazado o pendiente, sobre el mismo retiro (vuelve a 'pending')."""
   assignment, order = get_accessible_assignment(db, assignment_id, current_user)
 
   if assignment.cancelled_at:
@@ -431,6 +442,7 @@ def resubmit_assignment(db: Session, assignment_id: UUID, vehicle_data, carrier_
 
 # Valida extensión y tamaño del archivo antes de guardarlo (mismas reglas que el comprobante de pago)
 def _validate_transport_file(file: UploadFile) -> None:
+  """Valida extensión y tamaño (máx. 5 MB) de un documento de transporte."""
   extension = os.path.splitext(file.filename or "")[1].lower()
 
   if extension not in TRANSPORT_ALLOWED_EXTENSIONS:
@@ -459,6 +471,7 @@ def upload_transport_document(
     expires_at: Optional[date] = None
   ) -> Document:
 
+  """El cliente sube o reemplaza un documento del vehículo o transportador. Quien valida el transporte no puede subirlos."""
   assignment, order = get_accessible_assignment(db, assignment_id, current_user)
 
   if assignment.cancelled_at:
@@ -521,6 +534,7 @@ def upload_transport_document(
 
 # Documento de transporte, solo si pertenece al vehículo o transportador de ese retiro
 def get_transport_document(db: Session, assignment: Assignment, document_id: UUID) -> Document:
+  """Devuelve el documento solo si pertenece al vehículo o transportador del retiro."""
   document = (
     db.query(Document)
     .filter(
@@ -538,6 +552,7 @@ def get_transport_document(db: Session, assignment: Assignment, document_id: UUI
 
 def review_transport_document(db: Session, assignment_id: UUID, document_id: UUID, status: str, reason: Optional[str], current_user) -> Document:
 
+  """Logística aprueba o rechaza un documento pendiente (el rechazo exige motivo; no se aprueba uno vencido)."""
   assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
   
   if not assignment:
@@ -573,6 +588,7 @@ def review_transport_document(db: Session, assignment_id: UUID, document_id: UUI
 
 # Helper para la lista de vetados
 def _blacklist(db: Session, document_type: str, document_number: str, reason: str, current_user) -> None:
+  """Agrega a la lista negra si el documento aún no estaba vetado (no hace commit)."""
   if not is_document_blacklisted(db, document_type, document_number):
     db.add(DocumentBlacklist(
       document_type=document_type, document_number=document_number,
@@ -594,6 +610,10 @@ def validate_assignment(
   blacklist_owner: bool = False
 ) -> Assignment:
   
+  """Decisión de Logística sobre un retiro: aprobar o rechazar.
+
+  Al aprobar exige documentos aprobados, consultas registradas y nadie vetado. Guarda las consultas y, al rechazar, permite vetar transportador, vehículo y dueño.
+  """
   assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
 
   if not assignment:
@@ -732,6 +752,7 @@ def validate_assignment(
 
 # Corrige la asignación en caso que en la recogida haya algún cambio que no se registra en la guía o en los datos que suministraron
 def correct_assignment(db: Session, assignment_id: UUID, vehicle_data, carrier_data, reason: str, current_user) -> Assignment:
+  """Logística cambia quién recoge. Si ya estaba aprobado exige motivo y deja review_pending para repetir las consultas."""
   assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
 
   if not assignment:
@@ -778,6 +799,7 @@ def correct_assignment(db: Session, assignment_id: UUID, vehicle_data, carrier_d
 
 # Anula un retiro que no se va a realizar (por ejemplo, el cliente no llegó): libera sus cantidades para programarlas de nuevo
 def cancel_assignment(db: Session, assignment_id: UUID, reason: str, current_user) -> Assignment:
+  """Anula un retiro (libera sus cantidades). No se puede si el vehículo está en planta o ya salió."""
   assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
 
   if not assignment:
@@ -812,6 +834,7 @@ def complete_post_review(
   reason: Optional[str] = None,
 ) -> Assignment:
 
+  """Registra las consultas de un transporte que cambió tras ser aprobado y limpia review_pending; puede vetar."""
   assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
 
   if not assignment:
@@ -874,6 +897,7 @@ def complete_post_review(
 
 
 def _used_by_company(db: Session, company_id, vehicle_id=None, carrier_id=None) -> bool:
+  """True si la empresa ya usó ese vehículo o transportador en algún pedido."""
   query = (
     db.query(Assignment.id)
     .join(Order, Order.id == Assignment.order_id)
@@ -889,6 +913,7 @@ def _used_by_company(db: Session, company_id, vehicle_id=None, carrier_id=None) 
 # Búsqueda de ayuda para el formulario. Devuelve None si no existe, está inactivo, está vetado, o (para clientes) no lo ha usado su empresa: así no revela datos ajenos.
 def lookup_owner(db: Session, document_type: str, document_id: str, current_user) -> dict:
   
+  """Ayuda de formulario: busca datos de un dueño por documento. A un cliente solo le muestra lo que su empresa ya usó."""
   document_id = (document_id or "").strip()
   
   if not document_id:
@@ -951,6 +976,7 @@ def lookup_owner(db: Session, document_type: str, document_id: str, current_user
 
 def lookup_vehicle(db: Session, plate: str, current_user) -> Optional[Vehicle]:
   
+  """Ayuda de formulario: busca un vehículo por placa (found, not_found o blocked)."""
   plate = normalize_plate(plate)
   
   if not plate:
@@ -976,6 +1002,7 @@ def lookup_vehicle(db: Session, plate: str, current_user) -> Optional[Vehicle]:
 
 def lookup_carrier(db: Session, document_type: str, document_id: str, current_user) -> Optional[Carrier]:
   
+  """Ayuda de formulario: busca un transportador por documento (found, not_found o blocked)."""
   document_id = (document_id or "").strip()
   
   if not document_id:
@@ -1006,6 +1033,7 @@ def lookup_carrier(db: Session, document_type: str, document_id: str, current_us
 # Para información sensible (hallazgos en listas vinculantes no se muestran al cliente)
 def hide_sensitive_checks(assignment: Assignment, current_user) -> Assignment:
 
+  """Quita al cliente las consultas sensibles (listas vinculantes)."""
   if current_user.role in CLIENT_ROLES:
 
     assignment.checks = [ch for ch in assignment.checks if ch.check_key not in BLOCKING_TRANSPORT_CHECKS]

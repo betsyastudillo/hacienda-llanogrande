@@ -17,6 +17,10 @@ def get_current_user(
   credentials: HTTPAuthorizationCredentials = Depends(security),
   db: Session = Depends(get_db),
 ):
+  """Devuelve el usuario autenticado a partir del token JWT.
+
+  Vuelve a consultar la base (el rol del token se ignora), exige que el usuario esté activo y que su empresa no esté desactivada. Lanza 401 o 403.
+  """
   token = credentials.credentials
   try:
     # Se intenta decodificar el token para obtener la información del usuario
@@ -57,6 +61,7 @@ def get_current_user(
 
 
 def require_role(*allowed_roles: str):
+  """LEGADO: exige que el usuario tenga uno de los roles dados. Código nuevo debe usar require_permission."""
   def role_checker(current_user=Depends(get_current_user)):
     if current_user.role not in allowed_roles:
       raise HTTPException(
@@ -70,6 +75,7 @@ def require_role(*allowed_roles: str):
 
 # Permisos de roles. Exige que el usuario tenga exactamente este permiso. Se usa cuando el endpoint tiene una sola regla de acceso clara.
 def require_permission(permission: str):
+    """Fábrica de dependencia: exige exactamente un permiso (o el comodín '*'). Responde 403 si no lo tiene."""
     def permission_checker(current_user=Depends(get_current_user)):
         role_permissions = ROLES_PERMISSIONS.get(current_user.role, set())
 
@@ -89,12 +95,14 @@ def require_permission(permission: str):
 # Verifica si un usuario tiene un permiso específico, sin lanzar excepciones. Es útil dentro de un endpoint para lógica condicional, ya que no corta la petición si no lo tiene, a diferencia de require_permission.
 def user_has_permission(user, permission: str) -> bool:
 
+    """Devuelve True/False según el rol tenga el permiso (o '*'), sin cortar la petición. Útil para lógica condicional."""
     role_permissions = ROLES_PERMISSIONS.get(user.role, set())
     return "*" in role_permissions or permission in role_permissions
 
 
 # Permisos para roles. Exige que el usuario tenga al menos 1 de estos permisos o el comodín '*'. Se usa cuando varios roles distintos deben poder entrar al mismo endpoint pero c/u con u alcance distinto que se filtra dentro de la función.
 def require_any_permission(*permissions: str):
+  """Fábrica de dependencia: exige al menos uno de los permisos dados (o '*'). El alcance real se filtra dentro del endpoint."""
   def checker(current_user=Depends(get_current_user)):
     role_permissions = ROLES_PERMISSIONS.get(current_user.role, set())
 

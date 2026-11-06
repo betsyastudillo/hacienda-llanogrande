@@ -6,14 +6,17 @@ from app.schemas.vehicle import VehicleCreate
 
 
 def get_vehicles(db: Session) -> list[Vehicle]:
+  """Lista todos los vehículos."""
   return db.query(Vehicle).all()
 
 
 def get_vehicle_by_id(db: Session, vehicle_id: UUID) -> Optional[Vehicle]:
+  """Busca un vehículo por id."""
   return db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
 
 
 def create_vehicle(db: Session, vehicle: VehicleCreate) -> Vehicle:
+  """Crea un vehículo (CRUD directo; solo guarda tipo y placa, no los datos del dueño)."""
   new_vehicle = Vehicle(
     type=vehicle.type,
     plate=vehicle.plate,
@@ -27,6 +30,7 @@ def create_vehicle(db: Session, vehicle: VehicleCreate) -> Vehicle:
 
 
 def edit_vehicle(db: Session, vehicle_id: UUID, vehicle: VehicleCreate) -> Optional[Vehicle]:
+  """Actualiza tipo y placa de un vehículo. None si no existe."""
   vehicle_exists = get_vehicle_by_id(db, vehicle_id)
   
   if not vehicle_exists:

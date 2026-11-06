@@ -10,6 +10,7 @@ VALID_HOLDER_DOCUMENT_TYPES = ("NIT", "CC", "CE", "PP")
 
 
 def _validate_fields(data: BankAccountCreate):
+  """Valida el tipo de cuenta y el tipo de documento del titular."""
   if data.account_type not in VALID_ACCOUNT_TYPES:
     raise ValueError(f"Invalid account_type. Allowed values: {VALID_ACCOUNT_TYPES}")
   
@@ -20,6 +21,7 @@ def _validate_fields(data: BankAccountCreate):
 def _resolve_company_id(db: Session, company_id: Optional[UUID]) -> UUID:
   
   # Si viene sin company_id se usa el de la hacienda, y si viene, se valida que si sea
+  """Empresa dueña de la cuenta: por defecto la propia; solo se permiten cuentas de la empresa propia."""
   if company_id is None:
     own = db.query(Company).filter(Company.company_type == "own").first()
 
@@ -40,6 +42,7 @@ def _resolve_company_id(db: Session, company_id: Optional[UUID]) -> UUID:
 
 
 def _check_duplicate(db: Session, bank_name: str, account_number: str, exclude_id: Optional[UUID] = None):
+  """Impide dos cuentas activas con el mismo banco y número."""
   query = db.query(BankAccount).filter(
     BankAccount.bank_name == bank_name,
     BankAccount.account_number == account_number,
@@ -55,6 +58,7 @@ def _check_duplicate(db: Session, bank_name: str, account_number: str, exclude_i
 
 def get_bank_accounts(db:Session, current_user, only_active: bool =False) -> List[BankAccount]:
 
+  """Lista cuentas; los roles cliente solo ven las activas."""
   query = db.query(BankAccount)
 
   # Los clientes solo ven cuentas activas, sin importar lo que pidan
@@ -68,11 +72,13 @@ def get_bank_accounts(db:Session, current_user, only_active: bool =False) -> Lis
 
 
 def get_bank_account_by_id(db: Session, bank_account_id: UUID) -> Optional[BankAccount]:
+  """Busca una cuenta por id."""
   return db.query(BankAccount).filter(BankAccount.id == bank_account_id).first()
 
 
 def create_bank_account(db: Session, data: BankAccountCreate) -> BankAccount:
   
+  """Crea una cuenta bancaria de la empresa propia."""
   _validate_fields(data)
   company_id = _resolve_company_id(db, data.company_id)
   _check_duplicate(db, data.bank_name, data.account_number)
@@ -97,6 +103,7 @@ def create_bank_account(db: Session, data: BankAccountCreate) -> BankAccount:
 
 def edit_bank_account(db: Session, bank_account_id: UUID, data: BankAccountCreate) -> Optional[BankAccount]:
     
+  """Actualiza los datos de una cuenta. None si no existe."""
   account = get_bank_account_by_id(db, bank_account_id)
 
   if not account:
@@ -122,6 +129,7 @@ def edit_bank_account(db: Session, bank_account_id: UUID, data: BankAccountCreat
 
 
 def deactivate_bank_account(db: Session, bank_account_id: UUID) -> Optional[BankAccount]:
+  """Desactiva la cuenta (no se borra)."""
   account = get_bank_account_by_id(db, bank_account_id)
 
   if not account:
@@ -135,6 +143,7 @@ def deactivate_bank_account(db: Session, bank_account_id: UUID) -> Optional[Bank
 
 
 def reactivate_bank_account(db: Session, bank_account_id: UUID) -> Optional[BankAccount]:
+  """Reactiva una cuenta tras revalidar que no haya duplicados."""
   account = get_bank_account_by_id(db, bank_account_id)
 
   if not account:

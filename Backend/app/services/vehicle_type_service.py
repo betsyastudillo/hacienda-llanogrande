@@ -7,12 +7,14 @@ from app.models.vehicle_type import VehicleType
 
 
 def _make_code(name: str) -> str:
+  """Deriva el código del tipo de vehículo a partir del nombre (minúsculas, sin tildes, con guiones bajos, máx. 20)."""
   ascii_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
   
   return re.sub(r"[^a-z0-9]+", "_", ascii_name.lower()).strip("_")[:20]
 
 
 def list_vehicle_types(db: Session, include_inactive: bool = False):
+  """Lista tipos de vehículo por nombre; por defecto solo los activos."""
   query = db.query(VehicleType)
 
   if not include_inactive:
@@ -22,6 +24,7 @@ def list_vehicle_types(db: Session, include_inactive: bool = False):
 
 
 def active_vehicle_type_codes(db: Session) -> set:
+  """Conjunto de códigos de tipos activos (para validar un vehículo)."""
   rows = db.query(VehicleType.code).filter(VehicleType.is_active.is_(True)).all()
   
   return {r[0] for r in rows}
@@ -29,6 +32,7 @@ def active_vehicle_type_codes(db: Session) -> set:
 
 def create_vehicle_type(db: Session, name: str, capacity_kg, current_user) -> VehicleType:
   
+  """Crea un tipo de vehículo; el código se genera del nombre. Error si el nombre ya existe."""
   code = _make_code(name)
   
   if not code:
@@ -57,6 +61,7 @@ def create_vehicle_type(db: Session, name: str, capacity_kg, current_user) -> Ve
 
 def update_vehicle_type(db: Session, type_id, name: Optional[str], is_active: Optional[bool], capacity_kg,  current_user) -> VehicleType:
   
+  """Edita nombre, capacidad o estado de un tipo de vehículo."""
   vehicle_type = db.query(VehicleType).filter(VehicleType.id == type_id).first()
   
   if not vehicle_type:

@@ -31,6 +31,7 @@ WITHDRAWAL_ORDER_STATUSES = ("facturado", "partially_dispatched") #Estados de pe
 # Genera los números de orden PED-2026-0000. Para facilitar las búsquedas.
 def generate_order_number(db: Session) -> str:
   # Año en hora de Colombia (UTC-5)
+  """Genera el número PED-AAAA-NNNN con un contador anual atómico (el año se toma en hora de Colombia)."""
   year = (datetime.utcnow() - timedelta(hours=5)).year
 
   stmt = (
@@ -49,6 +50,10 @@ def generate_order_number(db: Session) -> str:
 
 # Cantidades por producto del pedido: asignadas a retiros activos y ya despachadas (guía usada)
 def get_item_quantities(db: Session, order_id: UUID):
+  """Devuelve (asignado, despachado): diccionarios order_item_id -> cantidad.
+
+  Asignado = suma de retiros no anulados; despachado = los retiros cuya guía ya fue usada (salida de portería).
+  """
   rows = (
     db.query(AssignmentItem.order_item_id, AssignmentItem.quantity, DispatchGuide.status)
     .join(Assignment, Assignment.id == AssignmentItem.assignment_id)
@@ -70,6 +75,7 @@ def get_item_quantities(db: Session, order_id: UUID):
 
 # Atributos temporales con el saldo de cada producto, para el detalle del pedido
 def attach_item_balances(db: Session, order: Order) -> Order:
+  """Agrega a cada ítem los atributos temporales assigned_quantity, dispatched_quantity y pending_quantity."""
   assigned, dispatched = get_item_quantities(db, order.id)
 
   for item in order.items:
@@ -81,6 +87,7 @@ def attach_item_balances(db: Session, order: Order) -> Order:
 
 
 def get_orders(db: Session, current_user: User) -> List[Order]:
+  """Lista pedidos, más recientes primero, según el rol: cliente_admin ve su empresa, cliente_operativo los que creó y el resto todos."""
   query = (
     db.query(Order)
     .options(joinedload(Order.company))
@@ -97,10 +104,12 @@ def get_orders(db: Session, current_user: User) -> List[Order]:
 
 
 def get_order_by_id(db: Session, order_id: UUID) -> Optional[Order]:
+  """Busca un pedido (con su empresa) por id; None si no existe."""
   return db.query(Order).options(joinedload(Order.company)).filter(Order.id == order_id).first()
 
 
 def can_access_order(order: Order, current_user: User) -> bool:
+  """Indica si el usuario puede ver el pedido. Si no puede, el router debe responder 404 (no 403)."""
   if current_user.role in STAFF_VIEW_ALL_ROLES:
     return True
   
@@ -114,6 +123,7 @@ def can_access_order(order: Order, current_user: User) -> bool:
 
 
 def _resolve_company_id(order: OrderCreate, current_user: User) -> UUID:
+  """Determina la empresa del pedido: la del cliente, o la indicada si lo crea un admin."""
   if current_user.role in CLIENT_ROLES:
     return current_user.company_id  # se ignora cualquier company_id que venga en el payload
 
@@ -127,6 +137,10 @@ def _resolve_company_id(order: OrderCreate, current_user: User) -> UUID:
 
 def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
 
+  """Crea el pedido con sus ítems.
+
+  Valida empresa activa y aprobada, productos activos y stock vendible; congela precios e IVA. Hace commit.
+  """
   company_id = _resolve_company_id(order, current_user)
 
   company = db.query(Company).filter(Company.id == company_id).first()
@@ -196,6 +210,7 @@ def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
 
 def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_user: User) -> Optional[Order]:
 
+  """Reemplaza los ítems de un pedido. Solo en estado 'created' y sin proforma. Lanza PermissionError si no tiene acceso."""
   order = get_order_by_id(db, order_id)
 
   if not order:
@@ -260,6 +275,7 @@ def edit_order(db: Session, order_id: UUID, order_data: OrderCreate, current_use
 
 
 def cancel_order(db: Session, order_id: UUID, reason: str, current_user) -> Optional[Order]:
+  """Anula un pedido (solo en 'created') con motivo obligatorio; un pago pendiente pasa a 'cancelled'."""
   order = get_order_by_id(db, order_id)
   
   if not order:
@@ -300,6 +316,7 @@ def cancel_order(db: Session, order_id: UUID, reason: str, current_user) -> Opti
 # Sirve cuando requiere acción para el pago o el transporte
 def attach_needs_action(db: Session, orders: List[Order], current_user: User) -> List[Order]:
   
+  """Marca cada pedido con needs_action (True/False) según lo que le toque hacer al usuario por su rol."""
   payments, retiros_by_order, transport_documents = {}, {}, []
   vehicles, carriers = {}, {}
   guided, ordered_totals, assigned_totals = set(), {}, {}

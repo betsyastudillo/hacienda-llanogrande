@@ -57,14 +57,17 @@ MIN_VALIDITY_DAYS = 0     # margen exigido: 0 = basta con que esté vigente hoy
 MAX_EXPIRY_YEARS = 10     # evita errores de digitación (2206 en vez de 2026)
 
 def today_co() -> date:
+  """Fecha de hoy en hora de Colombia (America/Bogota)."""
   return datetime.now(ZoneInfo("America/Bogota")).date()
 
 
 def is_expiring_type(subject: str, document_type: str) -> bool:
+  """True si ese tipo de documento del sujeto vence (SOAT del vehículo, licencia del transportador)."""
   return document_type in EXPIRING_DOCUMENTS.get(subject, ())
 
 
 def document_is_expired(doc, today: Optional[date] = None) -> bool:
+  """True si el documento vence y está vencido o no tiene fecha de vencimiento registrada."""
   subject = "vehicle" if doc.vehicle_id else "carrier"
   if not is_expiring_type(subject, doc.document_type):
     return False
@@ -77,6 +80,10 @@ def document_is_expired(doc, today: Optional[date] = None) -> bool:
 # Documentos obligatorios que faltan para un vehículo y un transportador, como "vehicle:soat".
 # Un documento rechazado cuenta como faltante. `documents` es cualquier lista de objetos con vehicle_id, carrier_id, document_type y status (modelo Document), por eso no se importa el modelo aquí.
 def compute_missing_documents(vehicle_id, carrier_id, documents, owner_is_carrier: bool = False) -> list[str]:
+  """Documentos obligatorios que faltan, con formato 'vehicle:soat'.
+
+  Un documento rechazado o vencido cuenta como faltante. El documento del dueño solo se pide si el dueño no es el transportador.
+  """
   have = set()
   today = today_co()
 
@@ -104,10 +111,12 @@ def compute_missing_documents(vehicle_id, carrier_id, documents, owner_is_carrie
 
 # Deja la placa en mayúsculas y sin espacios ni guiones: "abc-123" -> "ABC123"
 def normalize_plate(plate: str) -> str:
+  """Deja la placa en mayúsculas y sin espacios ni guiones: 'abc-123' -> 'ABC123'."""
   return "".join(ch for ch in (plate or "") if ch.isalnum()).upper()
 
 
 def required_document_keys(owner_is_carrier: bool) -> list[str]:
+  """Claves 'sujeto:tipo' de todos los documentos obligatorios de un retiro."""
   keys = [f"{subject}:{t}" for subject, types in REQUIRED_DOCUMENTS_BY_SUBJECT.items() for t in types]
   if not owner_is_carrier:
     keys.append(f"vehicle:{OWNER_DOCUMENT}")
@@ -117,12 +126,14 @@ def required_document_keys(owner_is_carrier: bool) -> list[str]:
 
 # Si el transportador es el dueño, no se consulta dos veces a la misma persona
 def required_transport_checks(owner_is_carrier: bool) -> list[tuple[str, str]]:
+  """Pares (sujeto, consulta) obligatorios. Si el transportador es el dueño, no se consulta dos veces a la misma persona."""
   subjects = ["vehicle", "carrier"] if owner_is_carrier else ["vehicle", "owner", "carrier"]
 
   return [(s, k) for s in subjects for k in TRANSPORT_CHECKS[s]]
 
 
 def is_owner_carrier(vehicle, carrier) -> bool:
+  """True si el dueño del vehículo y el transportador tienen el mismo tipo y número de documento."""
   return bool(
     vehicle and carrier and vehicle.owner_document_id
     and vehicle.owner_document_id == carrier.document_id

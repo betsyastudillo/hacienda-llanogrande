@@ -10,18 +10,22 @@ from app.models.document import Document
 UPLOAD_DIR = "uploads/documents"
 
 def get_documents_by_company(db: Session, company_id: UUID) -> list[Document]:
+  """Documentos de una empresa."""
   return db.query(Document).filter(Document.company_id == company_id).all()
 
 
 def get_documents_by_vehicle(db: Session, vehicle_id: UUID) -> list[Document]:
+  """Documentos de un vehículo."""
   return db.query(Document).filter(Document.vehicle_id == vehicle_id).all()
 
 
 def get_documents_by_carrier(db: Session, carrier_id: UUID) -> list[Document]:
+  """Documentos de un transportador."""
   return db.query(Document).filter(Document.carrier_id == carrier_id).all()
 
 
 def save_document_file(file: UploadFile, company_id: UUID) -> str:
+  """Guarda el archivo en uploads/documents/<dueño>/ con nombre aleatorio y devuelve la ruta relativa. No valida tipo ni tamaño."""
   company_folder = os.path.join(UPLOAD_DIR, str(company_id))
   os.makedirs(company_folder, exist_ok=True)
 
@@ -48,6 +52,7 @@ def create_document(
     expires_at=None,
   ) -> Document:
 
+  """Crea un documento en estado 'pending'. Debe pertenecer a exactamente un dueño (empresa, vehículo o transportador)."""
   owners = [company_id, vehicle_id, carrier_id]
 
   # Garatiza que suban de a 1 solamente
@@ -77,6 +82,7 @@ def create_document(
 
 # Actualizar el estado del documento
 def update_document_status(db: Session, document_id: UUID, new_status: str, current_user=None) -> Optional[Document]:
+  """Cambia el estado de un documento (aprobado, rechazado, pendiente)."""
   document = db.query(Document).filter(Document.id == document_id).first()
   if not document:
     return None
@@ -91,6 +97,7 @@ def update_document_status(db: Session, document_id: UUID, new_status: str, curr
 
 
 def replace_document_file(db: Session, document_id: UUID, new_file: UploadFile, current_user=None, expires_at=None) -> Optional[Document]:
+  """Reemplaza el archivo, reinicia el estado a 'pending' y borra el archivo viejo después del commit."""
   document = db.query(Document).filter(Document.id == document_id).first()
   
   if not document:

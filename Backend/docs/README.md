@@ -1,49 +1,79 @@
 # Backend — Hacienda Llanogrande
 
-Documentación técnica del backend. Para instrucciones de instalación y variables de entorno, ver el `README.md` de la raíz del repositorio.
+Documentación técnica del backend. Para instalar y arrancar, ver el [README raíz](../../README.md).
+Para entender el negocio, empieza por [docs/02-flujo-del-pedido.md](../../docs/02-flujo-del-pedido.md).
+
+## Índice de esta carpeta
+
+| Archivo | Contenido |
+|---|---|
+| [endpoints.md](endpoints.md) | Todos los endpoints: ruta, permiso, qué hace y qué servicio llama |
+| [servicios.md](servicios.md) | **Cada función de servicio**: qué hace, reglas y errores |
+| [permissions.md](permissions.md) | Roles, matriz de permisos y cómo agregar uno |
+| [../../docs/04-modelo-de-datos.md](../../docs/04-modelo-de-datos.md) | Tablas y relaciones |
+| [../../docs/06-pendientes-y-decisiones.md](../../docs/06-pendientes-y-decisiones.md) | Errores conocidos y deuda técnica |
 
 ## Stack
+FastAPI · Python 3.9 · SQLAlchemy 2 · Pydantic v2 · Alembic · PostgreSQL (Neon) · reportlab · qrcode · bcrypt · python-jose.
 
-- FastAPI (Python 3.9)
-- PostgreSQL en Neon, vía SQLAlchemy
-- Alembic — migraciones
-- Pydantic v2 — schemas
-
-## Arquitectura en capas
+## Mapa de archivos
 
 ```
 app/
-  models/       Tablas (SQLAlchemy) — solo estructura de datos, sin lógica de negocio
-  schemas/       Forma de entrada/salida de la API (Pydantic) — separa "lo que guardo" de "lo que expongo"
-  services/      Lógica de negocio real: cálculos, validaciones, reglas
-  routers/        Endpoints — reciben la petición, verifican permisos, delegan al service
-  constants/       roles.py (legado), permissions.py (fuente de verdad actual), units.py
-  dependencies.py   get_current_user, require_role (legado), require_permission, require_any_permission, user_has_permission
-  auth_dependencies.py   Tipos Annotated reutilizables por permiso (ver permissions.md)
-  main.py           Registro de routers, CORS
+  main.py                FastAPI(), CORS, monta /uploads, registra 19 routers, GET / (salud)
+  config.py              Settings(BaseSettings): lee .env (database_url, jwt_secret_key, payment_webhook_secret, …)
+  database.py            engine, SessionLocal, Base y get_db() (sesión por petición)
+  dependencies.py        get_current_user, require_permission, require_any_permission, user_has_permission, require_role (legado)
+  auth_dependencies.py   Tipos Annotated por permiso (OrderCreator, PaymentConfirmer, …)
+  constants/
+    permissions.py       ROLES_PERMISSIONS (fuente de verdad) + get_permissions_for_role
+    roles.py             LEGADO: nombres de roles y tuplas CAN_*; sin uso real
+    company_requirements.py  documentos y consultas por tipo de persona/sector, campos editables
+    transport_requirements.py documentos/consultas de transporte, vencimientos, normalize_plate, is_owner_carrier, compute_missing_documents
+    units.py             VALID_UNITS = kg, tonelada, unidad, m3, canasta, bulto
+  models/                21 tablas + mixins.py (AuditMixin)
+  schemas/               Entrada/salida (Pydantic) + mixins.py (AuditResponseMixin)
+  services/              Lógica de negocio (ver servicios.md)
+  routers/               19 routers (ver endpoints.md)
+  utils/formatting.py    format_nit, format_document, format_account_number (los usa proforma_pdf)
+alembic/versions/        58 migraciones; head = caffaa585f24
+assets/logo.png          Logo para los PDF
+scripts/build_colombia.py Genera la lista de departamentos y municipios para el frontend
+uploads/                 Archivos subidos/generados (ignorado por git)
 ```
 
-Un router nunca debería tener lógica de negocio propia; un model nunca debería decidir permisos; un service nunca debería saber nada de HTTP.
+## Reglas de código (resumen; detalle en [docs/03-arquitectura.md](../../docs/03-arquitectura.md))
 
-## Convenciones del proyecto
+- Python 3.9: `Optional[X]`, nunca `X | None`.
+- Servicios lanzan `ValueError`; routers la atrapan → `db.rollback()` → `HTTPException(400)`.
+- Ajeno → 404, no 403.
+- Permisos por `ROLES_PERMISSIONS` + tipos de `auth_dependencies.py`.
+- Nunca asignación masiva (`Model(**data.dict())`) en campos sensibles (`role`, `company_id`, `verification_status`, `is_active`…): campo por campo.
+- Nunca borrar movimientos de inventario; corregir con otro movimiento.
+- Migraciones: nunca autogenerate para renombrar; nunca editar una aplicada; guardar antes de `upgrade`; `alembic check` después.
+- Nombres: clases y archivos en singular e inglés (`Product`, `product.py`), tablas en plural.
+- Orden de parámetros en endpoints: los `Annotated` sin valor por defecto antes de `db: Session = Depends(get_db)`.
+- Comentarios y mensajes de error visibles al usuario en español.
 
-- **Python 3.9**: `Optional[X]`, nunca `X | None`.
-- **Nombres**: clases y archivos en singular e inglés (`Product`, `product.py`), tablas en plural (`products`), excepto `nit` (término legal colombiano, se deja igual en ambos idiomas).
-- **Nunca mass assignment** en campos sensibles (`role`, `company_id`, `verification_status`, `is_active`, `parent_product_id`, etc.) — siempre asignación campo por campo, explícita, en el service. Nunca `Model(**data.dict())` cuando el schema toca algo sensible.
-- **Migraciones — dos pasos siempre**: cambiar el modelo Python nunca alcanza por sí solo. Falta generar (`alembic revision --autogenerate`) y aplicar (`alembic upgrade head`). Olvidar el segundo paso es la causa más común de errores "columna no existe" / `UndefinedTable` en este proyecto — pasó varias veces durante el desarrollo.
-- **Renombrar tabla o columna**: el autogenerate de Alembic **no detecta renombres**, genera `drop` + `create` (pierde datos). Los renombres se escriben a mano con `op.rename_table(...)` / `op.alter_column(..., new_column_name=...)`. Ver el historial de migraciones para ejemplos reales (`materials` → `products`).
-- **Soft delete**: todas las entidades usan `is_active` (boolean), nunca borrado real.
-- **`AuditMixin`** (`models/mixins.py`): toda entidad lo hereda. Da `created_at`, `updated_at`, `created_by_user_id`, `updated_by_user_id`, `deleted_by_user_id` automáticamente — nunca se declaran a mano en un modelo nuevo.
-- **Timestamps de negocio específicos no van en el mixin.** `updated_at` se sobreescribe con cualquier cambio; si necesitas saber "¿cuándo se *confirmó* el pago?" o "¿cuándo se *validó* el transporte?", eso es una columna propia (`confirmed_at`, `validated_at`), porque una edición no relacionada no debe borrar ese dato.
-- **Snapshot de precios**: `Order.subtotal/tax/total` y `OrderItem.unit_price/subtotal` se calculan y guardan en el momento de la venta, nunca se recalculan dinámicamente — si el precio del producto cambia después, los pedidos históricos no deben cambiar con él. Es intencional, no un dato duplicado por error.
-- **Cantidades siempre enteras**: `OrderItem.quantity_m3` e `InventoryMovement.quantity` son `Integer`, no `Numeric` — decisión tomada al pivotar del negocio de áridos (que se vendían por volumen fraccionario) a productos agrícolas (que se compran/cosechan en unidades enteras).
-- **Movimientos de inventario son inmutables**: no hay endpoint de editar ni borrar un `InventoryMovement`. Una corrección siempre es un movimiento nuevo (`ajuste`), nunca una edición del original.
+## Cómo agregar una funcionalidad (receta)
 
-## Pendientes conocidos
+Ejemplo: "guardar una nota en el pedido".
+1. **Modelo**: agrega `note = Column(String, nullable=True)` en [models/order.py](../app/models/order.py).
+2. **Migración**: `alembic revision --autogenerate -m "order note"` → **revisa** el archivo generado (debe ser solo `add_column`), guárdalo, `alembic upgrade head`, `alembic check`.
+3. **Schema**: añade `note` a `OrderResponse` (y a `OrderCreate` si se recibe).
+4. **Servicio**: asigna el campo explícitamente en `create_order`/`edit_order`; valida con `ValueError`.
+5. **Router**: normalmente no cambia; si es un endpoint nuevo, usa un tipo de permiso y `try/except ValueError`.
+6. **Frontend**: muestra/edita el campo y usa `showToast` para el resultado.
+7. **Prueba** con Swagger + SQL y **actualiza la documentación**.
 
-- `Invoice` — en pausa, preguntas de negocio sin resolver con el dueño (numeración, momento de generación, recálculo de impuestos).
-- `audit_log` completo (historial detallado con snapshot antes/después) — se decidió posponer varias veces; el módulo de inventario es probablemente el que finalmente lo justifique.
-- PDF real de la proforma de pago — el campo `Payment.pdf_url` existe, la generación del archivo no está construida.
-- `create_dispatch_guide` no valida hoy que `Assignment.validation_status == "approved"` antes de generar la guía — solo revisa que exista una asignación. Es un hueco real pendiente de cerrar.
-- Conciliación diaria de inventario, rol de "control interno", alertas al admin — Fase 2/3 del módulo de inventario, sin construir.
-- Reversión de movimientos de inventario al editar un pedido (`edit_order` hoy borra físicamente los movimientos de salida viejos antes de recrearlos — contradice la regla de inmutabilidad; falta reemplazar por un movimiento de reversión).
+## Comandos útiles (desde `Backend/` con el venv activo)
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000   # servidor de desarrollo
+alembic current            # versión de la base
+alembic heads              # última versión del código
+alembic upgrade head       # aplicar migraciones
+alembic downgrade -1       # deshacer la última (¡cuidado con los datos!)
+alembic check              # modelos y base deben coincidir
+alembic stamp <revision>   # solo para reparar: marca versión sin ejecutar
+```

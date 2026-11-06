@@ -42,10 +42,12 @@ REQUIRED_FIELDS = {"address", "phone", "email", "country", "department", "city"}
 MIN_ADDRESS_LENGTH = 8
 
 def get_required_checks(business_sector):
+  """Consultas en listas obligatorias para una empresa según su sector (comunes + las del sector)."""
   return COMMON_CHECKS + CHECKS_BY_SECTOR.get(business_sector, ())
 
 def get_required_checks_for(business_sector, subject: str):
   # Al representante legal solo le aplican las comunes
+  """Consultas obligatorias según el sujeto: 'company' usa las de la empresa; 'legal_representative' solo las comunes."""
   if subject == "legal_representative":
     return list(COMMON_CHECKS)
   

@@ -7,18 +7,22 @@ from app.services.auth_service import hash_password, verify_password
 
 
 def get_users(db: Session) -> List[User]:
+    """Lista todos los usuarios."""
     return db.query(User).all()
 
 
 def get_user_by_document_id(db: Session, document_id: str) -> Optional[User]:
+    """Busca un usuario por su documento (que es el nombre de usuario de login)."""
     return db.query(User).filter(User.document_id == document_id).first()
 
 
 def get_user_by_id(db: Session, user_id: UUID) -> Optional[User]:
+    """Busca un usuario por su id."""
     return db.query(User).filter(User.id == user_id).first()
 
 
 def authenticate_user(db: Session, document_id: str, password: str) -> Optional[User]:
+    """Devuelve el usuario si el documento y la contraseña son correctos; si no, None."""
     user = get_user_by_document_id(db, document_id)
 
     if user and verify_password(password, user.hashed_password):
@@ -28,6 +32,7 @@ def authenticate_user(db: Session, document_id: str, password: str) -> Optional[
 
 
 def update_user(db: Session, user_id: UUID, data: UserUpdate) -> Optional[User]:
+    """Actualiza solo los campos que vienen en la petición (admin). Devuelve None si no existe."""
     user = get_user_by_id(db, user_id)
 
     if not user:
@@ -57,6 +62,7 @@ def update_user(db: Session, user_id: UUID, data: UserUpdate) -> Optional[User]:
 
 def update_own_profile(db:Session, current_user: User, data: UserSelfUpdate) -> User:
     # No acepta role/company_id/is_active para que nadie se automodifique esos campos
+    """El usuario edita su propio nombre y correo; nunca su rol, empresa o estado."""
     if data.full_name is not None:
         current_user.full_name = data.full_name
 
@@ -70,6 +76,7 @@ def update_own_profile(db:Session, current_user: User, data: UserSelfUpdate) -> 
 
 
 def deactivate_user(db: Session, user_id: UUID) -> Optional[User]:
+    """Desactiva al usuario (no se borra). Devuelve None si no existe."""
     user = get_user_by_id(db, user_id)
     
     if not user:
@@ -84,6 +91,7 @@ def deactivate_user(db: Session, user_id: UUID) -> Optional[User]:
 
 
 def change_password(db: Session, current_user: User, data: PasswordChangeRequest) -> User:
+    """Cambia la contraseña tras verificar la actual. Lanza ValueError si no coincide."""
     if not verify_password(data.current_password, current_user.hashed_password):
         raise ValueError("Current password is incorrect")
 
@@ -96,6 +104,7 @@ def change_password(db: Session, current_user: User, data: PasswordChangeRequest
 
 
 def create_user(db: Session, user_create: UserCreate) -> User:
+    """Crea un usuario con la contraseña ya convertida en hash."""
     new_user = User(
         document_id=user_create.document_id,
         full_name=user_create.full_name,

@@ -8,20 +8,24 @@ from app.constants.units import VALID_UNITS
 
 
 def get_products(db: Session) -> list[Product]:
+    """Lista productos activos."""
     return db.query(Product).filter(Product.is_active == True).all()
 
 
 def get_product_by_id(db: Session, product_id: UUID) -> Optional[Product]:
+    """Busca un producto activo por id."""
     return db.query(Product).filter(Product.id == product_id, Product.is_active == True).first()
 
 
 # Valida las unidades de medida
 def _validate_unit(unit: str):
+  """Valida la unidad contra constants/units.py."""
   if unit not in VALID_UNITS:
     raise ValueError(f"Invalid unit. Allowed values: {VALID_UNITS}")
 
 
 def _validate_pack_fields(db: Session, parent_product_id: Optional[UUID], units_per_pack: Optional[Decimal]):
+    """Valida paquete: parent_product_id y units_per_pack juntos; el padre existe y no es paquete; units_per_pack > 0."""
     if (parent_product_id is None) != (units_per_pack is None):
         raise ValueError("parent_product_id y units_per_pack deben venir juntos, o ninguno de los dos")
 
@@ -42,6 +46,7 @@ def _validate_pack_fields(db: Session, parent_product_id: Optional[UUID], units_
 
 def _resolve_approx_weight(data: ProductCreate, parent: Optional[Product]) -> Optional[Decimal]:
     # Si el usuario ya escribió un peso explícito, se respeta tal cual venga
+    """Peso aproximado: el indicado; si es paquete sin peso, el del padre por unidades por paquete."""
     if data.approx_weight_kg is not None:
         return data.approx_weight_kg
 
@@ -53,6 +58,7 @@ def _resolve_approx_weight(data: ProductCreate, parent: Optional[Product]) -> Op
 
 
 def create_product(db: Session, data: ProductCreate) -> Product:
+    """Crea un producto base o un paquete."""
     _validate_unit(data.unit)
     parent = _validate_pack_fields(db, data.parent_product_id, data.units_per_pack)
 
@@ -75,6 +81,7 @@ def create_product(db: Session, data: ProductCreate) -> Product:
 
 
 def edit_product(db: Session, product_id: UUID, data: ProductCreate) -> Optional[Product]:
+    """Actualiza un producto. None si no existe."""
     product_exists = get_product_by_id(db, product_id)
 
     if not product_exists:
@@ -99,6 +106,7 @@ def edit_product(db: Session, product_id: UUID, data: ProductCreate) -> Optional
 
 
 def deactivate_product(db: Session, product_id: UUID) -> Optional[Product]:
+    """Desactiva un producto (no se borra)."""
     product_exists = get_product_by_id(db, product_id)
     
     if not product_exists:

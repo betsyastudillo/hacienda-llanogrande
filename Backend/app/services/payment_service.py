@@ -20,20 +20,24 @@ MAX_RECEIPT_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
 
 # Trae todos los pagos
 def get_payments(db: Session) -> List[Payment]:
+  """Lista todos los pagos."""
   return db.query(Payment).all()
 
 
 # Trae un pago, por id de la orden
 def get_payment_by_order(db: Session, order_id: UUID) -> Optional[Payment]:
+  """Pago de un pedido (máximo uno), o None."""
   return db.query(Payment).filter(Payment.order_id == order_id).first()
 
 
 # Trae un pago, por id
 def get_payment_by_id(db: Session, payment_id: UUID) -> Optional[Payment]:
+  """Busca un pago por id."""
   return db.query(Payment).filter(Payment.id == payment_id).first()
 
 
 def save_receipt_file(file: UploadFile, payment_id: UUID) -> str:
+  """Valida (extensión, no vacío, máx. 5 MB) y guarda el comprobante; devuelve la ruta relativa con '/' inicial."""
   extension = os.path.splitext(file.filename or "")[1].lower()
 
   if extension not in ALLOWED_RECEIPT_EXTENSIONS:
@@ -64,6 +68,7 @@ def save_receipt_file(file: UploadFile, payment_id: UUID) -> str:
 # Sube o reemplaza el comprobante. Si el pago estaba rechazado, vuelve a pendiente
 def upload_receipt(db: Session, payment_id: UUID, file: UploadFile) -> Payment:
 
+  """Sube o reemplaza el comprobante. Si el pago estaba rechazado, vuelve a pendiente. Borra el archivo viejo tras el commit."""
   payment = get_payment_by_id(db, payment_id)
 
   if not payment:
@@ -91,6 +96,7 @@ def upload_receipt(db: Session, payment_id: UUID, file: UploadFile) -> Payment:
 
 def create_payment(db: Session, order_id: UUID, bank_account_id: UUID) -> Payment:
 
+  """Genera la proforma (PRO-AAAA-NNNN) con su PDF. Exige pedido 'created', sin pago previo y cuenta bancaria activa."""
   order = db.query(Order).filter(Order.id == order_id).first()
 
   if not order:
@@ -144,6 +150,10 @@ def confirm_payment(
   reason: Optional[str] = None,
 ) -> Payment:
 
+  """Confirma o rechaza un pago.
+
+  Al confirmar: crea y emite la factura (proveedor simulado) y deja el pedido en 'facturado', todo en una sola transacción. Si algo falla, hace rollback y relanza el error. Al rechazar exige motivo.
+  """
   payment = get_payment_by_id(db, payment_id)
 
   if not payment:

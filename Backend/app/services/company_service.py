@@ -12,11 +12,13 @@ from app.models.compliance_check import ComplianceCheck
 
 
 def _validate_person_type(person_type: str):
+  """Valida que sea 'natural' o 'juridica'."""
   if person_type not in VALID_PERSON_TYPES:
     raise ValueError(f"Invalid person_type. Allowed values: {VALID_PERSON_TYPES}")
 
 
 def _validate_business_sector(company_type: str, business_sector: Optional[str]):
+  """El sector es obligatorio para clientes y debe ser uno de los válidos."""
   if company_type == "client":
     if not business_sector:
       raise ValueError("business_sector es obligatorio para empresas cliente")
@@ -25,6 +27,7 @@ def _validate_business_sector(company_type: str, business_sector: Optional[str])
 
 
 def _resolve_document_type(person_type: str, document_type: Optional[str]) -> str:
+  """Persona jurídica: siempre NIT. Natural: debe ser un tipo válido."""
   if person_type == "juridica":
     return "NIT"  # Fijo porque una PJ solo puede tener NIT como documento válido
 
@@ -37,6 +40,7 @@ def _resolve_document_type(person_type: str, document_type: Optional[str]) -> st
 # Trae todas las empresas
 def get_companies(db: Session, current_user, company_type: Optional[str] = None, include_inactive: bool = False, verification_status: Optional[str]=None) -> list[Company]:
 
+  """Lista empresas con filtros opcionales y agrega needs_action según el rol."""
   query = db.query(Company).order_by(Company.created_at.desc())
 
   if company_type:
@@ -53,16 +57,19 @@ def get_companies(db: Session, current_user, company_type: Optional[str] = None,
 
 # Buscador de empresas por id (UUID)
 def get_company_by_id(db: Session, company_id: UUID) -> Optional[Company]:
+  """Busca una empresa por id."""
   return db.query(Company).filter(Company.id == company_id).first()
 
 
 # Buscador de empresas por client_code (identificador de la empresa por facilidad de "aprendizaje")
 def get_company_by_client_code(db: Session, client_code: str) -> Optional[Company]:
+  """Busca una empresa por su código legible (CLI-0001)."""
   return db.query(Company).filter(Company.client_code == client_code).first()
 
 
 # Generación del código del cliente
 def generate_client_code(db: Session, company_type: str) -> str:
+  """Siguiente código: HAC-NNNN para la empresa propia, CLI-NNNN para clientes (máximo + 1)."""
   prefix = "HAC" if company_type == "own" else "CLI"
 
   codes = db.query(Company.client_code).filter(Company.client_code.like(f"{prefix}-%")).all()
@@ -75,6 +82,7 @@ def generate_client_code(db: Session, company_type: str) -> str:
 def create_a_company(db: Session, company: CompanyCreate, current_user) -> Company:
   
   # Primero se valida lo que llega, después se busca el duplicado
+  """Crea una empresa en estado 'draft'. Da mensajes distintos si el documento ya existe (rechazo definitivo, desactivada, rechazada por documentos)."""
   _validate_person_type(company.person_type)
   _validate_business_sector(company.company_type, company.business_sector)
 
@@ -157,6 +165,7 @@ def create_a_company(db: Session, company: CompanyCreate, current_user) -> Compa
 
 def submit_company(db: Session, company_id: UUID, current_user) -> Optional[Company]:
 
+  """Envía a revisión (draft -> pending). Exige representante legal, documentos requeridos y todas las consultas en listas."""
   company = get_company_by_id(db, company_id)
 
   if not company:
@@ -214,6 +223,7 @@ def submit_company(db: Session, company_id: UUID, current_user) -> Optional[Comp
 
 
 def edit_company(db: Session, company_id: UUID, company_update: CompanyUpdate, current_user) -> Optional[Company]:
+  """Edita solo campos de la lista blanca. Si cambia una empresa aprobada y quien edita no puede aprobar, vuelve a revisión."""
   company = get_company_by_id(db, company_id)
 
   if not company:
@@ -288,11 +298,13 @@ def edit_company(db: Session, company_id: UUID, company_update: CompanyUpdate, c
 
 # Permite cambiar el estado de la empresa
 def _check_can_toggle(company: Company, only_drafts: bool):
+  """Sin el permiso de desactivar, solo se puede activar o desactivar empresas en borrador."""
   if only_drafts and company.verification_status != "draft":
     raise PermissionError("Solo un administrador puede desactivar o reactivar una empresa que ya salió de borrador")
 
 
 def reactivate_company(db: Session, company_id: UUID, require_update: bool, current_user) -> Optional[Company]:
+  """Reactiva una empresa; opcionalmente obliga a actualizar datos y reemplazar documentos."""
   company = get_company_by_id(db, company_id)
 
   if not company:
@@ -325,6 +337,7 @@ def reactivate_company(db: Session, company_id: UUID, require_update: bool, curr
 
 def deactivate_company(db: Session, company_id: UUID, reason: str, current_user) -> Optional[Company]:
 
+  """Desactiva una empresa con motivo obligatorio. No aplica a la empresa propia."""
   company = get_company_by_id(db, company_id)
   
   if not company:
@@ -357,6 +370,7 @@ def deactivate_company(db: Session, company_id: UUID, reason: str, current_user)
 
 # Verificación (admin) de la empresa creada.
 def verify_company(db: Session, company_id: UUID, decision: str, rejection_reason: Optional[str], rejection_type: Optional[str], current_user) -> Optional[Company]:
+  """El admin aprueba o rechaza una empresa pendiente. Rechazar exige motivo y tipo (documents o compliance)."""
   company = get_company_by_id(db, company_id)
 
   if not company:
@@ -402,6 +416,7 @@ def verify_company(db: Session, company_id: UUID, decision: str, rejection_reaso
 
 def resubmit_company(db: Session, company_id: UUID, current_user) -> Optional[Company]:
 
+  """Reenvía a revisión una empresa rechazada por documentos, cuando ya no quedan documentos rechazados."""
   company = get_company_by_id(db, company_id)
 
   if not company:
@@ -433,6 +448,7 @@ def resubmit_company(db: Session, company_id: UUID, current_user) -> Optional[Co
 
 
 def attach_needs_action(db: Session, companies: list[Company], current_user) -> list[Company]:
+  """Marca needs_action: admin ve pendientes; operaciones ve borradores y empresas con documentos por corregir."""
   role = current_user.role
   ids = [c.id for c in companies]
 

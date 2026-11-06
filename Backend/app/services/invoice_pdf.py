@@ -29,10 +29,12 @@ PENDING = colors.HexColor("#a12a2a")
 
 
 def _money(value) -> str:
+  """Formatea un valor como pesos colombianos."""
   return "$" + f"{float(value or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def _watermark(canvas, doc):
+  """Dibuja la marca de agua SIMULACIÓN en la página (hoy desactivada al construir el PDF)."""
   canvas.saveState()
   canvas.setFont("Helvetica-Bold", 80)
   canvas.setFillColor(colors.Color(0.8, 0.2, 0.2, alpha=0.07))
@@ -43,10 +45,12 @@ def _watermark(canvas, doc):
 
 
 def _in_words(value) -> str:
+  """Valor en letras, en español."""
   return f"{num2words(int(value), lang='es')} pesos con cero centavos"
 
 
 def generate_invoice_pdf(db: Session, invoice, order, qr_data: str) -> str:
+  """Genera el PDF de la factura en uploads/invoices/<id>/ y devuelve su ruta relativa."""
   seller = db.query(Company).filter(Company.company_type == "own", Company.is_active == True).first()  # noqa: E712
   customer = db.query(Company).filter(Company.id == order.company_id).first()
 

@@ -21,19 +21,23 @@ QR_UPLOAD_DIR = "uploads/dispatch_guides"
 
 
 def _qty_label(quantity: int, product) -> str:
+  """Texto de una cantidad: '10 kg Manzana'."""
   return f"{quantity} {product.unit} {product.name}"
 
 
 def _location(c: Company) -> str:
+  """Dirección, ciudad y departamento en una sola línea."""
   return ", ".join(x for x in [c.address, c.city, c.department] if x)
 
 
 def get_dispatch_guides(db: Session) -> list[DispatchGuide]:
+  """Lista todas las guías de despacho."""
   return db.query(DispatchGuide).all()
 
 
 # Guías de un pedido, en el orden de sus retiros
 def get_dispatch_guides_by_order(db: Session, order_id: UUID) -> List[DispatchGuide]:
+  """Guías de un pedido en el orden de sus retiros."""
   return (
     db.query(DispatchGuide)
     .join(Assignment, Assignment.id == DispatchGuide.assignment_id)
@@ -46,6 +50,7 @@ def get_dispatch_guides_by_order(db: Session, order_id: UUID) -> List[DispatchGu
 # Lo que se lleva este retiro
 def build_cargo_detail(assignment: Assignment) -> str:
   
+  """Texto con lo que se lleva este retiro."""
   parts = [_qty_label(ai.quantity, ai.order_item.product) for ai in assignment.items]
   
   return ", ".join(parts)
@@ -53,6 +58,7 @@ def build_cargo_detail(assignment: Assignment) -> str:
 
 # Lo que queda por retirar después de este retiro (el pedido menos lo ya despachado y lo de este retiro)
 def build_balance_detail(db: Session, order: Order, assignment: Assignment) -> str:
+  """Texto con el saldo que queda por retirar tras este retiro. OJO: tiene un error de sangría conocido (ver docs/06-pendientes-y-decisiones.md)."""
   _, dispatched = get_item_quantities(db, order.id)
   this_withdrawal = {ai.order_item_id: ai.quantity for ai in assignment.items}
   parts = []
@@ -66,11 +72,12 @@ def build_balance_detail(db: Session, order: Order, assignment: Assignment) -> s
     if not parts:
       return "Sin saldo: con este retiro se completa el pedido"
     
-    return "Saldo pendiente: " + ", ".join(parts)
+  return "Saldo pendiente: " + ", ".join(parts)
 
 
 def generate_qr_image(assignment_id: UUID, token: str) -> str:
 
+  """Crea el PNG del QR (solo contiene la URL con el token, no datos) y devuelve su ruta relativa."""
   folder = os.path.join(QR_UPLOAD_DIR, str(assignment_id))
   os.makedirs(folder, exist_ok=True)
   file_path = os.path.join(folder, "qr.png")
@@ -87,6 +94,7 @@ def generate_qr_image(assignment_id: UUID, token: str) -> str:
 
 def create_dispatch_guide(db: Session, assignment_id: UUID, current_user) -> DispatchGuide:
 
+  """Genera la guía de un retiro aprobado, con token aleatorio y QR. Verifica que no haya vetos y que exista la empresa propia."""
   assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
 
   if not assignment:
@@ -150,6 +158,7 @@ def create_dispatch_guide(db: Session, assignment_id: UUID, current_user) -> Dis
 
 
 def _load_guide_context(db: Session, token: str):
+  """Carga guía, pedido, retiro, vehículo, transportador y detalle a partir del token."""
   guide = db.query(DispatchGuide).filter(DispatchGuide.token == token).first()
 
   if not guide:
@@ -172,6 +181,7 @@ def _load_guide_context(db: Session, token: str):
 
 
 def _build_verification(db: Session, guide, order, assignment, vehicle, carrier, detail) -> dict:
+  """Arma la respuesta de portería; can_enter si está pendiente y no vetada, can_exit si está en planta."""
   blocked = bool(detail.blocked)
   vehicle_type = db.query(VehicleType).filter(VehicleType.code == vehicle.type).first()
 
@@ -199,11 +209,13 @@ def _build_verification(db: Session, guide, order, assignment, vehicle, carrier,
 
 # Solo consulta: no cambia nada
 def get_guide_for_verification(db: Session, token: str) -> dict:
+  """Solo consulta la guía; no cambia nada."""
   guide, order, assignment, vehicle, carrier, detail = _load_guide_context(db, token)
   return _build_verification(db, guide, order, assignment, vehicle, carrier, detail)
 
 
 def register_guide_entry(db: Session, token: str, current_user) -> dict:
+  """Registra el ingreso a la planta (pending -> in_plant). Bloquea si hay vetos."""
   guide, order, assignment, vehicle, carrier, detail = _load_guide_context(db, token)
 
   if guide.status != "pending":
@@ -223,6 +235,7 @@ def register_guide_entry(db: Session, token: str, current_user) -> dict:
 
 # Con cada salida se descuenta solo lo de ese retiro y el pedido pasa a: parcialmente despachado
 def register_guide_exit(db: Session, token: str, current_user) -> dict:
+  """Registra la salida (in_plant -> used), descuenta el inventario de los ítems del retiro y deja el pedido en 'partially_dispatched' o 'dispatched'."""
   guide, order, assignment, vehicle, carrier, detail = _load_guide_context(db, token)
 
   if guide.status == "used":

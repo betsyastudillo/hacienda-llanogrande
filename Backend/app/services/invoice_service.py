@@ -11,8 +11,10 @@ MAX_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
 def get_invoice_by_order(db: Session, order_id: UUID) -> Optional[Invoice]:
+  """Factura de un pedido, o None."""
   return db.query(Invoice).filter(Invoice.order_id == order_id).first()
 
 
 def get_invoice_by_id(db: Session, invoice_id: UUID) -> Optional[Invoice]:
+  """Busca una factura por id."""
   return db.query(Invoice).filter(Invoice.id == invoice_id).first()

@@ -21,14 +21,17 @@ LINE = colors.HexColor("#d9d5cb")
 
 
 def _money(value) -> str:
+  """Formatea un valor como pesos colombianos."""
   return "$ " + f"{float(value or 0):,.0f}".replace(",", ".")
 
 
 def _doc(company: Company) -> str:
+  """Documento de la empresa en formato legible (tipo y número)."""
   return f"{company.document_type or ''} {company.document_number or ''}".strip()
 
 
 def generate_proforma_pdf(db: Session, payment, order, bank_account) -> str:
+  """Genera el PDF de la proforma en uploads/proformas/<id>/ y devuelve su ruta relativa."""
   seller = (
     db.query(Company)
     .filter(Company.company_type == "own", Company.is_active == True)  # noqa: E712

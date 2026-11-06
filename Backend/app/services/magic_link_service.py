@@ -11,6 +11,7 @@ MAGIC_LINK_EXPIRATION_HOURS = 48
 
 
 def create_magic_link(db: Session, user_id: UUID, current_user) -> MagicLink:
+  """Crea un enlace de acceso de un solo uso (48 horas) para un usuario cliente activo."""
   user = db.query(User).filter(User.id == user_id).first()
   if not user:
     raise ValueError("User not found")
@@ -41,6 +42,7 @@ def create_magic_link(db: Session, user_id: UUID, current_user) -> MagicLink:
 # Valida el token, lo marca como usado y devuelve un access_token real para el usuario asociado.
 def verify_magic_link(db: Session, token: str) -> str:
 
+  """Valida el token (existe, no usado, no vencido, usuario y empresa activos), lo marca como usado y devuelve un access token."""
   magic_link = db.query(MagicLink).filter(MagicLink.token == token).first()
 
   if not magic_link:

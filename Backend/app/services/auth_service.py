@@ -8,6 +8,7 @@ from app.config import settings
 # Toma la contraseña y la convierte en un texto irreversible (hash) para guardarla en la base de datos
 def hash_password(password: str) -> str:
   # Convierte la contraseña en bytes y luego genera un hash usando bcrypt
+  """Convierte la contraseña en un hash bcrypt irreversible para guardarlo en la base."""
   password_bytes = password.encode("utf-8")
   hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
 
@@ -16,6 +17,7 @@ def hash_password(password: str) -> str:
 
 # Verifica si la contraseña proporcionada coincide con la almacenada (hash)
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+  """Compara una contraseña en texto plano con el hash guardado."""
   return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
@@ -23,6 +25,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # Manejo de tokens JWT
 def create_access_token(data: dict) -> str:
   # data.copy toma lo que le pasamos y lo convierte en un diccionario para poder agregarle la fecha de expiración
+  """Genera un JWT firmado con los datos dados y la fecha de expiración configurada."""
   to_encode = data.copy()
   expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
   # Agrega la fecha de expiración al diccionario
@@ -35,6 +38,7 @@ def create_access_token(data: dict) -> str:
 
 # Recibe un token y lo decodifica para obtener la información que contiene, si el token es inválido o ha expirado, devuelve None
 def decode_access_token(token: str) -> dict:
+  """Decodifica un JWT y devuelve su contenido; devuelve None si es inválido o expiró."""
   try:
     payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
     

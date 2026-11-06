@@ -7,11 +7,13 @@ from app.constants.company_requirements import get_required_checks, get_required
 
 
 def get_checks_by_company(db: Session, company_id: UUID) -> List[ComplianceCheck]:
+  """Consultas en listas registradas de una empresa."""
   return db.query(ComplianceCheck).filter(ComplianceCheck.company_id == company_id).all()
 
 
 # Insertar si ya existe, no crea otro
 def upsert_check(db: Session, company_id: UUID, check_key: str, has_findings: bool, note: Optional[str], current_user, subject="company"):
+  """Crea o actualiza una consulta (empresa o representante legal). Solo con la empresa en borrador; un hallazgo exige descripción."""
   company = db.query(Company).filter(Company.id == company_id).first()
 
   if not company:
