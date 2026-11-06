@@ -13,13 +13,15 @@ from app.auth_dependencies import (
   AssignmentCreatorOwn,
 )
 from app.schemas.assignment import (
-  AssignmentCorrection, AssignmentCreate, AssignmentResubmit, AssignmentValidateRequest, AssignmentResponse, CarrierLookupResponse, DocumentReview, OwnerLookupResponse, PostReviewBody, VehicleLookupResponse,
+  AssignmentCancel, AssignmentCorrection, AssignmentCreate, AssignmentResubmit, AssignmentValidateRequest, AssignmentResponse,
+  CarrierLookupResponse, DocumentReview, OwnerLookupResponse, PostReviewBody, VehicleLookupResponse,
 )
 from app.schemas.document import DocumentBase
 from app.services.assignment_service import (
-  complete_post_review, correct_assignment, create_assignment, hide_sensitive_checks, lookup_carrier, lookup_owner, lookup_vehicle, resubmit_assignment, review_transport_document, validate_assignment,
-  get_assignment_detail_by_order, get_assignments,
-  upload_transport_document, get_transport_document,
+  cancel_assignment, complete_post_review, correct_assignment, create_assignment, get_accessible_assignment,
+  get_assignments, get_assignments_by_order, get_transport_document, hide_sensitive_checks, lookup_carrier,
+  lookup_owner, lookup_vehicle, resubmit_assignment, review_transport_document, upload_transport_document,
+  validate_assignment,
 )
 
 router = APIRouter(prefix="/assignments", tags=["Assignments"])
@@ -27,7 +29,7 @@ router = APIRouter(prefix="/assignments", tags=["Assignments"])
 
 # Un pedido ajeno responde 404 y no 400, para no revelar que existe (regla del CLAUDE.md)
 def _error_status(error: ValueError) -> int:
-  return 404 if str(error) == "Order not found" else 400
+  return 404 if str(error) in ("Order not found", "Assignment not found") else 400
 
 
 @router.get("/lookup/owner", response_model=OwnerLookupResponse, summary="Busca al dueño de un vehículo por documento (ayuda del formulario)")
@@ -53,47 +55,40 @@ def get_list_assignments(
   return get_assignments(db)
 
 
-@router.get("/order/{order_id}", response_model=AssignmentResponse, summary="Trae una asignación por id de la orden")
-def get_assignment_by_order_id(
+@router.get("/order/{order_id}", response_model=list[AssignmentResponse], summary="Trae los retiros de un pedido")
+def get_assignments_by_order_id(
   order_id: UUID,
   current_user: AssignmentViewerAny,
   db: Session = Depends(get_db),
 ):
   order = get_order_by_id(db, order_id)
-  
+
   if not order:
     raise HTTPException(status_code=404, detail="Order not found")
 
-  # Si no tiene permiso:
   if not user_has_permission(current_user, "assignment:ver") and not can_access_order(order, current_user):
     raise HTTPException(status_code=404, detail="Order not found")
 
-  assignment = get_assignment_detail_by_order(db, order_id)
-
-  if not assignment:
-    raise HTTPException(status_code=404, detail="Assignment not found for this order")
-
-  return hide_sensitive_checks(assignment, current_user)
+  return [hide_sensitive_checks(a, current_user) for a in get_assignments_by_order(db, order_id)]
 
 
-@router.post("/", response_model=AssignmentResponse, summary="Registra una asignación")
+@router.post("/", response_model=AssignmentResponse, summary="Registra un retiro")
 def register_assignment(
   data: AssignmentCreate,
   current_user: AssignmentCreatorOwn,
   db: Session = Depends(get_db),
 ):
   try:
-    r = create_assignment(db, data, current_user)
-    print("Assignment created:", r)
-    return r
+    return create_assignment(db, data, current_user)
+
   except ValueError as e:
     db.rollback()
     raise HTTPException(status_code=_error_status(e), detail=str(e))
 
 
-@router.post("/order/{order_id}/documents", response_model=DocumentBase, summary="El cliente sube o reemplaza un documento del vehículo o del transportador.")
+@router.post("/{assignment_id}/documents", response_model=DocumentBase, summary="El cliente sube o reemplaza un documento del vehículo o del transportador.")
 def upload_document(
-  order_id: UUID,
+  assignment_id: UUID,
   current_user: AssignmentCreatorOwn,
   subject: Literal["vehicle", "carrier"] = Form(...),
   document_type: str = Form(...),
@@ -102,30 +97,23 @@ def upload_document(
   db: Session = Depends(get_db),
 ):
   try:
-    return upload_transport_document(db, order_id, subject, document_type, file, current_user, expires_at)
+    return upload_transport_document(db, assignment_id, subject, document_type, file, current_user, expires_at)
 
   except ValueError as e:
     db.rollback()
     raise HTTPException(status_code=_error_status(e), detail=str(e))
 
 
-@router.get("/order/{order_id}/documents/{document_id}/file", summary="Descarga un documento de transporte (exige sesión y acceso al pedido).")
+@router.get("/{assignment_id}/documents/{document_id}/file", summary="Descarga un documento de transporte (exige sesión y acceso al pedido).")
 def download_document(
-  order_id: UUID,
+  assignment_id: UUID,
   document_id: UUID,
   current_user: AssignmentViewerAny,
   db: Session = Depends(get_db),
 ):
-  order = get_order_by_id(db, order_id)
-
-  if not order:
-    raise HTTPException(status_code=404, detail="Order not found")
-
-  if not user_has_permission(current_user, "assignment:ver") and not can_access_order(order, current_user):
-    raise HTTPException(status_code=404, detail="Order not found")
-
   try:
-    document = get_transport_document(db, order_id, document_id)
+    assignment, _ = get_accessible_assignment(db, assignment_id, current_user)
+    document = get_transport_document(db, assignment, document_id)
 
   except ValueError as e:
     raise HTTPException(status_code=404, detail=str(e))
@@ -139,15 +127,15 @@ def download_document(
   return FileResponse(path, media_type=media_type, filename=os.path.basename(path))
 
 
-@router.put("/order/{order_id}/resubmit", response_model=AssignmentResponse, summary="Reenvío de información si se rechazó vehículo o transportador.")
+@router.put("/{assignment_id}/resubmit", response_model=AssignmentResponse, summary="Reenvío de información si se rechazó vehículo o transportador.")
 def resubmit(
-  order_id: UUID,
+  assignment_id: UUID,
   data: AssignmentResubmit,
   current_user: AssignmentCreatorOwn,
   db: Session = Depends(get_db),
 ):
   try:
-    return resubmit_assignment(db, order_id, data.vehicle, data.carrier, current_user)
+    return resubmit_assignment(db, assignment_id, data.vehicle, data.carrier, current_user)
 
   except ValueError as e:
     db.rollback()
@@ -173,37 +161,52 @@ def validate(
     raise HTTPException(status_code=400, detail=str(e))
   
 
-@router.patch("/order/{order_id}/documents/{document_id}/review", response_model=DocumentBase, summary="Aprueba o rechaza un documento de transporte",)
+@router.patch("/{assignment_id}/documents/{document_id}/review", response_model=DocumentBase, summary="Aprueba o rechaza un documento de transporte")
 def review_document(
-  order_id: UUID,
+  assignment_id: UUID,
   document_id: UUID,
   data: DocumentReview,
   current_user: AssignmentValidator,
   db: Session = Depends(get_db),
 ):
   try:
-    return review_transport_document(db, order_id, document_id, data.status, data.reason, current_user)
-  
+    return review_transport_document(db, assignment_id, document_id, data.status, data.reason, current_user)
+
   except ValueError as e:
     db.rollback()
-    raise HTTPException(status_code=400, detail=str(e))
-  
+    raise HTTPException(status_code=_error_status(e), detail=str(e))
 
-@router.put("/order/{order_id}/correct", response_model=AssignmentResponse)
+
+@router.put("/{assignment_id}/correct", response_model=AssignmentResponse, summary="Logística corrige quién recoge")
 def correct(
-    order_id: UUID, 
-    body: AssignmentCorrection, 
-    current_user: AssignmentCorrector,
-    db: Session = Depends(get_db), 
-  ):
+  assignment_id: UUID,
+  body: AssignmentCorrection,
+  current_user: AssignmentCorrector,
+  db: Session = Depends(get_db),
+):
   try:
-    return correct_assignment(db, order_id, body.vehicle, body.carrier, body.reason, current_user)
-  
+    return correct_assignment(db, assignment_id, body.vehicle, body.carrier, body.reason, current_user)
+
   except ValueError as e:
     db.rollback()
-    raise HTTPException(status_code=400, detail=str(e))
+    raise HTTPException(status_code=_error_status(e), detail=str(e))
 
 
+@router.post("/{assignment_id}/cancel", response_model=AssignmentResponse, summary="Anula un retiro y libera sus cantidades")
+def cancel(
+  assignment_id: UUID,
+  body: AssignmentCancel,
+  current_user: AssignmentCorrector,
+  db: Session = Depends(get_db),
+):
+  try:
+    return cancel_assignment(db, assignment_id, body.reason, current_user)
+
+  except ValueError as e:
+    db.rollback()
+    raise HTTPException(status_code=_error_status(e), detail=str(e))
+  
+  
 @router.post("/{assignment_id}/complete-review", response_model=AssignmentResponse)
 def complete_review(
   assignment_id: UUID, 

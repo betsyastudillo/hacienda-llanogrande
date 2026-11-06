@@ -15,8 +15,7 @@ import TransportCard from './TransportCard'
 import './OrderDetail.css'
 import { CircleCheck, CircleX, Pencil } from 'lucide-react'
 
-const API_BASE = api.defaults.baseURL
-
+const WITHDRAWAL_STATUSES = ['facturado', 'partially_dispatched']
 const CANCELLED_STEP = { key: 'cancelled', label: 'Anulado' }
 
 function StatusStepper({ currentStatus }) {
@@ -67,8 +66,8 @@ export default function OrderDetail() {
   const [payment, setPayment] = useState(null)
   const [invoice, setInvoice] = useState(null)
   const [bankAccount, setBankAccount] = useState(null)
-  const [assignment, setAssignment] = useState(null)
-  const [dispatchGuide, setDispatchGuide] = useState(null)
+  const [assignments, setAssignments] = useState([])
+  const [dispatchGuides, setDispatchGuides] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const { showToast } = useToast()
@@ -101,29 +100,19 @@ export default function OrderDetail() {
     }
   }
 
-  async function fetchAssignment() {
+  async function fetchAssignments() {
     try {
       const res = await api.get(`/assignments/order/${orderId}`)
-      setAssignment(res.data)
+      setAssignments(res.data)
     } catch {
-      setAssignment(null) 
-    }
-  }
-
-  async function fetchDispatchGuide() {
-    try {
-      const res = await api.get(`/dispatch-guides/order/${orderId}`)
-
-      setDispatchGuide(res.data)
-    } catch {
-      setDispatchGuide(null)
+      setAssignments([])
     }
   }
 
   async function reloadAll() {
     const orderRes = await api.get(`/orders/${orderId}`)
     setOrder(orderRes.data) 
-    await Promise.all([fetchPayment(), fetchInvoice(), fetchAssignment(), fetchDispatchGuide()])
+    await Promise.all([fetchPayment(), fetchInvoice(), fetchAssignments()])
   }
 
   useEffect(() => {
@@ -142,7 +131,7 @@ export default function OrderDetail() {
       }
 
       // Estas secciones son opcionales según el estado del pedido — Se dejan sin try/catch porque cada una atrapa sus propios errores
-      await Promise.all([fetchPayment(), fetchInvoice(), fetchAssignment(), fetchDispatchGuide()])
+      await Promise.all([fetchPayment(), fetchInvoice(), fetchAssignments()])
       setLoading(false)
 
     }
@@ -168,6 +157,8 @@ export default function OrderDetail() {
     }
   }
 
+
+
   if (loading) return <main className="detail-main"><p className="detail-empty">Cargando pedido...</p></main>
   if (error) return <main className="detail-main"><p className="detail-empty detail-error-text">{error}</p></main>
   if (!order) return null
@@ -175,11 +166,15 @@ export default function OrderDetail() {
   const canEdit = hasPermission('order:editar_propio') && order.status === 'created' && !payment
   const canCancel = hasPermission('order:anular') && order.status === 'created'
 
+  const showBalance = ['facturado', 'partially_dispatched', 'dispatched'].includes(order.status)
+  const pendingTotal = order.items.reduce((sum, i) => sum + (i.pending_quantity || 0), 0)
+  const canSchedule = hasPermission('assignment:crear_propio') && !hasPermission('assignment:validar')
+  const showNewWithdrawal = WITHDRAWAL_STATUSES.includes(order.status) && pendingTotal > 0 && (assignments.length === 0 || canSchedule)
+  const lastDispatchAt = assignments.map((a) => a.dispatch_guide?.used_at).filter(Boolean).sort().pop()
+
   const openCard = {
     payment: order.status === 'created',
     invoice: false,
-    transport: ['facturado', 'transport_validated'].includes(order.status),
-    guide: order.status === 'dispatch_guide_generated',
   }
 
   return (
@@ -193,8 +188,10 @@ export default function OrderDetail() {
           <p className="detail-eyebrow">Empresa:</p>
           <p className="detail-order-id">{order.company_display_name}</p>
           <p className="detail-order-date">Creado el {formatDate(order.created_at)}</p>
-          {order.status === 'dispatched' && dispatchGuide?.used_at && (
-            <p className="detail-order-date">Despachado el {formatDate(dispatchGuide.used_at)}</p>
+          {lastDispatchAt && (
+            <p className="detail-order-date">
+              {order.status === 'dispatched' ? 'Despachado el' : 'Último retiro el'} {formatDateTime(lastDispatchAt)}
+            </p>
           )}
         </div>
 
@@ -225,7 +222,7 @@ export default function OrderDetail() {
 
       {showCancel && (
         <Modal title="Anular pedido" onClose={() => setShowCancel(false)}>
-          <p className="detail-empty-inline">Se devolverá el inventario del pedido. <br />Esta acción no se puede deshacer.</p>
+          <p className="detail-empty-inline">Se liberará el inventario separado del pedido. <br />Esta acción no se puede deshacer.</p>
           <br />
           <label className="pay-label" htmlFor="cancel-reason">Motivo (obligatorio)</label>
           <textarea id="cancel-reason" className="pay-textarea" rows={3} value={cancelReason}
@@ -262,6 +259,12 @@ export default function OrderDetail() {
                 <tr>
                   <th>Producto</th>
                   <th>Cantidad</th>
+                  {showBalance && (
+                    <>
+                      <th>Despachado</th>
+                      <th>Sin programar</th>
+                    </>
+                  )}
                   <th>Precio unitario</th>
                   <th>Subtotal</th>
                 </tr>
@@ -273,7 +276,13 @@ export default function OrderDetail() {
                   return (
                     <tr key={item.id}>
                       <td>{product?.name || 'Producto'}</td>
-                      <td>{formatQuantity(item.quantity_m3, product, parent)}</td>
+                      <td>{formatQuantity(item.quantity_m3, product, parent)}(es)</td>
+                      {showBalance && (
+                        <>
+                          <td>{formatQuantity(item.dispatched_quantity, product, parent)}(es)</td>
+                          <td>{formatQuantity(item.pending_quantity, product, parent)}(es)</td>
+                        </>
+                      )}
                       <td>{formatCurrency(item.unit_price)}</td>
                       <td className="detail-line-total">{formatCurrency(item.subtotal)}</td>
                     </tr>
@@ -316,35 +325,26 @@ export default function OrderDetail() {
               defaultOpen={openCard.invoice}
             />
 
-            <TransportCard 
-              order={order} 
-              assignment={assignment} 
-              dispatchGuide={dispatchGuide} 
-              onChanged={reloadAll}
-              defaultOpen={openCard.transport}
-            />
+            {assignments.map((a) => (
+              <TransportCard
+                key={a.id}
+                order={order}
+                assignment={a}
+                products={products}
+                onChanged={reloadAll}
+                defaultOpen={WITHDRAWAL_STATUSES.includes(order.status) && !a.cancelled_at && a.dispatch_guide?.status !== 'used'}
+              />
+            ))}
 
-            <div className="detail-card detail-qr-card">
-              <p className="detail-card-title">Guía de despacho</p>
-              {dispatchGuide ? (
-                <>
-                  {dispatchGuide.qr_image_url && (
-                    <img
-                      src={`${API_BASE}${dispatchGuide.qr_image_url}`}
-                      alt="Código QR de despacho"
-                      className="detail-qr-image"
-                    />
-                  )}
-                  <p className="detail-empty-inline" style={{ textAlign: 'center', marginTop: 8 }}>
-                    {dispatchGuide.status === 'used' ? 'Ya utilizada' : 'Escanear en portería'}
-                  </p>
-                  {dispatchGuide.entered_at && <p className="detail-empty-inline">Ingreso a planta: {formatDateTime(dispatchGuide.entered_at)}</p>}
-                  {dispatchGuide.used_at && <p className="detail-empty-inline">Salida de planta: {formatDateTime(dispatchGuide.used_at)}</p>}
-                </>
-              ) : (
-                <p className="detail-empty-inline">Aún no se ha generado la guía de despacho.</p>
-              )}
-            </div>
+            {showNewWithdrawal && (
+              <TransportCard
+                order={order}
+                assignment={null}
+                products={products}
+                onChanged={reloadAll}
+                defaultOpen={assignments.length === 0 && order.status === 'facturado'}
+              />
+            )}
           </div>
         )}
       </div>

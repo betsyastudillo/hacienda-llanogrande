@@ -1,38 +1,44 @@
+// Reparte lo pendiente de un pedido para lo que cabe en un vehículo.
+
 export function suggestPickup(lines, capacityKg) {
-  const usable = lines.filter((l) => l.unitWeightKg > 0 && l.balance > 0)
-  const total = usable.reduce((s, l) => s + l.balance * l.unitWeightKg, 0)
+  if (!capacityKg || capacityKg <= 0 || lines.length === 0) return null
+  if (lines.some((l) => !l.unitKg || l.unitKg <=0)) return null
 
-  if (!capacityKg || !total) return null
+  const totalKg = lines.reduce((sum, l) => sum + l.pending * l.unitKg, 0)
+  const trips = Math.max(1, Math.ceil(totalKg / capacityKg))
 
-  // Todo el saldo cabe en un solo retiro
-  if (total <= capacityKg) {
+  // Todo cabe en un solo retiro
+  if (totalKg <= capacityKg) {
     return {
-      quantities: Object.fromEntries(usable.map((l) => [l.product_id, l.balance])),
-      usedKg: total, complete: true, trips: 1, //trips: retiros minimos que faltan
+      quantities: Object.fromEntries(lines.map((l) => [l.id, l.pending])),
+      usedKg: totalKg,
+      complete: true,
+      trips: 1,
     }
   }
 
-  const ratio = capacityKg / total
-  const qty = {}
-  let used = 0
+  // Cada producto lleva la misma fracción de lo que falta
+  const ratio = capacityKg / totalKg
+  const quantities = {}
+  let usedKg = 0
 
-  usable.forEach((l) => {
-    qty[l.product_id] = Math.floor(l.balance * ratio)
-    used += qty[l.product_id] * l.unitWeightKg
-  })
+  for (const l of lines) {
+    const q = Math.min(l.pending, Math.floor(l.pending * ratio))
+    quantities[l.id] = q
+    usedKg += q * l.unitKg
+  }
 
-  // Llena el espacio que sobra, de a una unidad, mientras quepa
-  let added = true
-  while (added) {
-    added = false
-    for (const l of usable) {
-      if (qty[l.product_id] < l.balance && used + l.unitWeightKg <= capacityKg) {
-        qty[l.product_id] += 1
-        used += l.unitWeightKg
-        added = true
-      }
+  // Lo que sobra de capacidad se llena con unds sueltas, empezando por las más pesadas
+  let remaining = capacityKg - usedKg
+
+  for (const l of [...lines].sort((a, b) => b.unitKg - a.unitKg)) {
+    const extra = Math.min(l.pending - quantities[l.id], Math.floor((remaining + 1e-9) / l.unitKg))
+
+    if (extra > 0) {
+      quantities[l.id] += extra
+      remaining -= extra * l.unitKg
     }
   }
 
-  return { quantities: qty, usedKg: used, complete: false, trips: Math.ceil(total / capacityKg) }
+  return { quantities, usedKg: capacityKg - remaining, complete: false, trips}
 }

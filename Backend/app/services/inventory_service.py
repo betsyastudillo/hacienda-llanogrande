@@ -5,6 +5,9 @@ from decimal import ROUND_DOWN, Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from zoneinfo import ZoneInfo
+from app.models.assignment import Assignment
+from app.models.assignment_item import AssignmentItem
+from app.models.dispatch_guide import DispatchGuide
 from app.models.inventory_movement import InventoryMovement
 from app.models.product import Product
 from app.models.order import Order
@@ -16,14 +19,13 @@ ADJUSTMENT_CATEGORIES = ("damage", "count_difference", "other")
 # Pedidos que ya no separan inventario
 NON_RESERVING_ORDER_STATUSES = ("cancelled", "dispatched")
 
-
-# Unidades del producto base que tienen separadas los pedidos abiertos (los paquetes se convierten a unidades)
+# Unidades del producto base que siguen separadas: lo pedido menos lo que ya salió por portería
 def get_reserved_stock(db: Session, stock_target_id: UUID) -> int:
   target_id = func.coalesce(Product.parent_product_id, Product.id)
-  units = OrderItem.quantity_m3 * func.coalesce(Product.units_per_pack, 1)
+  pack = func.coalesce(Product.units_per_pack, 1)
 
-  total = (
-    db.query(func.coalesce(func.sum(units), 0))
+  ordered = (
+    db.query(func.coalesce(func.sum(OrderItem.quantity_m3 * pack), 0))
     .select_from(OrderItem)
     .join(Order, Order.id == OrderItem.order_id)
     .join(Product, Product.id == OrderItem.product_id)
@@ -31,7 +33,23 @@ def get_reserved_stock(db: Session, stock_target_id: UUID) -> int:
     .scalar()
   )
 
-  return int(total)
+  dispatched = (
+    db.query(func.coalesce(func.sum(AssignmentItem.quantity * pack), 0))
+    .select_from(AssignmentItem)
+    .join(Assignment, Assignment.id == AssignmentItem.assignment_id)
+    .join(DispatchGuide, DispatchGuide.assignment_id == Assignment.id)
+    .join(OrderItem, OrderItem.id == AssignmentItem.order_item_id)
+    .join(Order, Order.id == OrderItem.order_id)
+    .join(Product, Product.id == OrderItem.product_id)
+    .filter(
+      target_id == stock_target_id,
+      DispatchGuide.status == "used",
+      Order.status.notin_(NON_RESERVING_ORDER_STATUSES),
+    )
+    .scalar()
+  )
+
+  return int(ordered) - int(dispatched)
 
 
 # Lo que hay en la planta menos lo que ya está separado

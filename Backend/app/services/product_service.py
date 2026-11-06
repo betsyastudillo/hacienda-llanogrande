@@ -17,8 +17,8 @@ def get_product_by_id(db: Session, product_id: UUID) -> Optional[Product]:
 
 # Valida las unidades de medida
 def _validate_unit(unit: str):
-    if unit not in VALID_UNITS:
-        raise ValueError(f"Invalid unit. Allowed values: {VALID_UNITS}")
+  if unit not in VALID_UNITS:
+    raise ValueError(f"Invalid unit. Allowed values: {VALID_UNITS}")
 
 
 def _validate_pack_fields(db: Session, parent_product_id: Optional[UUID], units_per_pack: Optional[Decimal]):

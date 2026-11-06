@@ -2,14 +2,15 @@ from typing import List, Optional
 from uuid import UUID
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, joinedload
 from app.constants.transport_requirements import compute_missing_documents, is_owner_carrier
 from app.models.assignment import Assignment
+from app.models.assignment_item import AssignmentItem
 from app.models.company import Company
 from app.models.document import Document
-from app.models.inventory_movement import InventoryMovement
+from app.models.dispatch_guide import DispatchGuide
 from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.order_counter import OrderCounter
@@ -19,13 +20,13 @@ from app.models.user import User
 from app.models.vehicle import Vehicle
 from app.models.carrier import Carrier
 from app.schemas.order import OrderCreate
-from app.services.inventory_service import get_sellable_stock, register_order_deduction
+from app.services.inventory_service import get_sellable_stock
 
 
 CLIENT_ROLES = ("cliente_operativo", "cliente_admin")
 STAFF_VIEW_ALL_ROLES = ("admin", "soporte")
 CANCELLABLE_STATUSES = ("created",)
-
+WITHDRAWAL_ORDER_STATUSES = ("facturado", "partially_dispatched") #Estados de pedido en los que se pueden registrar y mover retiros
 
 # Genera los números de orden PED-2026-0000. Para facilitar las búsquedas.
 def generate_order_number(db: Session) -> str:
@@ -44,6 +45,39 @@ def generate_order_number(db: Session) -> str:
   number = db.execute(stmt).scalar_one()
 
   return f"PED-{year}-{number:04d}"
+
+
+# Cantidades por producto del pedido: asignadas a retiros activos y ya despachadas (guía usada)
+def get_item_quantities(db: Session, order_id: UUID):
+  rows = (
+    db.query(AssignmentItem.order_item_id, AssignmentItem.quantity, DispatchGuide.status)
+    .join(Assignment, Assignment.id == AssignmentItem.assignment_id)
+    .outerjoin(DispatchGuide, DispatchGuide.assignment_id == Assignment.id)
+    .filter(Assignment.order_id == order_id, Assignment.cancelled_at.is_(None))
+    .all()
+  )
+
+  assigned, dispatched = {}, {}
+
+  for order_item_id, quantity, guide_status in rows:
+    assigned[order_item_id] = assigned.get(order_item_id, 0) + quantity
+
+    if guide_status == "used":
+      dispatched[order_item_id] = dispatched.get(order_item_id, 0) + quantity
+
+  return assigned, dispatched
+
+
+# Atributos temporales con el saldo de cada producto, para el detalle del pedido
+def attach_item_balances(db: Session, order: Order) -> Order:
+  assigned, dispatched = get_item_quantities(db, order.id)
+
+  for item in order.items:
+    item.assigned_quantity = assigned.get(item.id, 0)
+    item.dispatched_quantity = dispatched.get(item.id, 0)
+    item.pending_quantity = item.quantity_m3 - item.assigned_quantity
+
+  return order
 
 
 def get_orders(db: Session, current_user: User) -> List[Order]:
@@ -89,28 +123,6 @@ def _resolve_company_id(order: OrderCreate, current_user: User) -> UUID:
     return order.company_id
 
   raise ValueError("This role is not allowed to create orders")
-
-
-def _reverse_order_deductions(db: Session, order: Order, current_user: User, reason: str) -> None:
-  movements = db.query(InventoryMovement).filter(InventoryMovement.order_id == order.id).all()
-
-  # Neto por producto: salidas menos entradas ya registradas para este pedido,
-  # así una segunda edición no revierte dos veces lo mismo
-  net = {}
-  for m in movements:
-    sign = 1 if m.movement_type == "salida" else -1 if m.movement_type == "entrada" else 0
-    net[m.product_id] = net.get(m.product_id, 0) + sign * m.quantity
-
-  for product_id, quantity in net.items():
-    if quantity > 0:
-      db.add(InventoryMovement(
-        product_id=product_id,
-        order_id=order.id,
-        movement_type="entrada",
-        quantity=quantity,
-        reason=reason,
-        created_by_user_id=current_user.id,
-      ))
 
 
 def create_order(db: Session, order: OrderCreate, current_user: User) -> Order:
@@ -288,28 +300,51 @@ def cancel_order(db: Session, order_id: UUID, reason: str, current_user) -> Opti
 # Sirve cuando requiere acción para el pago o el transporte
 def attach_needs_action(db: Session, orders: List[Order], current_user: User) -> List[Order]:
   
-  payments, assignments, transport_documents = {}, {}, []
+  payments, retiros_by_order, transport_documents = {}, {}, []
   vehicles, carriers = {}, {}
+  guided, ordered_totals, assigned_totals = set(), {}, {}
 
   role = current_user.role
   ids = [o.id for o in orders]
 
   if ids:
 
-    # Trae todos los pagos de la lista en una sola consulta y los guarda en un dict cuya llave es el id del pedido. Igual en transporte.
     payments = {p.order_id: p for p in db.query(Payment).filter(Payment.order_id.in_(ids)).all()}
 
-    # Un transpoprte por pedido (order_id es único)
-    assignments = {
-      a.order_id: a
-      for a in db.query(Assignment).filter(Assignment.order_id.in_(ids)).order_by(Assignment.created_at).all()
-    }
+    # Retiros activos (no anulados) de cada retiro
+    active = (
+      db.query(Assignment)
+      .filter(Assignment.order_id.in_(ids), Assignment.cancelled_at.is_(None))
+      .order_by(Assignment.sequence)
+      .all()
+    )
 
-    # Documentos de los vehículos y transportadores de esas asignaciones, para saber si falta alguno
-    vehicle_ids = {a.vehicle_id for a in assignments.values()}
-    carrier_ids = {a.carrier_id for a in assignments.values()}
+    for a in active:
+      retiros_by_order.setdefault(a.order_id, []).append(a)
 
-    if assignments:
+    # Retiros que ya tienen guía
+    guided = {row[0] for row in db.query(DispatchGuide.assignment_id).filter(DispatchGuide.order_id.in_(ids)).all()}
+
+    #Totales para saber si queda algo por programar (si lo pedido supera lo asignado)
+    ordered_totals = dict(
+      db.query(OrderItem.order_id, func.sum(OrderItem.quantity_m3))
+      .filter(OrderItem.order_id.in_(ids))
+      .group_by(OrderItem.order_id)
+      .all()
+    )
+
+    assigned_totals = dict(
+      db.query(Assignment.order_id, func.sum(AssignmentItem.quantity))
+      .join(AssignmentItem, AssignmentItem.assignment_id == Assignment.id)
+      .filter(Assignment.order_id.in_(ids), Assignment.cancelled_at.is_(None))
+      .group_by(Assignment.order_id)
+      .all()
+    )
+
+    if active:
+      # Documentos de los vehículos y transportadores de cada asignación
+      vehicle_ids = {a.vehicle_id for a in active}
+      carrier_ids = {a.carrier_id for a in active}
 
       vehicles = {v.id: v for v in db.query(Vehicle).filter(Vehicle.id.in_(vehicle_ids)).all()}
       carriers = {c.id: c for c in db.query(Carrier).filter(Carrier.id.in_(carrier_ids)).all()}
@@ -319,6 +354,14 @@ def attach_needs_action(db: Session, orders: List[Order], current_user: User) ->
         .filter(or_(Document.vehicle_id.in_(vehicle_ids), Document.carrier_id.in_(carrier_ids)))
         .all()
       )
+  
+  # Un retiro pendiente solo se puede revisar cuando ya están todos los documentos obligatorios
+  def docs_missing(a: Assignment) -> bool:
+    return bool(compute_missing_documents(
+        a.vehicle_id, a.carrier_id, transport_documents,
+        is_owner_carrier(vehicles.get(a.vehicle_id), carriers.get(a.carrier_id))
+      )
+    )
 
   # Recorre cada pedido y toma su pago y su transporte del diccionario (None si no existen)
   for order in orders:
@@ -328,41 +371,24 @@ def attach_needs_action(db: Session, orders: List[Order], current_user: User) ->
       continue
 
     payment = payments.get(order.id)
-    assignment = assignments.get(order.id)
+    retiros = retiros_by_order.get(order.id, [])
+    in_withdrawal = order.status in WITHDRAWAL_ORDER_STATUSES
     needs = False
 
-    # Un transporte pendiente solo se puede revisar cuando ya están todos los documentos obligatorios
-    transport_docs_missing = bool(
-      assignment
-      and compute_missing_documents(
-        assignment.vehicle_id, assignment.carrier_id, transport_documents,
-        is_owner_carrier(vehicles.get(assignment.vehicle_id), carriers.get(assignment.carrier_id)))
-    )
-
-    # Decide según el rol de quien consulta:
-
-    # Si es cartera, hay un pago pendiente que ya tiene comprobante, o sea que toca revisarlo.
+    # Catera: si hay un pago pendiente con comprobante, toca revisarlo
     if role in ("cartera", "admin"):
-      needs = bool(
-        (payment and payment.status == "pending" and payment.receipt_url)
-      )
-      
-    # Si es logistica, hay un transporte pendiente por validar (con sus documentos completos),
-    # o el pedido ya tiene el transporte validado y falta generar la guía.
+      needs = bool(payment and payment.status == "pending" and payment.receipt_url)
+
+    # Logistica: si hay un retiro pendiente por validar (con sus documentos completos), un retiro aprobado o un cambio de transporte con revisión pendiente
     if role in ("logistica", "admin"):
-      needs = needs or bool(
-        (
-          order.status == "facturado"
-          and assignment
-          and assignment.validation_status == "pending"
-          and not transport_docs_missing
-        )
-        or order.status == "transport_validated"   # falta generar la guía
-        or (assignment and assignment.review_pending)   # cambio de transporte sin consultas
+      needs = needs or any(
+        (in_withdrawal and a.validation_status == "pending" and not docs_missing(a))
+        or (in_withdrawal and a.validation_status == "approved" and a.id not in guided)
+        or a.review_pending
+        for a in retiros
       )
 
-    # Si es cliente, faltaría generar la proforma, el pago fue rechazado, falta subir el comprobante,
-    # o falta enviar el transporte, lo rechazaron o le faltan documentos por subir.
+    #Cliente: falta generar la proforma / subir el comprobante o hay algo por programar, corregir o completar en los retiros
     if role in CLIENT_ROLES:
       if order.status == "created":
         needs = (
@@ -370,14 +396,14 @@ def attach_needs_action(db: Session, orders: List[Order], current_user: User) ->
           or payment.status == "failed"
           or (payment.status == "pending" and not payment.receipt_url)
         )
-      elif order.status == "facturado":
-        needs = (
-          assignment is None
-          or assignment.validation_status == "rejected"
-          or (assignment.validation_status == "pending" and transport_docs_missing)
+      elif in_withdrawal:
+        pending_total = int(ordered_totals.get(order.id, 0)) - int(assigned_totals.get(order.id, 0))
+        needs = pending_total > 0 or any(
+          a.validation_status == "rejected"
+          or (a.validation_status == "pending" and docs_missing(a))
+          for a in retiros
         )
-
-    # Le asigna el resultado al objeto del pedido, needs_action no es una columna en la BD, sino un atributo temporal que existe solo durante esa petición
+    
     order.needs_action = needs
-
+    
   return orders

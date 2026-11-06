@@ -9,7 +9,9 @@ import FilePreviewModal from '../../../components/FilePreviewModal/FilePreviewMo
 import CollapsibleCard from '../../../components/CollapsibleCard/CollapsibleCard'
 import ComplianceTable from '../../../components/ComplianceTable/ComplianceTable'
 import { getErrorMessage } from '../../../utils/getErrorMessage'
-import { formatDate, todayISO } from '../../../utils/formatDate'
+import { formatDate, formatDateTime, todayISO } from '../../../utils/formatDate'
+import { formatQuantity } from '../../../utils/formatQuantity.js'
+import { suggestPickup } from '../../../utils/pickupSuggestion.js'
 import { isValidAddress, MIN_ADDRESS_LENGTH } from '../../../utils/validators'
 import { formatCapacity } from '../../../utils/formatNumber'
 import { capacityStatus } from '../../../utils/vehicleCapacity.js'
@@ -20,15 +22,20 @@ import {
 } from '../../../constants/transport'
 import TransportDocuments from './TransportDocuments'
 
+
+const API_BASE = api.defaults.baseURL
+const WITHDRAWAL_STATUSES = ['facturado', 'partially_dispatched']
 const EMPTY_FORM = {
+  plate: '', type: '',
   owner_name: '', owner_document_type: 'CC', owner_document_id: '', owner_phone: '',
-  full_name: '', document_type: 'CC', document_id: '', phone: '', address: '',
+  full_name: '', document_type: 'CC', document_id: '', phone: '', address: ''
 }
 
 const SUBJECT_ORDER = ['vehicle', 'owner', 'carrier']
 
 
-export default function TransportCard({ order, assignment, dispatchGuide, onChanged, defaultOpen }) {
+export default function TransportCard({ order, assignment, products, onChanged, defaultOpen }) {
+  
   const { hasPermission } = useAuth()
   const { showToast } = useToast()
   
@@ -59,26 +66,31 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   const [changeReason, setChangeReason] = useState('')
   const [uploadError, setUploadError] = useState('')
   const [postReview, setPostReview] = useState(false)
-
-  const [products, setProducts] = useState([]) // Para calcular los pesos para el transporte
+  const [qty, setQty] = useState({})   // { [order_item_id]: '30' }
+  const [qtyTouched, setQtyTouched] = useState(false)
+  const [showCancel, setShowCancel] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
 
   const isBusy = busy !== null
   
   const set = (f) => (e) => { setForm({ ...form, [f]: e.target.value }); setFormError('') }
   const setDigits = (f) => (e) => { setForm({ ...form, [f]: e.target.value.replace(/\D/g, '') }); setFormError('') }
   
+  const guide = assignment?.dispatch_guide || null
+  const isCancelled = Boolean(assignment?.cancelled_at)
+  const inWithdrawalPhase = WITHDRAWAL_STATUSES.includes(order.status)
+  // Un retiro se puede tocar mientras no esté anulado y su guía no se haya usado
+  const isOpen = Boolean(assignment) && !isCancelled && inWithdrawalPhase && guide?.status !== 'used'
+
   const canValidate = hasPermission('assignment:validar')
   const canGuide = hasPermission('dispatch_guide:crear')
-  const canSubmit = hasPermission('assignment:crear_propio') && !hasPermission('assignment:validar')
-  const canFix = canSubmit && ['pending', 'rejected'].includes(assignment?.validation_status)  
-  const canDecide = canValidate && assignment?.validation_status === 'pending'
-  const canMakeGuide =
-  canGuide && assignment?.validation_status === 'approved' &&
-  order.status === 'transport_validated' && !dispatchGuide
-  const canUpload = canSubmit && !canValidate && assignment && assignment.validation_status !== 'approved'
-  const canCorrect = hasPermission('assignment:corregir') && Boolean(assignment) &&
-  ['facturado', 'transport_validated', 'dispatch_guide_generated'].includes(order.status)
-
+  const canSubmit = hasPermission('assignment:crear_propio') && !canValidate
+  const canFix = canSubmit && isOpen && ['pending', 'rejected'].includes(assignment?.validation_status)
+  const canDecide = canValidate && isOpen && assignment?.validation_status === 'pending'
+  const canMakeGuide = canGuide && isOpen && assignment?.validation_status === 'approved' && !guide
+  const canUpload = canSubmit && isOpen && assignment?.validation_status !== 'approved'
+  const canCorrect = hasPermission('assignment:corregir') && isOpen
+  const canCancel = canCorrect && guide?.status !== 'in_plant'
 
   const statusKey = assignment && TRANSPORT_STATUS_LABELS[assignment.validation_status]
     ? assignment.validation_status
@@ -91,9 +103,49 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     text: TRANSPORT_STATUS_COLORS[statusKey].textColor,
   } : null
 
+  const summary = !assignment ? 'Sin programar'
+    : isCancelled ? 'Anulado'
+    : guide?.status === 'used' ? 'Despachado'
+    : guide?.status === 'in_plant' ? 'En planta'
+    : guide ? 'Guía generada'
+    : status.label
+
   const { types: vehicleTypes, labelOf: vehicleTypeLabel } = useVehicleTypes()
 
-  useEffect(() => { api.get('/products/').then((r) => setProducts(r.data)).catch(() => {}) }, [])
+  const productOf = (orderItemId) => {
+    const item = order.items.find((i) => i.id === orderItemId)
+    const product = products.find((p) => p.id === item?.product_id)
+    const parent = product?.parent_product_id ? products.find((p) => p.id === product.parent_product_id) : null
+    return { item, product, parent }
+  }
+
+  // Lo que todavía se puede programar de cada producto (para un retiro nuevo)
+  const pendingLines = order.items
+    .map((item) => {
+      const { product, parent } = productOf(item.id)
+      const unitKg = product ? estimateWeightKg(product.approx_weight_kg, product.unit, 1) : null
+      return { item, product, parent, pending: item.pending_quantity || 0, unitKg }
+    })
+    .filter((l) => l.pending > 0)
+
+  const suggestionFor = (typeCode) => {
+    const type = vehicleTypes.find((t) => t.code === typeCode)
+    if (!type?.capacity_kg) return null
+
+    return suggestPickup(
+      pendingLines.map((l) => ({ id: l.item.id, pending: l.pending, unitKg: l.unitKg })),
+      Number(type.capacity_kg)
+    )
+  }
+
+  // Sin vehículo, o sin pesos conocidos, se deja todo lo pendiente
+  function applySuggestion(typeCode) {
+    const result = suggestionFor(typeCode)
+    const source = result ? result.quantities : Object.fromEntries(pendingLines.map((l) => [l.item.id, l.pending]))
+
+    setQty(Object.fromEntries(Object.entries(source).map(([id, q]) => [id, String(q)])))
+    setQtyTouched(false)
+  }
 
   // Ejecuta una acción mostrando el resultado y recargando el pedido
   // onError: si se pasa, el error se muestra donde se indique (dentro de un modal) y no como popup.
@@ -157,6 +209,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     } else {
       setOwnerIsCarrier(false)
       setForm(EMPTY_FORM)
+      applySuggestion('') 
     }
 
     // Se reinician siempre al abrir el formulario
@@ -281,34 +334,49 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       return setFormError(`La dirección del transportador debe tener al menos ${MIN_ADDRESS_LENGTH} caracteres.`)
 
     if (needsChangeReason && !changeReason.trim()) return setFormError('Indica el motivo del cambio.')
-      
-      setFormError('')
-      
-      const body = {
-        vehicle: {
-          plate: form.plate.trim(),
-          type: form.type,
-          owner_name: owner.name.trim(),
-          owner_document_type: owner.type,
-          owner_document_id: owner.id.trim(),
-          owner_phone: owner.phone.trim() || null,
-        },
-        carrier: {
-          full_name: form.full_name.trim(),
-          document_type: form.document_type,
-          document_id: form.document_id.trim(),
-          phone: form.phone.trim(),
-          address: form.address.trim(),
-        },
+    
+    let items = []
+
+    if (!assignment) {
+      for (const l of pendingLines) {
+        const q = Number(qty[l.item.id] || 0)
+
+        if (!Number.isInteger(q) || q < 0 || q > l.pending)
+          return setFormError(`La cantidad de ${l.product?.name || 'un producto'} debe ser un entero entre 0 y ${l.pending}.`)
+
+        if (q > 0) items.push({ order_item_id: l.item.id, quantity: q })
       }
+
+      if (items.length === 0) return setFormError('Indica al menos una cantidad para este retiro.')
+    }
+
+    setFormError('')
+    
+    const body = {
+      vehicle: {
+        plate: form.plate.trim(),
+        type: form.type,
+        owner_name: owner.name.trim(),
+        owner_document_type: owner.type,
+        owner_document_id: owner.id.trim(),
+        owner_phone: owner.phone.trim() || null,
+      },
+      carrier: {
+        full_name: form.full_name.trim(),
+        document_type: form.document_type,
+        document_id: form.document_id.trim(),
+        phone: form.phone.trim(),
+        address: form.address.trim(),
+      },
+    }
     
     if (needsChangeReason) body.reason = changeReason.trim()
 
     run( 'submit',
       () => {
-        if (isCorrection) return api.put(`/assignments/order/${order.id}/correct`, body)
-        if (assignment) return api.put(`/assignments/order/${order.id}/resubmit`, body)
-        return api.post('/assignments/', { order_id: order.id, ...body })
+        if (isCorrection) return api.put(`/assignments/${assignment.id}/correct`, body)
+        if (assignment) return api.put(`/assignments/${assignment.id}/resubmit`, body)
+        return api.post('/assignments/', { order_id: order.id, items, ...body })
       },
       isCorrection
       ? 'Datos corregidos'
@@ -342,7 +410,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     if (expiresAt) formData.append('expires_at', expiresAt)
     
     run('upload',
-      () => api.post(`/assignments/order/${order.id}/documents`, formData),
+      () => api.post(`/assignments/${assignment.id}/documents`, formData),
       'Documento subido.',
       'No se pudo subir el documento',
       () => { setPendingUpload(null); setExpiryDate(''); setUploadError('') },    
@@ -373,7 +441,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
       async () => {
         try {
           for (const doc of pending) {
-            await api.patch(`/assignments/order/${order.id}/documents/${doc.id}/review`, { status: 'approved', reason: null })
+            await api.patch(`/assignments/${assignment.id}/documents/${doc.id}/review`, { status: 'approved', reason: null })
           }
         } finally {
           await onChanged()   // si algo falla a medias, la pantalla refleja los que sí quedaron
@@ -387,7 +455,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   function handleReviewDoc(doc, status, reason = null) {
     run(
       'review',
-      () => api.patch(`/assignments/order/${order.id}/documents/${doc.id}/review`, { status, reason }),
+      () => api.patch(`/assignments/${assignment.id}/documents/${doc.id}/review`, { status, reason }),
       status === 'approved' ? 'Documento aprobado.' : 'Documento rechazado.',
       'No se pudo revisar el documento',
       () => setDocToReject(null)
@@ -435,7 +503,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
   function handleCreateGuide() {
     run('guide',
-      () => api.post('/dispatch-guides/', { order_id: order.id }),
+      () => api.post('/dispatch-guides/', { assignment_id: assignment.id }),
       'Guía de despacho generada.',
       'No se pudo generar la guía'
     )
@@ -456,10 +524,19 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
     )
   }
 
+  function handleCancel() {
+    run('cancel',
+      () => api.post(`/assignments/${assignment.id}/cancel`, { reason: cancelReason.trim() }),
+      'Retiro anulado.',
+      'No se pudo anular el retiro',
+      () => setShowCancel(false)
+    )
+  }
+
   function openPreview(label, doc) {
     setPreview({
       title: label,
-      apiPath: `/assignments/order/${order.id}/documents/${doc.id}/file`,
+      apiPath: `/assignments/${assignment.id}/documents/${doc.id}/file`,
     })
   }
 
@@ -581,37 +658,49 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   // El motivo final: el de la lista, o lo que escribió quien revisa si eligió "Otro motivo"
   const finalDocReason = docReasonChoice === OTHER_REASON ? docReason.trim() : docReasonChoice
 
-  const orderWeightKg = order.items.reduce((sum, item) => {
-    const p = products.find((x) => x.id === item.product_id)
-    const kg = p ? estimateWeightKg(p.approx_weight_kg, p.unit, item.quantity_m3) : null
-    return sum + (kg || 0)
-  }, 0)
-
   const selectedType = vehicleTypes.find((t) => t.code === form.type)
-  const fit = capacityStatus(selectedType?.capacity_kg, orderWeightKg)
+
+  // Peso de lo que se lleva ESTE retiro: lo escrito en el formulario (nuevo) o lo ya registrado
+  const withdrawalWeightKg = assignment
+    ? assignment.items.reduce((sum, ai) => {
+        const { product } = productOf(ai.order_item_id)
+        return sum + (product ? estimateWeightKg(product.approx_weight_kg, product.unit, ai.quantity) || 0 : 0)
+      }, 0)
+    : pendingLines.reduce((sum, l) => sum + (Number(qty[l.item.id]) || 0) * (l.unitKg || 0), 0)
+
+  const fit = capacityStatus(selectedType?.capacity_kg, withdrawalWeightKg)
+  const suggestion = !assignment ? suggestionFor(form.type) : null
 
   return (
     <>
       <CollapsibleCard
-        title="Transporte"
-        summary={status ? status.label : 'Sin enviar'}
+        title={assignment ? `Retiro ${assignment.sequence}` : 'Nuevo retiro'}
+        summary={summary}
         defaultOpen={defaultOpen}
       >
         {!assignment ? (
           <>
             <p className="detail-empty-inline">
-              {order.status === 'facturado'
-                ? 'Aún no se ha enviado la información de transporte.'
-                : 'El transporte se envía una vez el pedido esté facturado.'}
+              {!inWithdrawalPhase
+                ? 'Los retiros se programan una vez el pedido esté facturado.'
+                : canSubmit
+                  ? 'Programa un retiro: indica qué cantidad se lleva y quién la recoge.'
+                  : 'Aún no se ha programado ningún retiro.'}
             </p>
-            {order.status === 'facturado' && canSubmit && (
+            {inWithdrawalPhase && canSubmit && (
               <div className="pay-actions">
-                <button className="pay-btn is-primary" onClick={openForm}>Enviar datos de transporte</button>
+                <button className="pay-btn is-primary" onClick={openForm}>Programar retiro</button>
               </div>
             )}
           </>
         ) : (
           <>
+            {isCancelled && (
+              <p className="detail-empty-inline pay-hint">
+                Retiro anulado el {formatDate(assignment.cancelled_at)}. Motivo: {assignment.cancellation_reason}
+              </p>
+            )}
+    
             {assignment.blocked?.length > 0 && assignment.validation_status !== 'approved' && (
               <p className="detail-error-text">
                 {canValidate
@@ -678,6 +767,15 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                 <span>Estado</span>
                 <StatusBadge label={status.label} bgColor={status.bg} textColor={status.text} icon={status.icon} />
               </div>
+              {assignment.items.map((ai) => {
+                const { product, parent } = productOf(ai.order_item_id)
+                return (
+                  <div className="detail-info-row" key={ai.id}>
+                    <span>{product?.name || 'Producto'}</span>
+                    <span>{product ? formatQuantity(ai.quantity, product, parent) : ai.quantity}</span>
+                  </div>
+                )
+              })}
               <div className="detail-info-row">
                 <span>Placa</span>
                 <span>{assignment.vehicle.plate}</span>
@@ -718,7 +816,7 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
   
             <TransportDocuments
               rows={docRows}
-              canReview={canValidate && assignment.validation_status === 'pending'}
+              canReview={canDecide}
               canUpload={canUpload}
               isBusy={isBusy}
               busy={busy}
@@ -759,6 +857,11 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
 
             {(canFix || canCorrect) && (
               <div className="pay-actions">
+                {/* {canCancel && (
+                  <button className="pay-btn is-danger" disabled={isBusy} onClick={() => { setCancelReason(''); setShowCancel(true) }}>
+                    Anular retiro
+                  </button>
+                )} */}
                 <button className="pay-btn is-primary" onClick={openForm}>Corregir datos</button>
               </div>
             )}
@@ -804,6 +907,26 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
                 </button>
               </div>
             )}
+
+            {guide && (
+              <div className="detail-qr-card">
+                <p className="detail-card-title">Guía de despacho</p>
+                {guide.qr_image_url && !isCancelled && (
+                  <img src={`${API_BASE}${guide.qr_image_url}`} alt="Código QR de despacho" className="detail-qr-image" />
+                )}
+                <p className="detail-empty-inline" style={{ textAlign: 'center', marginTop: 8 }}>
+                  {isCancelled ? 'Guía sin validez (retiro anulado)'
+                    : guide.status === 'used' ? 'Ya utilizada'
+                    : guide.status === 'in_plant' ? 'En planta: pendiente de salida'
+                    : 'Escanear en portería'}
+                </p>
+                <p className="detail-empty-inline">{guide.cargo_detail}</p>
+                {guide.balance_detail && <p className="detail-empty-inline">{guide.balance_detail}</p>}
+                {guide.entered_at && <p className="detail-empty-inline">Ingreso a planta: {formatDateTime(guide.entered_at)}</p>}
+                {guide.used_at && <p className="detail-empty-inline">Salida de planta: {formatDateTime(guide.used_at)}</p>}
+              </div>
+            )}
+
           </>
         )}
       </CollapsibleCard>
@@ -829,7 +952,12 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
               </label>
       
               <label className="edit-field">Tipo
-                <select value={form.type} onChange={set('type')}>
+                <select 
+                  value={form.type} 
+                  onChange={(e) => {
+                    set('type')(e)
+                    if (!assignment && !qtyTouched) applySuggestion(e.target.value)
+                  }}>
                   <option value="">Selecciona</option>
                     {vehicleTypes.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}
                 </select>
@@ -839,6 +967,39 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
             {/* Aviso sobre la capacidad del vehículo */}
             {fit.level !== 'unknown' && (
               <p className={`capacity-hint is-${fit.level}`}>{fit.message}</p>
+            )}
+
+            {!assignment && (
+              <>
+                <p className="edit-section">Cantidades de este retiro</p>
+
+                {pendingLines.map((l) => (
+                  <label className="edit-field" key={l.item.id}>
+                    {l.product?.name || 'Producto'} (pendiente: {l.product ? formatQuantity(l.pending, l.product, l.parent) : l.pending})
+                    <input
+                      type="number" min="0" max={l.pending} step="1"
+                      value={qty[l.item.id] ?? ''}
+                      onChange={(e) => { setQty({ ...qty, [l.item.id]: e.target.value }); setQtyTouched(true); setFormError('') }}
+                    />
+                  </label>
+                ))}
+
+                {suggestion && !suggestion.complete && (
+                  <p className="edit-note">
+                    Lo pendiente no cabe en un solo viaje de este vehículo: se necesitarán unos {suggestion.trips} retiros.
+                  </p>
+                )}
+
+                {/* {selectedType?.capacity_kg && (
+                  <button 
+                    type="button" 
+                    className="suggest-btn" 
+                    onClick={() => applySuggestion(form.type)}
+                  >
+                    Sugerir según el vehículo
+                  </button>
+                )} */}
+              </>
             )}
 
             {hint.vehicle && (
@@ -1150,6 +1311,26 @@ export default function TransportCard({ order, assignment, dispatchGuide, onChan
         </Modal>
       )}
       
+      {/* {showCancel && (
+        <Modal title="Anular retiro" onClose={() => setShowCancel(false)}>
+          <p className="detail-empty-inline">Las cantidades de este retiro quedarán libres para programarlas de nuevo.</p>
+          <label className="pay-label" htmlFor="cancel-withdrawal-reason">Motivo (obligatorio)</label>
+          <textarea
+            id="cancel-withdrawal-reason" className="pay-textarea" rows={3} value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+          />
+          <div className="pay-actions">
+            <button type="button" className="pay-btn" onClick={() => setShowCancel(false)} disabled={isBusy}>Volver</button>
+            <button
+              type="button" className="pay-btn is-danger"
+              disabled={!cancelReason.trim() || isBusy} onClick={handleCancel}
+            >
+              {busy === 'cancel' ? 'Anulando...' : 'Anular retiro'}
+            </button>
+          </div>
+        </Modal>
+      )} */}
+
       {docToReject && (
         <Modal title={`Rechazar: ${docToReject.label}`} onClose={() => setDocToReject(null)}>
           <label className="edit-field">Motivo (lo verá el cliente)

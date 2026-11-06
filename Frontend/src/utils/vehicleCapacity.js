@@ -19,7 +19,7 @@ export function capacityStatus(capacityKg, weightKg) {
   if (weight >= capacity * TIGHT_RATIO) {
     return {
       level: 'tight',
-      message: `Cabe muy justo: el pedido pesa ≈ ${tons(weight)} y este tipo carga ${tons(capacity)}. El peso es aproximado.`,
+      message: `Cabe muy justo: este retiro pesa ≈ ${tons(weight)} y este tipo carga ${tons(capacity)}. El peso es aproximado.`,
     }
   }
 

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from uuid import UUID
 from decimal import Decimal
 from datetime import datetime
@@ -7,6 +7,7 @@ from app.schemas.mixins import AuditResponseMixin
 from app.schemas.vehicle import VehicleResponse
 from app.schemas.carrier import CarrierResponse
 from app.schemas.document import DocumentBase
+from app.schemas.dispatch_guide import DispatchGuideResponse
 
 
 class VehicleSubmission(BaseModel):
@@ -45,8 +46,27 @@ class TransportCheckResponse(BaseModel):
     from_attributes = True
 
 
+class AssignmentItemInput(BaseModel):
+  order_item_id: UUID
+  quantity: int = Field(gt=0)
+
+
+class AssignmentItemResponse(BaseModel):
+  id: UUID
+  order_item_id: UUID
+  quantity: int
+
+  class Config:
+    from_attributes = True
+
+
+class AssignmentCancel(BaseModel):
+  reason: str
+
+
 class AssignmentCreate(BaseModel):
   order_id: UUID
+  items: List[AssignmentItemInput]  
   vehicle: VehicleSubmission
   carrier: CarrierSubmission
 
@@ -100,7 +120,12 @@ class AssignmentResponse(AuditResponseMixin):
   validated_at: Optional[datetime] = None
   validated_by_user_id: Optional[UUID] = None
   review_pending: bool = False
-
+  sequence: int = 1
+  cancelled_at: Optional[datetime] = None
+  cancellation_reason: Optional[str] = None
+  items: List[AssignmentItemResponse] = []
+  dispatch_guide: Optional[DispatchGuideResponse] = None   # lo adjunta attach_transport_details
+  
   # No son columnas: el servicio los adjunta (attach_transport_details). El cliente no tiene
   # vehicle:ver ni carrier:ver, por eso van dentro de la respuesta de la asignación.
   vehicle: Optional[VehicleResponse] = None
@@ -120,6 +145,7 @@ class AssignmentCorrection(BaseModel):
   vehicle: VehicleSubmission
   carrier: CarrierSubmission   # usa el nombre real de tu schema del transportador
   reason: Optional[str] = None
+
 
 class PostReviewBody(BaseModel):
   checks: list[TransportCheckInput]   # el mismo schema de consultas que usa validate

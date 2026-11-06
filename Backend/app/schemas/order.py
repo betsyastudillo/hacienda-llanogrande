@@ -16,6 +16,9 @@ class OrderItemResponse(BaseModel):
   quantity_m3: int
   unit_price: Decimal
   subtotal: Decimal
+  assigned_quantity: int = 0     # comprometido en retiros activos
+  dispatched_quantity: int = 0   # ya salió por portería
+  pending_quantity: int = 0      # pedido - asignado: lo que aún se puede programar para el envío
 
   class Config:
     from_attributes = True

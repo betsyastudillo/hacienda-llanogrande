@@ -55,6 +55,9 @@ export default function VerifyGuide() {
   return (
     <main className="guide-page">
       <header className="guide-header">
+        <p className="guide-sub" style={{ textAlign: 'center' }}>
+          Pedido {guide.order_number} · Retiro {guide.sequence}
+        </p>
         <h1 className="guide-title">Guía de despacho</h1>
         <span className={`guide-status ${status.className}`}>{status.label}</span>
       </header>
@@ -92,6 +95,13 @@ export default function VerifyGuide() {
           <span className="guide-label">Carga</span>
           <span className="guide-value">{guide.cargo_detail}</span>
         </div>
+
+        {guide.balance_detail && (
+          <div className="guide-field">
+            <span className="guide-label">Saldo</span>
+            <span className="guide-value">{guide.balance_detail}</span>
+          </div>
+        )}
 
         {guide.entered_at && (
           <div className="guide-field">

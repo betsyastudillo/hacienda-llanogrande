@@ -4,7 +4,7 @@ from uuid import UUID
 from app.database import get_db
 from app.auth_dependencies import OrderCanceller, OrderCreator, OrderViewerAny
 from app.schemas.order import OrderCancel, OrderCreate, OrderResponse
-from app.services.order_service import cancel_order, create_order, edit_order, get_orders, get_order_by_id, can_access_order
+from app.services.order_service import cancel_order, create_order, edit_order, get_orders, get_order_by_id, can_access_order, attach_item_balances
 
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -33,7 +33,7 @@ def get_order(
     # 404 en vez de 403: no revelamos que el pedido existe si no es suyo
     raise HTTPException(status_code=404, detail="Order not found")
   
-  return order
+  return attach_item_balances(db, order)
 
 
 @router.post("/", response_model=OrderResponse, summary="Crea una orden")

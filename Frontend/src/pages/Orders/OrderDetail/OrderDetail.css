@@ -89,8 +89,8 @@
 .detail-stepper-track {
   position: absolute;
   top: 14px; /* mitad de la altura del círculo (28px / 2) */
-  left: 8.33%;  /* centro del primer círculo, con 6 pasos: (100/6)/2 */
-  right: 8.33%;
+  left: 10%;   /* centro del primer círculo, con 5 pasos: (100/5)/2 */
+  right: 10%;
   height: 2px;
   background-color: #e5e3db;
   z-index: 0;
@@ -468,10 +468,31 @@
   color: var(--status-pending-text); 
 }
 
+.edit-form .suggest-btn {
+  width: auto;
+  /* height: 34px; */
+  margin: 8px auto 0;
+  padding: 10px 14px;
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-page);
+  color: inherit;
+  cursor: pointer;
+}
+
+.edit-form .suggest-btn:hover {
+  background: var(--surface-page);
+}
 
 /* QR */
 .detail-qr-card {
   text-align: center;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
 .detail-qr-image {

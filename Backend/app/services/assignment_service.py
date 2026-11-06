@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Optional, List
 from uuid import UUID
 from fastapi import UploadFile
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.constants.company_requirements import MIN_ADDRESS_LENGTH
@@ -31,8 +31,10 @@ from app.constants.transport_requirements import (
 )
 from app.dependencies import user_has_permission
 from app.models.assignment import Assignment
+from app.models.assignment_item import AssignmentItem
 from app.models.carrier import Carrier
 from app.models.company import Company
+from app.models.dispatch_guide import DispatchGuide
 from app.models.document import Document
 from app.models.document_blacklist import DocumentBlacklist
 from app.models.order import Order
@@ -40,7 +42,7 @@ from app.models.transport_check import TransportCheck
 from app.models.vehicle import Vehicle
 from app.services.document_blacklist_service import is_document_blacklisted
 from app.services.document_service import create_document, replace_document_file
-from app.services.order_service import can_access_order, CLIENT_ROLES
+from app.services.order_service import can_access_order, CLIENT_ROLES, WITHDRAWAL_ORDER_STATUSES, get_item_quantities
 from app.services.vehicle_type_service import active_vehicle_type_codes
 
 
@@ -74,6 +76,10 @@ def attach_transport_details(db: Session, assignments: List[Assignment]) -> List
     .all()
   )
 
+  guides = {
+    g.assignment_id: g
+    for g in db.query(DispatchGuide).filter(DispatchGuide.assignment_id.in_([a.id for a in assignments])).all()
+  }
   # Documentos vetados entre todos los envíos, en una sola consulta
   numbers = set()
   
@@ -101,6 +107,7 @@ def attach_transport_details(db: Session, assignments: List[Assignment]) -> List
     # Primero se asignan los atributos...
     a.vehicle = vehicles.get(a.vehicle_id)
     a.carrier = carriers.get(a.carrier_id)
+    a.dispatch_guide = guides.get(a.id)
     a.documents = [
       d for d in documents
       if d.vehicle_id == a.vehicle_id or d.carrier_id == a.carrier_id
@@ -137,19 +144,77 @@ def get_assignments(db: Session) -> List[Assignment]:
   return attach_transport_details(db, db.query(Assignment).all())
 
 
-# Trae una asignación por id de orden (sin detalles; para validaciones internas)
-def get_assignment_by_order(db: Session, order_id: UUID) -> Optional[Assignment]:
-  return db.query(Assignment).filter(Assignment.order_id == order_id).first()
+# Retiros de un pedido, en orden, con vehículo, transportador, documentos y guía
+def get_assignments_by_order(db: Session, order_id: UUID) -> List[Assignment]:
+  assignments = (
+    db.query(Assignment)
+    .filter(Assignment.order_id == order_id)
+    .order_by(Assignment.sequence)
+    .all()
+  )
+
+  return attach_transport_details(db, assignments)
 
 
-# Trae una asignación por id de orden, con vehículo, transportador y documentos
-def get_assignment_detail_by_order(db: Session, order_id: UUID) -> Optional[Assignment]:
-  assignment = get_assignment_by_order(db, order_id)
-  print(assignment)
+# Un cliente solo accede a retiros de sus pedidos: si no, responde "Order not found" (404) sin revelar que existe
+def get_accessible_assignment(db: Session, assignment_id: UUID, current_user):
+  assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
+
   if not assignment:
-    return None
+    raise ValueError("Order not found")
 
-  return attach_transport_details(db, [assignment])[0]
+  order = db.query(Order).filter(Order.id == assignment.order_id).first()
+
+  if not order or not can_access_order(order, current_user):
+    raise ValueError("Order not found")
+
+  return assignment, order
+
+
+# Un retiro anulado, despachado o de un pedido que ya no está en retiros no se puede cambiar
+def _ensure_assignment_open(db: Session, assignment: Assignment, order: Order):
+  if assignment.cancelled_at:
+    raise ValueError("Este retiro fue anulado")
+
+  if order.status not in WITHDRAWAL_ORDER_STATUSES:
+    raise ValueError("Ya no se puede modificar el transporte de este pedido")
+
+  guide = db.query(DispatchGuide).filter(DispatchGuide.assignment_id == assignment.id).first()
+
+  if guide and guide.status == "used":
+    raise ValueError("Este retiro ya se despachó y no se puede cambiar")
+
+  return guide
+
+
+# Valida las cantidades de un retiro contra lo que todavía se puede programar de cada producto
+def _validate_withdrawal_items(db: Session, order: Order, items_data) -> list:
+  if not items_data:
+    raise ValueError("Indica las cantidades que se llevará este retiro")
+
+  order_items = {i.id: i for i in order.items}
+  assigned, _ = get_item_quantities(db, order.id)
+  seen = set()
+
+  for it in items_data:
+    if it.order_item_id in seen:
+      raise ValueError("Un producto no puede repetirse en el mismo retiro")
+
+    seen.add(it.order_item_id)
+    order_item = order_items.get(it.order_item_id)
+
+    if not order_item:
+      raise ValueError("Uno de los productos no pertenece a este pedido")
+
+    if it.quantity <= 0:
+      raise ValueError("Las cantidades del retiro deben ser mayores a cero")
+
+    pending = order_item.quantity_m3 - assigned.get(order_item.id, 0)
+
+    if it.quantity > pending:
+      raise ValueError(f"La cantidad de {order_item.product.name} supera lo pendiente por retirar ({pending})")
+
+  return items_data
 
 
 # Rechaza de entrada un vehículo o transportador vetado. No se incluye el motivo del veto:
@@ -279,43 +344,47 @@ def _find_or_create_carrier(db: Session, data, current_user) -> Carrier:
 
 # Se crea la asignación
 def create_assignment(db: Session, data, current_user) -> Assignment:
+  # with_for_update bloquea el pedido mientras se valida, para que dos retiros simultáneos no se pasen de la cantidad
   order = db.query(Order).filter(Order.id == data.order_id).first()
-  print(order)
-  if not order: 
-    print("Order not found")
+
+  if not order or not can_access_order(order, current_user): 
     raise ValueError("Order not found")
 
-  if not can_access_order(order, current_user):
-    print("User cannot access order")
-    raise ValueError("Order not found")
-
-  if order.status != "facturado":
+  if order.status not in WITHDRAWAL_ORDER_STATUSES:
     raise ValueError(
-      f"Transport can only be submitted when the order status is 'facturado' (current: {order.status})"
+      f"Los retiros solo se registran con el pedido facturado o parcialmente despachado (estado actual: {order.status})"
     )
 
-  existing = get_assignment_by_order(db, data.order_id)
-  print(existing)
-  if existing:
-    raise ValueError(
-      "Este pedido ya tiene un transporte enviado. Si fue rechazado, corrígelo y reenvíalo."
-    )
+  items = _validate_withdrawal_items(db, order, data.items)
 
   _validate_submission(db, data.vehicle, data.carrier)
   _ensure_not_blacklisted(db, data.vehicle, data.carrier)
 
   vehicle = _find_or_create_vehicle(db, data.vehicle, current_user)
   carrier = _find_or_create_carrier(db, data.carrier, current_user)
-  print(vehicle, carrier)
+
+  last_sequence = (db.query(func.max(Assignment.sequence)).filter(Assignment.order_id == order.id).scalar() or 0)
+
   new_assignment = Assignment(
-    order_id=data.order_id,
+    order_id=order.id,
+    sequence=last_sequence + 1,
     vehicle_id=vehicle.id,
     carrier_id=carrier.id,
     validation_status="pending",
-    created_by_user_id = current_user.id,
+    created_by_user_id=current_user.id,
   )
 
   db.add(new_assignment)
+  db.flush()  # asigna el id sin cerrar la transacción todavía
+
+  for it in items:
+    db.add(AssignmentItem(
+      assignment_id=new_assignment.id,
+      order_item_id=it.order_item_id,
+      quantity=it.quantity,
+      created_by_user_id=current_user.id
+    ))
+  
   db.commit()
   db.refresh(new_assignment)
 
@@ -324,24 +393,16 @@ def create_assignment(db: Session, data, current_user) -> Assignment:
 
 # Si se rechaza el vehículo o transportador, el cliente corrige y reenvía SOBRE LA MISMA asignación
 # (vuelve a pending y se limpia el motivo), igual que el comprobante del pago.
-def resubmit_assignment(db: Session, order_id: UUID, vehicle_data, carrier_data, current_user) -> Assignment:
-  order = db.query(Order).filter(Order.id == order_id).first()
+def resubmit_assignment(db: Session, assignment_id: UUID, vehicle_data, carrier_data, current_user) -> Assignment:
+  assignment, order = get_accessible_assignment(db, assignment_id, current_user)
 
-  if not order:
-    raise ValueError("Order not found")
-
-  if not can_access_order(order, current_user):
-    raise ValueError("Order not found")
-
-  if order.status != "facturado":
+  if assignment.cancelled_at:
+    raise ValueError("Este retiro fue anulado y no se puede corregir")
+  
+  if order.status not in WITHDRAWAL_ORDER_STATUSES:
     raise ValueError(
-      f"Transport can only be resubmitted when the order status is 'facturado' (current: {order.status})"
+      f"El transporte solo se reenvía con el pedido facturado o parcialmente despachado (estado actual: {order.status})"
     )
-
-  assignment = get_assignment_by_order(db, order_id)
-
-  if not assignment:
-    raise ValueError("No transport submission found for this order")
 
   if assignment.validation_status not in ("rejected", "pending"):
     raise ValueError("Solo se pueden corregir los datos mientras el transporte está pendiente o rechazado")
@@ -390,7 +451,7 @@ def _validate_transport_file(file: UploadFile) -> None:
 # El cliente sube (o reemplaza) un documento del vehículo o del transportador de su asignación.
 def upload_transport_document(
     db: Session,
-    order_id: UUID,
+    assignment_id: UUID,
     subject: str,
     document_type: str,
     file: UploadFile,
@@ -398,22 +459,17 @@ def upload_transport_document(
     expires_at: Optional[date] = None
   ) -> Document:
 
-  order = db.query(Order).filter(Order.id == order_id).first()
+  assignment, order = get_accessible_assignment(db, assignment_id, current_user)
 
-  if not order or not can_access_order(order, current_user):
-    raise ValueError("Order not found")
+  if assignment.cancelled_at:
+    raise ValueError("Este retiro fue anulado.")
 
-  if order.status != "facturado":
-    raise ValueError("Transport documents can only be uploaded while the order is 'facturado'")
+  if order.status not in WITHDRAWAL_ORDER_STATUSES:
+    raise ValueError("Los documentos solo se suben con el pedido facturado o parcialmente despachado")
 
   # Quien revisa los documentos no los sube: así la revisión no puede sustituir lo que evalúa
   if user_has_permission(current_user, "assignment:validar"):
     raise ValueError("Quien valida el transporte no puede subir ni reemplazar sus documentos")
-  
-  assignment = get_assignment_by_order(db, order_id)
-
-  if not assignment:
-    raise ValueError("Submit the transport information before uploading documents")
 
   if assignment.validation_status not in EDITABLE_ASSIGNMENT_STATUSES:
     raise ValueError(f"Cannot upload documents for a submission that is {assignment.validation_status}")
@@ -463,13 +519,8 @@ def upload_transport_document(
   return create_document(db, document_type, file, carrier_id=owner_id, current_user=current_user, expires_at=expires_at)
 
 
-# Ruta del archivo de un documento de transporte, solo si pertenece al vehículo o transportador del pedido.
-def get_transport_document(db: Session, order_id: UUID, document_id: UUID) -> Document:
-  assignment = get_assignment_by_order(db, order_id)
-
-  if not assignment:
-    raise ValueError("Assignment not found for this order")
-
+# Documento de transporte, solo si pertenece al vehículo o transportador de ese retiro
+def get_transport_document(db: Session, assignment: Assignment, document_id: UUID) -> Document:
   document = (
     db.query(Document)
     .filter(
@@ -481,7 +532,42 @@ def get_transport_document(db: Session, order_id: UUID, document_id: UUID) -> Do
 
   if not document:
     raise ValueError("Document not found")
+  
+  return document
 
+
+def review_transport_document(db: Session, assignment_id: UUID, document_id: UUID, status: str, reason: Optional[str], current_user) -> Document:
+
+  assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
+  
+  if not assignment:
+    raise ValueError("Assignment not found")
+  
+  if assignment.validation_status != "pending":
+    raise ValueError("Documents can only be reviewed while the transport is pending")
+
+  document = get_transport_document(db, assignment, document_id)
+
+  if status == "approved" and document_is_expired(document):
+    raise ValueError("El documento está vencido o no tiene fecha de vencimiento")
+
+  if document.status != "pending":
+    raise ValueError(
+      f"This document was already {document.status}. "
+      "It can be reviewed again only after the client replaces it"
+    )
+  
+  reason = (reason or "").strip()
+  if status == "rejected" and not reason:
+    raise ValueError("A reason is required when rejecting a document")
+
+  document.status = status
+  document.rejection_reason = reason.strip() if status == "rejected" else None
+  document.updated_by_user_id = current_user.id
+
+  db.commit()
+  db.refresh(document)
+  
   return document
 
 
@@ -516,6 +602,9 @@ def validate_assignment(
   if assignment.validation_status != "pending":
     raise ValueError(f"This submission was already {assignment.validation_status}")
 
+  if assignment.cancelled_at:
+    raise ValueError("Este retiro fue anulado")
+    
   if decision not in ("approved", "rejected"):
     raise ValueError("rejection_reason is required when rejecting")
 
@@ -555,9 +644,9 @@ def validate_assignment(
   
   if decision == "approved":
     
-    if order.status != "facturado":
-      raise ValueError(f"The order must be 'facturado' to approve its transport (current: {order.status})")
-    
+    if order.status not in WITHDRAWAL_ORDER_STATUSES:
+      raise ValueError(f"The order must be 'facturado' or 'partially_dispatched' to approve its transport (current: {order.status})")
+        
     if detail.blocked:
       raise ValueError("Cannot approve: the vehicle, its owner or the carrier is on the blacklist")
 
@@ -597,10 +686,6 @@ def validate_assignment(
   assignment.validated_at = datetime.now(timezone.utc)
   assignment.validated_by_user_id = current_user.id
   assignment.updated_by_user_id = current_user.id
-
-  if decision == "approved":
-    order.status = "transport_validated"
-    order.updated_by_user_id = current_user.id
 
   # Se arma la referencia de cada sujeto
   refs = {
@@ -646,35 +731,26 @@ def validate_assignment(
 
 
 # Corrige la asignación en caso que en la recogida haya algún cambio que no se registra en la guía o en los datos que suministraron
-def correct_assignment(db: Session, order_id: UUID, vehicle_data, carrier_data, reason: str, current_user) -> Assignment:
-  order = db.query(Order).filter(Order.id == order_id).first()
-
-  if not order:
-    raise ValueError("Order not found")
-
-  # Con el pedido despachado o cancelado ya no se puede cambiar quién recoge
-  if order.status not in CORRECTABLE_ORDER_STATUSES:
-    raise ValueError("Ya no se puede corregir el transporte de este pedido")
-
-  # Con retiros parciales (Más adelante)
-  # if guide and guide.status == "used":
-  #   raise ValueError("Este retiro ya se despachó y no se puede cambiar")
-  
-  assignment = get_assignment_by_order(db, order_id)
+def correct_assignment(db: Session, assignment_id: UUID, vehicle_data, carrier_data, reason: str, current_user) -> Assignment:
+  assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
 
   if not assignment:
-    raise ValueError("Este pedido no tiene transporte enviado")
+    raise ValueError("Assignment not found")
+
+  order = db.query(Order).filter(Order.id == assignment.order_id).first()
+
+  _ensure_assignment_open(db, assignment, order)
 
   reason = (reason or "").strip()
 
   if assignment.validation_status == "approved" and not reason:
     raise ValueError("Indica el motivo del cambio")
-
+  
   # El veto interno se revisa al instante: un vetado conocido no entra
   _validate_submission(db, vehicle_data, carrier_data)
   _ensure_not_blacklisted(db, vehicle_data, carrier_data)
 
-  old_vehicle_id, old_carrier_id = assignment.vehicle_id, assignment.carrier_id
+  _old_vehicle_id, _old_carrier_id = assignment.vehicle_id, assignment.carrier_id
 
   vehicle = _find_or_create_vehicle(db, vehicle_data, current_user)
   carrier = _find_or_create_carrier(db, carrier_data, current_user)
@@ -682,9 +758,8 @@ def correct_assignment(db: Session, order_id: UUID, vehicle_data, carrier_data, 
   assignment.vehicle_id = vehicle.id
   assignment.carrier_id = carrier.id
 
-  # Cambió una persona o un vehículo (no un simple error de digitación) sobre algo ya autorizado:
-  # las consultas y los documentos quedan pendientes
-  party_changed = vehicle.id != old_vehicle_id or carrier.id != old_carrier_id
+  # Cambió una persona o un vehículo sobre algo ya autorizado: las consultas y los documentos quedan pendientes
+  party_changed = vehicle.id != _old_vehicle_id or carrier.id != _old_carrier_id
 
   if party_changed and assignment.validation_status == "approved":
     assignment.review_pending = True
@@ -692,7 +767,37 @@ def correct_assignment(db: Session, order_id: UUID, vehicle_data, carrier_data, 
   assignment.updated_by_user_id = current_user.id
   assignment.updated_at = datetime.now(timezone.utc)
 
-  # Cuando exista audit_log: se registra aquí quién, cuándo, antes/después y la razón
+  #Cuando exista audit_log: se registra aquí quién, cuándo, antes/después y la razón
+  
+  db.commit()
+  db.refresh(assignment)
+
+  return attach_transport_details(db, [assignment])[0]
+
+
+
+# Anula un retiro que no se va a realizar (por ejemplo, el cliente no llegó): libera sus cantidades para programarlas de nuevo
+def cancel_assignment(db: Session, assignment_id: UUID, reason: str, current_user) -> Assignment:
+  assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
+
+  if not assignment:
+    raise ValueError("Assignment not found")
+
+  reason = (reason or "").strip()
+
+  if not reason:
+    raise ValueError("El motivo de la anulación es obligatorio")
+
+  order = db.query(Order).filter(Order.id == assignment.order_id).first()
+
+  guide = _ensure_assignment_open(db, assignment, order)
+
+  if guide and guide.status == "in_plant":
+    raise ValueError("El vehículo ya ingresó a la planta: registra su salida antes de anular el retiro")
+
+  assignment.cancelled_at = datetime.now(timezone.utc)
+  assignment.cancellation_reason = reason
+  assignment.updated_by_user_id = current_user.id
 
   db.commit()
   db.refresh(assignment)
@@ -896,40 +1001,6 @@ def lookup_carrier(db: Session, document_type: str, document_id: str, current_us
 
   return {"status": "found", "carrier": carrier}
 
-
-def review_transport_document(db: Session, order_id: UUID, document_id: UUID, status: str, reason: Optional[str], current_user) -> Document:
-
-  assignment = get_assignment_by_order(db, order_id)
-  
-  if not assignment:
-    raise ValueError("Assignment not found for this order")
-  
-  if assignment.validation_status != "pending":
-    raise ValueError("Documents can only be reviewed while the transport is pending")
-
-  document = get_transport_document(db, order_id, document_id)
-
-  if status == "approved" and document_is_expired(document):
-    raise ValueError("El documento está vencido o no tiene fecha de vencimiento")
-
-  if document.status != "pending":
-    raise ValueError(
-      f"This document was already {document.status}. "
-      "It can be reviewed again only after the client replaces it"
-    )
-  
-  reason = (reason or "").strip()
-  if status == "rejected" and not reason:
-    raise ValueError("A reason is required when rejecting a document")
-
-  document.status = status
-  document.rejection_reason = reason.strip() if status == "rejected" else None
-  document.updated_by_user_id = current_user.id
-
-  db.commit()
-  db.refresh(document)
-  
-  return document
 
 
 # Para información sensible (hallazgos en listas vinculantes no se muestran al cliente)

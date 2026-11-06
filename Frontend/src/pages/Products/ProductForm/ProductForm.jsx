@@ -9,6 +9,7 @@ const VALID_UNITS = [
   { value: 'kg', label: 'Kilogramo' },
   { value: 'tonelada', label: 'Tonelada' },
   { value: 'unidad', label: 'Unidad' },
+  { value: 'm3', label: 'Metros cúbicos (m³)' },
   { value: 'canasta', label: 'Canasta' },
   { value: 'bulto', label: 'Bulto' },
 ]

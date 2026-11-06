@@ -5,12 +5,12 @@ from typing import Optional
 from app.schemas.mixins import AuditResponseMixin
 
 class DispatchGuideCreate(BaseModel):
-  order_id: UUID
-
+  assignment_id: UUID   # antes order_id: ahora la guía es de un retiro
 
 class DispatchGuideResponse(AuditResponseMixin):
   id: UUID
-  order_id: UUID
+  assignment_id: UUID
+  balance_detail: Optional[str] = None
   status: str
   origin: str
   destination: str
@@ -23,7 +23,7 @@ class DispatchGuideResponse(AuditResponseMixin):
     from_attributes = True
 
 
-# Es diferente a DispatchGuideResponse porque es lo que va a ver el vigilante al escanear
+# Es diferente a DispatchGuideResponse porque es lo que va a ver el vigilante al escanear el QR
 class VerificationResponse(BaseModel):
   order_id: UUID
   status: str
@@ -39,3 +39,6 @@ class VerificationResponse(BaseModel):
   used_at: Optional[datetime] = None
   can_enter: bool
   can_exit: bool
+  order_number: str
+  sequence: int
+  balance_detail: Optional[str] = None
