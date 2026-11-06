@@ -138,7 +138,7 @@ export default function ProductForm() {
             className="product-form-input"
             value={form.name}
             onChange={handleChange('name')}
-            placeholder={isPack ? 'ej. Manzana Roja x24' : 'ej. Manzana Roja'}
+            // placeholder={isPack ? 'ej. Manzana Roja x24' : 'ej. Manzana Roja'}
           />
         </div>
 
@@ -148,7 +148,7 @@ export default function ProductForm() {
             className="product-form-input"
             value={form.category}
             onChange={handleChange('category')}
-            placeholder="ej. Frutas"
+            // placeholder="ej. Frutas"
           />
         </div>
 

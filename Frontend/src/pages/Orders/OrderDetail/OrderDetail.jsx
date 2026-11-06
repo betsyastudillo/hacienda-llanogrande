@@ -276,11 +276,11 @@ export default function OrderDetail() {
                   return (
                     <tr key={item.id}>
                       <td>{product?.name || 'Producto'}</td>
-                      <td>{formatQuantity(item.quantity_m3, product, parent)}(es)</td>
+                      <td>{formatQuantity(item.quantity_m3, product, parent)}</td>
                       {showBalance && (
                         <>
-                          <td>{formatQuantity(item.dispatched_quantity, product, parent)}(es)</td>
-                          <td>{formatQuantity(item.pending_quantity, product, parent)}(es)</td>
+                          <td>{formatQuantity(item.dispatched_quantity, product, parent)}</td>
+                          <td>{formatQuantity(item.pending_quantity, product, parent)}</td>
                         </>
                       )}
                       <td>{formatCurrency(item.unit_price)}</td>
